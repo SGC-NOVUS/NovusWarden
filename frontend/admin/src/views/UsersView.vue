@@ -8,8 +8,17 @@ const statusFilter = ref<string>('all');
 const loading = ref(true);
 const inviteEmail = ref('');
 const inviting = ref(false);
+const invitePlan = ref('free');
 const resyncing = ref(false);
 const message = ref<{ text: string; error?: boolean } | null>(null);
+
+// License management modal
+const showLicenseModal = ref(false);
+const licenseTargetUser = ref<UserSummary | null>(null);
+const licensePlan = ref<string>('pro');
+const licenseDays = ref<number>(365);
+const licenseNotes = ref<string>('');
+const savingLicense = ref(false);
 
 // Role change modal
 const selectedUser = ref<UserSummary | null>(null);
@@ -54,14 +63,60 @@ async function handleInvite() {
   inviting.value = true;
   message.value = null;
   try {
-    await api.inviteUser(inviteEmail.value);
-    message.value = { text: `Приглашение успешно отправлено на ${inviteEmail.value}!` };
+    await api.inviteUser(inviteEmail.value, invitePlan.value);
+    message.value = { text: `Приглашение (тариф: ${invitePlan.value.toUpperCase()}) успешно отправлено на ${inviteEmail.value}!` };
     inviteEmail.value = '';
     await loadUsers();
   } catch (err: any) {
     message.value = { text: err.message, error: true };
   } finally {
     inviting.value = false;
+  }
+}
+
+function openLicenseModal(user: UserSummary) {
+  licenseTargetUser.value = user;
+  licensePlan.value = user.subscriptionPlan || 'pro';
+  licenseDays.value = 365;
+  licenseNotes.value = '';
+  showLicenseModal.value = true;
+}
+
+async function handleSaveLicense() {
+  if (!licenseTargetUser.value) return;
+  savingLicense.value = true;
+  try {
+    const expiresAt = licenseDays.value === -1
+      ? null
+      : new Date(Date.now() + licenseDays.value * 86400000).toISOString();
+    await api.setUserLicense(licenseTargetUser.value.id, {
+      plan: licensePlan.value,
+      expiresAt,
+      notes: licenseNotes.value || undefined,
+    });
+    message.value = { text: `Тарифный план для пользователя ${licenseTargetUser.value.email} успешно обновлён на ${licensePlan.value.toUpperCase()}!` };
+    showLicenseModal.value = false;
+    await loadUsers();
+  } catch (err: any) {
+    alert(err.message);
+  } finally {
+    savingLicense.value = false;
+  }
+}
+
+function getPlanBadge(plan?: string) {
+  switch ((plan || '').toLowerCase()) {
+    case 'enterprise':
+    case 'enterprise + pam':
+      return { label: '🏢 Enterprise', bg: '#4c1d95', color: '#e9d5ff', border: '#7c3aed' };
+    case 'lifetime':
+    case 'lifetime vip':
+    case 'vip':
+      return { label: '👑 Lifetime VIP', bg: '#78350f', color: '#fde68a', border: '#d97706' };
+    case 'pro':
+      return { label: '⚡ Novus Pro', bg: '#0369a1', color: '#bae6fd', border: '#0284c7' };
+    default:
+      return { label: 'Free', bg: '#1f2937', color: '#94a3b8', border: '#374151' };
   }
 }
 
@@ -253,14 +308,24 @@ onMounted(loadUsers);
     <!-- Top Bar: Invite User & Filters -->
     <div style="background-color: #111827; border: 1px solid #1f2937; border-radius: 8px; padding: 18px; margin-bottom: 24px; display: grid; gap: 16px;">
       <!-- Invite user form -->
-      <form @submit.prevent="handleInvite" style="display: flex; gap: 10px; flex-wrap: wrap;">
+      <form @submit.prevent="handleInvite" style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
         <input
           v-model="inviteEmail"
           type="email"
           placeholder="colleague@domain.com (введите email для приглашения)"
           required
-          style="flex: 1; min-width: 260px; background-color: #0b0f19; border: 1px solid #374151; color: white; padding: 10px 14px; border-radius: 6px; font-size: 13px; outline: none;"
+          style="flex: 1; min-width: 240px; background-color: #0b0f19; border: 1px solid #374151; color: white; padding: 10px 14px; border-radius: 6px; font-size: 13px; outline: none;"
         />
+        <select
+          v-model="invitePlan"
+          style="background-color: #0b0f19; border: 1px solid #374151; color: #93c5fd; padding: 10px 12px; border-radius: 6px; font-size: 13px; font-weight: 600; outline: none; cursor: pointer;"
+          title="Выберите тарифный план для приглашаемого пользователя"
+        >
+          <option value="free">Тариф: Free</option>
+          <option value="pro">Тариф: Novus Pro ⚡</option>
+          <option value="enterprise">Тариф: Novus Enterprise 🏢</option>
+          <option value="lifetime">Тариф: Lifetime VIP 👑</option>
+        </select>
         <button
           type="submit"
           :disabled="inviting"
@@ -383,6 +448,22 @@ onMounted(loadUsers);
                 >
                   🛡️ 2FA
                 </span>
+
+                <span
+                  :style="{
+                    fontSize: '10px',
+                    fontWeight: 600,
+                    padding: '2px 6px',
+                    borderRadius: '4px',
+                    backgroundColor: getPlanBadge(user.subscriptionPlan).bg,
+                    color: getPlanBadge(user.subscriptionPlan).color,
+                    border: `1px solid ${getPlanBadge(user.subscriptionPlan).border}`,
+                    marginTop: '2px',
+                  }"
+                  :title="user.licenseExpiresAt ? `Лицензия до: ${user.licenseExpiresAt}` : 'Бессрочная лицензия'"
+                >
+                  {{ getPlanBadge(user.subscriptionPlan).label }}
+                </span>
               </div>
             </td>
 
@@ -439,6 +520,13 @@ onMounted(loadUsers);
             <!-- Actions Column -->
             <td style="padding: 14px 18px; text-align: right;">
               <div style="display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap;">
+                <button
+                  @click="openLicenseModal(user)"
+                  title="Назначить лицензию / изменить тарифный план"
+                  style="background: #1e1b4b; color: #c084fc; border: 1px solid #7c3aed; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; cursor: pointer;"
+                >
+                  👑 Тариф
+                </button>
                 <button
                   @click="handleDeauth(user.id)"
                   title="Отозвать все активные сессии"
@@ -548,6 +636,120 @@ onMounted(loadUsers);
             style="background-color: #2563eb; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;"
           >
             {{ updatingRole ? 'Сохранение...' : 'Сохранить роль' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- License Edit Modal -->
+    <div
+      v-if="showLicenseModal"
+      style="position: fixed; inset: 0; background-color: rgba(0,0,0,0.75); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 100;"
+    >
+      <div style="background-color: #111827; border: 1px solid rgba(124, 58, 237, 0.4); border-radius: 12px; width: 100%; max-width: 480px; padding: 24px; box-shadow: 0 20px 40px rgba(0,0,0,0.6), 0 0 30px rgba(124, 58, 237, 0.15);">
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+          <div style="width: 36px; height: 36px; border-radius: 8px; background: linear-gradient(135deg, #7c3aed, #4f46e5); display: flex; align-items: center; justify-content: center; font-size: 18px;">
+            👑
+          </div>
+          <div>
+            <h3 style="font-size: 18px; font-weight: 700; color: #f9fafb; margin: 0;">
+              Назначение тарифа и лицензии
+            </h3>
+            <p style="font-size: 12px; color: #9ca3af; margin: 0;">
+              Управление правами доступа и лимитами пользователя
+            </p>
+          </div>
+        </div>
+
+        <div style="background-color: #1f2937; border-radius: 8px; padding: 12px; margin-bottom: 16px; font-size: 13px;">
+          <div style="color: #9ca3af; margin-bottom: 2px;">Пользователь:</div>
+          <div style="font-weight: 600; color: #f9fafb; word-break: break-all;">
+            {{ licenseTargetUser?.name ? `${licenseTargetUser.name} (${licenseTargetUser.email})` : licenseTargetUser?.email }}
+          </div>
+        </div>
+
+        <!-- Plan Selection -->
+        <div style="margin-bottom: 16px;">
+          <label style="display: block; font-size: 12px; font-weight: 600; color: #cbd5e1; margin-bottom: 8px;">
+            Выберите тарифный план:
+          </label>
+          <div style="display: grid; gap: 8px;">
+            <label
+              v-for="plan in [
+                { id: 'free', name: 'Free (Базовый)', desc: 'Стандартный парольный сейф без расширенных функций' },
+                { id: 'pro', name: 'Novus Pro ⚡', desc: 'Встроенный генератор TOTP, 10 ГБ хранилища, аварийный доступ' },
+                { id: 'enterprise', name: 'Novus Enterprise 🏢', desc: 'SSO, SCIM 2.0 интеграции, расширенные политики и аудит' },
+                { id: 'lifetime', name: 'Lifetime VIP 👑', desc: 'Пожизненный максимальный доступ без ограничений' },
+              ]"
+              :key="plan.id"
+              :style="{
+                padding: '10px 14px',
+                borderRadius: '8px',
+                border: licensePlan === plan.id ? '1px solid #8b5cf6' : '1px solid #374151',
+                backgroundColor: licensePlan === plan.id ? '#2e1065' : '#1f2937',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '10px',
+                transition: 'all 0.15s ease',
+              }"
+            >
+              <input type="radio" :value="plan.id" v-model="licensePlan" style="margin-top: 3px;" />
+              <div>
+                <div style="font-size: 13px; font-weight: 600; color: #f9fafb;">{{ plan.name }}</div>
+                <div style="font-size: 11px; color: #9ca3af; margin-top: 2px;">{{ plan.desc }}</div>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- Duration Selection -->
+        <div style="margin-bottom: 16px;">
+          <label style="display: block; font-size: 12px; font-weight: 600; color: #cbd5e1; margin-bottom: 6px;">
+            Срок действия лицензии:
+          </label>
+          <select
+            v-model="licenseDays"
+            style="width: 100%; box-sizing: border-box; background-color: #1f2937; border: 1px solid #374151; color: white; padding: 10px 12px; border-radius: 6px; font-size: 13px; outline: none;"
+          >
+            <option :value="30">1 месяц (30 дней)</option>
+            <option :value="90">3 месяца (90 дней)</option>
+            <option :value="180">6 месяцев (180 дней)</option>
+            <option :value="365">1 год (365 дней)</option>
+            <option :value="730">2 года (730 дней)</option>
+            <option :value="-1">Бессрочно (Без ограничения срока)</option>
+          </select>
+        </div>
+
+        <!-- Notes -->
+        <div style="margin-bottom: 20px;">
+          <label style="display: block; font-size: 12px; font-weight: 600; color: #cbd5e1; margin-bottom: 6px;">
+            Примечание / Основание (опционально):
+          </label>
+          <input
+            v-model="licenseNotes"
+            type="text"
+            placeholder="Например: Выдано администратором / Инвойс #1042"
+            style="width: 100%; box-sizing: border-box; background-color: #1f2937; border: 1px solid #374151; color: white; padding: 10px 12px; border-radius: 6px; font-size: 13px; outline: none;"
+          />
+        </div>
+
+        <!-- Buttons -->
+        <div style="display: flex; justify-content: flex-end; gap: 10px;">
+          <button
+            type="button"
+            @click="showLicenseModal = false"
+            style="background-color: #1f2937; color: #e5e7eb; border: 1px solid #374151; padding: 10px 18px; border-radius: 6px; font-size: 13px; cursor: pointer;"
+          >
+            Отмена
+          </button>
+          <button
+            type="button"
+            @click="handleSaveLicense"
+            :disabled="savingLicense"
+            style="background: linear-gradient(135deg, #7c3aed, #4f46e5); color: white; border: none; padding: 10px 20px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;"
+          >
+            {{ savingLicense ? 'Сохранение...' : 'Сохранить лицензию' }}
           </button>
         </div>
       </div>

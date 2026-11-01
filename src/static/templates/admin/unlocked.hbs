@@ -1,0 +1,35 @@
+<main class="container-fluid d-flex align-items-center justify-content-center" style="min-height: 80vh; padding: 20px;">
+    <div style="width: 100%; max-width: 460px; background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(16px); border: 2px solid #10b981; border-radius: 16px; box-shadow: 0 20px 50px rgba(16, 185, 129, 0.2), 0 0 30px rgba(0, 0, 0, 0.8); padding: 40px 32px; color: #f8fafc; text-align: center;">
+        <!-- Green Success Icon -->
+        <div style="display: inline-flex; align-items: center; justify-content: center; width: 72px; height: 72px; border-radius: 20px; background: rgba(16, 185, 129, 0.15); border: 1px solid #10b981; box-shadow: 0 0 25px rgba(16, 185, 129, 0.4); margin-bottom: 20px;">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+            </svg>
+        </div>
+
+        <h1 style="font-size: 22px; font-weight: 700; color: #34d399; margin: 0 0 8px 0;">
+            Панель успешно разблокирована
+        </h1>
+        <p style="font-size: 14px; color: #cbd5e1; margin: 0 0 24px 0; line-height: 1.5;">
+            Режим защитной блокировки снят. Счётчик неудачных попыток сброшен. Теперь вы можете войти в панель администратора с верным токеном.
+        </p>
+
+        <a
+            href="{{urlpath}}/admin"
+            style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; box-sizing: border-box; background: linear-gradient(135deg, #059669 0%, #10b981 100%); color: #ffffff; text-decoration: none; padding: 12px 20px; border-radius: 8px; font-size: 14px; font-weight: 600; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35); transition: all 0.2s;"
+        >
+            <span>Перейти к авторизации</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+                <polyline points="12 5 19 12 12 19"></polyline>
+            </svg>
+        </a>
+
+        <div style="margin-top: 24px; text-align: center; border-top: 1px solid #1e293b; padding-top: 16px;">
+            <p style="font-size: 11px; color: #64748b; margin: 0;">
+                Novus Sentinel Security Protocol • <strong>SGC-NOVUS</strong>
+            </p>
+        </div>
+    </div>
+</main>

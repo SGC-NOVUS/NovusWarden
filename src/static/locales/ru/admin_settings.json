@@ -3,6 +3,7 @@
   "Accept Invalid Hostnames (Know the risks!)": "Принимать недействительные имена хостов (знайте риски!)",
   "Admin session lifetime": "Время жизни сессии администратора",
   "Admin token/Argon2 PHC": "Токен администратора/Argon2 PHC",
+  "Admin email address": "Email адрес администратора",
   "Advanced settings": "Расширенные настройки",
   "Allowed connect-src (Know the risks!)": "Разрешенный connect-src (знайте риски!)",
   "Allowed iframe ancestors (Know the risks!)": "Разрешенные iframe-родители (знайте риски!)",

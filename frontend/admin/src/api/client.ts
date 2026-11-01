@@ -19,6 +19,8 @@ export interface UserSummary {
   createdAt: string;
   lastActive: string;
   ssoIdentifier: string;
+  subscriptionPlan?: string;
+  licenseExpiresAt?: string | null;
 }
 
 export interface OrgSummary {
@@ -122,19 +124,45 @@ export const api = {
       createdAt: u.createdAt ?? u.created_at ?? '',
       lastActive: u.lastActive ?? u.last_active ?? '',
       ssoIdentifier: u.sso_identifier ?? u.ssoIdentifier ?? '',
+      subscriptionPlan: u.subscriptionPlan || 'Free',
+      licenseExpiresAt: u.licenseExpiresAt || null,
     }));
   },
 
-  async inviteUser(email: string): Promise<void> {
+  async inviteUser(email: string, plan?: string): Promise<void> {
     const res = await fetch('/admin/invite', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email }),
+      body: JSON.stringify({ email, plan }),
     });
     if (!res.ok) {
       const err = await res.text().catch(() => res.statusText);
       throw new Error(`Ошибка приглашения: ${err}`);
     }
+  },
+
+  async setUserLicense(uuid: string, data: { plan: string; expiresDays?: number | null; notes?: string }): Promise<void> {
+    const res = await fetch(`/admin/users/${uuid}/license`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error('Ошибка назначения лицензии пользователю');
+  },
+
+  async getBillingConfig(): Promise<any> {
+    const res = await fetch('/admin/subscriptions/plans');
+    if (!res.ok) throw new Error('Ошибка загрузки конфигурации подписок');
+    return res.json();
+  },
+
+  async saveBillingConfig(data: any): Promise<void> {
+    const res = await fetch('/admin/subscriptions/plans', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error('Ошибка сохранения конфигурации подписок');
   },
 
   async resendInvite(uuid: string): Promise<void> {

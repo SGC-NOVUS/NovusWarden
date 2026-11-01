@@ -673,6 +673,9 @@ make_config! {
         /// Admin token/Argon2 PHC |> The plain text token or Argon2 PHC string used to authenticate in this very same page. Changing it here will not deauthorize the current session!
         admin_token:            Pass,   true,   option;
 
+        /// Admin email address |> Email address where security alerts (login notifications, brute-force lockouts, unlock links) are sent.
+        admin_email:            String, true,   option;
+
         /// Invitation organization name |> Name shown in the invitation emails that don't come from a specific organization
         invitation_org_name:    String, true,   def,    "NovusWarden".to_owned();
 

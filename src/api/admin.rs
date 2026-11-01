@@ -1,4 +1,8 @@
-use std::{env, path::PathBuf, sync::LazyLock};
+use std::{
+    env,
+    path::PathBuf,
+    sync::{LazyLock, Mutex},
+};
 
 use include_dir::{Dir, include_dir};
 use reqwest::Method;
@@ -79,6 +83,10 @@ pub fn routes() -> Vec<Route> {
         admin_ui_index,
         admin_ui_files,
         export_users_json,
+        admin_unlock,
+        get_subscriptions_plans,
+        save_subscriptions_plans,
+        set_user_license,
     ]
 }
 
@@ -164,6 +172,96 @@ fn localized_admin_template_name(template_name: &str, locale: &str) -> String {
     template_name.to_owned()
 }
 
+#[derive(Debug, Clone)]
+struct AdminRequestMeta {
+    pub ip: String,
+    pub user_agent: String,
+    pub location: String,
+}
+
+#[rocket::async_trait]
+impl<'r> FromRequest<'r> for AdminRequestMeta {
+    type Error = std::convert::Infallible;
+
+    async fn from_request(request: &'r Request<'_>) -> Outcome<Self, Self::Error> {
+        let ip = match ClientIp::from_request(request).await {
+            Outcome::Success(c_ip) => c_ip.ip.to_string(),
+            _ => request.client_ip().map_or_else(|| "127.0.0.1".to_owned(), |i| i.to_string()),
+        };
+        let user_agent = request.headers().get_one("User-Agent").unwrap_or("Неизвестный клиент").to_owned();
+        let country = request.headers().get_one("CF-IPCountry").or_else(|| request.headers().get_one("X-Country"));
+        let city = request.headers().get_one("CF-IPCity").or_else(|| request.headers().get_one("X-City"));
+
+        let location = match (country, city) {
+            (Some(c), Some(ct)) => format!("{ct}, {c}"),
+            (Some(c), None) => c.to_owned(),
+            (None, Some(ct)) => ct.to_owned(),
+            (None, None) => "Прямой доступ / Локальная сеть".to_owned(),
+        };
+
+        Outcome::Success(AdminRequestMeta {
+            ip,
+            user_agent,
+            location,
+        })
+    }
+}
+
+#[derive(Default, Clone)]
+struct AdminLockoutState {
+    failed_attempts: u32,
+    locked: bool,
+    unlock_token: Option<String>,
+    lockout_time: Option<chrono::DateTime<chrono::Utc>>,
+    last_ip: Option<String>,
+    last_user_agent: Option<String>,
+    last_location: Option<String>,
+}
+
+static ADMIN_LOCKOUT: LazyLock<Mutex<AdminLockoutState>> = LazyLock::new(|| Mutex::new(AdminLockoutState::default()));
+
+fn is_admin_locked() -> bool {
+    ADMIN_LOCKOUT.lock().is_ok_and(|s| s.locked)
+}
+
+fn get_admin_lockout_info() -> AdminLockoutState {
+    ADMIN_LOCKOUT.lock().map(|s| s.clone()).unwrap_or_default()
+}
+
+fn render_admin_locked(locale: &str) -> ApiResult<Html<String>> {
+    let state = get_admin_lockout_info();
+    let time_str =
+        state.lockout_time.map_or_else(|| "Недавно".to_owned(), |dt| dt.format("%Y-%m-%d %H:%M:%S UTC").to_string());
+
+    let page_content = localized_admin_template_name("admin/locked", locale);
+    let json = json!({
+        "page_content": page_content,
+        "last_ip": state.last_ip.unwrap_or_else(|| "Неизвестно".to_owned()),
+        "last_location": state.last_location.unwrap_or_else(|| "Неизвестно".to_owned()),
+        "last_user_agent": state.last_user_agent.unwrap_or_else(|| "Неизвестно".to_owned()),
+        "lockout_time": time_str,
+        "urlpath": CONFIG.domain_path(),
+        "lang": locale,
+    });
+
+    let template_name = localized_admin_template_name(BASE_TEMPLATE, locale);
+    let text = CONFIG.render_template(&template_name, &json)?;
+    Ok(Html(text))
+}
+
+fn render_admin_unlocked(locale: &str) -> ApiResult<Html<String>> {
+    let page_content = localized_admin_template_name("admin/unlocked", locale);
+    let json = json!({
+        "page_content": page_content,
+        "urlpath": CONFIG.domain_path(),
+        "lang": locale,
+    });
+
+    let template_name = localized_admin_template_name(BASE_TEMPLATE, locale);
+    let text = CONFIG.render_template(&template_name, &json)?;
+    Ok(Html(text))
+}
+
 #[derive(Responder)]
 enum AdminResponse {
     #[response(status = 200)]
@@ -180,6 +278,9 @@ fn admin_login(request: &Request<'_>) -> ApiResult<Html<String>> {
         crate::i18n::resolve_locale(None, request.headers().get_one("Accept-Language"), &CONFIG.default_locale());
     if request.format() == Some(&MediaType::JSON) {
         err_code!(crate::i18n::authorization_failed(&locale), Status::Unauthorized.code);
+    }
+    if is_admin_locked() {
+        return render_admin_locked(&locale);
     }
     let redirect = request.segments::<PathBuf>(0..).unwrap_or_default().display().to_string();
     render_admin_login(None, Some(&redirect), &locale)
@@ -220,14 +321,20 @@ struct LoginForm {
 fn post_admin_login(
     data: Form<LoginForm>,
     cookies: &CookieJar<'_>,
-    ip: ClientIp,
+    meta: AdminRequestMeta,
     locale: RequestLocale,
     secure: Secure,
 ) -> Result<Redirect, AdminResponse> {
     let data = data.into_inner();
     let redirect = data.redirect;
 
-    if crate::ratelimit::check_limit_admin(&ip.ip).is_err() {
+    if is_admin_locked() {
+        return Err(AdminResponse::Unauthorized(render_admin_locked(&locale.locale)));
+    }
+
+    if let Ok(parsed_ip) = meta.ip.parse::<std::net::IpAddr>()
+        && crate::ratelimit::check_limit_admin(&parsed_ip).is_err()
+    {
         return Err(AdminResponse::TooManyRequests(render_admin_login(
             Some(crate::i18n::admin_login_too_many_requests(&locale.locale)),
             redirect.as_deref(),
@@ -235,9 +342,28 @@ fn post_admin_login(
         )));
     }
 
-    // If the token is invalid, redirect to login page
+    // If the token is valid, reset lockout state, generate JWT, and send alert email
     if validate_token(&data.token) {
-        // If the token received is valid, generate JWT and save it as a cookie
+        if let Ok(mut state) = ADMIN_LOCKOUT.lock() {
+            state.failed_attempts = 0;
+            state.locked = false;
+            state.unlock_token = None;
+        }
+
+        if let Some(admin_email) = CONFIG.admin_email()
+            && CONFIG.mail_enabled()
+        {
+            let ip_str = meta.ip.clone();
+            let loc_str = meta.location.clone();
+            let ua_str = meta.user_agent;
+            let now_utc = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC").to_string();
+            tokio::spawn(async move {
+                if let Err(e) = mail::send_admin_login_alert(&admin_email, &ip_str, &loc_str, &ua_str, &now_utc).await {
+                    error!("Failed to send admin login alert email: {e}");
+                }
+            });
+        }
+
         let claims = match generate_admin_claims() {
             Ok(claims) => claims,
             Err(e) => {
@@ -271,12 +397,58 @@ fn post_admin_login(
             Ok(Redirect::to(admin_path()))
         }
     } else {
-        error!("Invalid admin token. IP: {}", ip.ip);
-        Err(AdminResponse::Unauthorized(render_admin_login(
-            Some(crate::i18n::admin_login_invalid_token(&locale.locale)),
-            redirect.as_deref(),
-            &locale.locale,
-        )))
+        let (locked, token) = {
+            let mut state = ADMIN_LOCKOUT.lock().unwrap();
+            state.failed_attempts += 1;
+            state.last_ip = Some(meta.ip.clone());
+            state.last_user_agent = Some(meta.user_agent.clone());
+            state.last_location = Some(meta.location.clone());
+            state.lockout_time = Some(chrono::Utc::now());
+
+            if state.failed_attempts >= 2 {
+                state.locked = true;
+                let unlock_token = crate::crypto::generate_api_key();
+                state.unlock_token = Some(unlock_token.clone());
+                (true, Some(unlock_token))
+            } else {
+                (false, None)
+            }
+        };
+
+        if locked {
+            error!("ADMIN PANEL LOCKED DOWN after 2 failed attempts. Attacker IP: {}", meta.ip);
+            if let (Some(token), Some(admin_email)) = (token, CONFIG.admin_email())
+                && CONFIG.mail_enabled()
+            {
+                let unlock_url = format!("{}/admin/unlock?token={token}", CONFIG.domain());
+                let ip_str = meta.ip.clone();
+                let loc_str = meta.location.clone();
+                let ua_str = meta.user_agent;
+                let now_utc = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC").to_string();
+                tokio::spawn(async move {
+                    if let Err(e) =
+                        mail::send_admin_lockout_alert(&admin_email, &ip_str, &loc_str, &ua_str, &now_utc, &unlock_url)
+                            .await
+                    {
+                        error!("Failed to send admin lockout alert email: {e}");
+                    }
+                });
+            }
+            Err(AdminResponse::Unauthorized(render_admin_locked(&locale.locale)))
+        } else {
+            error!("Invalid admin token (attempt 1/2). IP: {}", meta.ip);
+            let invalid_token_base = crate::i18n::admin_login_invalid_token(&locale.locale);
+            let msg = if crate::i18n::is_russian(&locale.locale) {
+                format!(
+                    "{invalid_token_base}. Осталась 1 попытка до автоматической блокировки панели и отправки тревожного оповещения!"
+                )
+            } else {
+                format!(
+                    "{invalid_token_base}. 1 attempt remaining before complete lockdown and emergency security alert."
+                )
+            };
+            Err(AdminResponse::Unauthorized(render_admin_login(Some(&msg), redirect.as_deref(), &locale.locale)))
+        }
     }
 }
 
@@ -384,7 +556,31 @@ fn get_config_json(_token: AdminToken, locale: RequestLocale) -> Json<Value> {
 #[get("/", rank = 2)]
 #[allow(clippy::needless_pass_by_value)]
 fn admin_page_login(locale: RequestLocale) -> ApiResult<Html<String>> {
+    if is_admin_locked() {
+        return render_admin_locked(&locale.locale);
+    }
     render_admin_login(None, None, &locale.locale)
+}
+
+#[get("/unlock?<token>")]
+#[allow(clippy::needless_pass_by_value)]
+fn admin_unlock(token: &str, locale: RequestLocale) -> ApiResult<Html<String>> {
+    let mut state = ADMIN_LOCKOUT.lock().unwrap();
+    if state.locked && state.unlock_token.as_deref() == Some(token) {
+        state.locked = false;
+        state.failed_attempts = 0;
+        state.unlock_token = None;
+        info!("Admin panel successfully unlocked via emergency token link.");
+        render_admin_unlocked(&locale.locale)
+    } else {
+        warn!("Invalid or expired admin unlock token attempt: {token}");
+        let msg = if crate::i18n::is_russian(&locale.locale) {
+            "Ключ разблокировки недействителен, устарел или панель уже разблокирована."
+        } else {
+            "Unlock token is invalid, expired, or the control plane is already unlocked."
+        };
+        render_admin_login(Some(msg), None, &locale.locale)
+    }
 }
 
 static ADMIN_UI_DIR: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/src/static/admin_ui");
@@ -431,6 +627,132 @@ fn admin_ui_files(p: PathBuf) -> Option<(ContentType, &'static [u8])> {
 #[serde(rename_all = "camelCase")]
 struct InviteData {
     email: String,
+    plan: Option<String>,
+}
+
+fn licenses_file_path() -> PathBuf {
+    PathBuf::from(CONFIG.data_folder()).join("novus_licenses.json")
+}
+
+fn load_user_licenses() -> Value {
+    let path = licenses_file_path();
+    if let Ok(content) = std::fs::read_to_string(&path) {
+        serde_json::from_str(&content).unwrap_or_else(|_| json!({}))
+    } else {
+        json!({})
+    }
+}
+
+fn save_user_licenses(licenses: &Value) -> Result<(), std::io::Error> {
+    let path = licenses_file_path();
+    let content = serde_json::to_string_pretty(licenses)?;
+    std::fs::write(path, content)
+}
+
+fn billing_config_path() -> PathBuf {
+    PathBuf::from(CONFIG.data_folder()).join("novus_billing.json")
+}
+
+fn load_billing_config() -> Value {
+    let path = billing_config_path();
+    if let Ok(content) = std::fs::read_to_string(&path) {
+        serde_json::from_str(&content).unwrap_or_else(|_| default_billing_config())
+    } else {
+        default_billing_config()
+    }
+}
+
+fn default_billing_config() -> Value {
+    json!({
+        "gateway": {
+            "enabled": false,
+            "provider": "webhook",
+            "webhookUrl": "",
+            "stripePublicKey": "",
+            "cryptoWallet": "",
+            "currency": "USD"
+        },
+        "plans": [
+            {
+                "id": "free",
+                "name": "Free / Базовый",
+                "price": 0,
+                "period": "бесплатно",
+                "storageGb": 1,
+                "features": ["Стандартное шифрование", "До 2 устройств", "Базовый 2FA"]
+            },
+            {
+                "id": "pro",
+                "name": "Novus Pro",
+                "price": 5,
+                "period": "в месяц ($50/год)",
+                "storageGb": 50,
+                "features": ["Неограниченно устройств", "Аппаратные FIDO2/Passkeys", "Экстренный доступ", "Встроенный TOTP", "Приоритетная синхронизация"]
+            },
+            {
+                "id": "enterprise",
+                "name": "Novus Enterprise VIP",
+                "price": 15,
+                "period": "за место в месяц",
+                "storageGb": 500,
+                "features": ["Все функции Pro", "SAML 2.0 / OIDC SSO", "SCIM 2.0 провижининг", "PAM привилегированный доступ", "Аудит действий и SIEM", "Выделенный SLA"]
+            },
+            {
+                "id": "lifetime",
+                "name": "Lifetime Unlimited VIP",
+                "price": 120,
+                "period": "разовый платёж навсегда",
+                "storageGb": 200,
+                "features": ["Все функции Pro пожизненно", "VIP статус и бейдж", "Без абонентской платы", "Ранний доступ к новым функциям"]
+            }
+        ]
+    })
+}
+
+#[get("/subscriptions/plans")]
+fn get_subscriptions_plans(_token: AdminToken) -> Json<Value> {
+    Json(load_billing_config())
+}
+
+#[post("/subscriptions/plans", data = "<data>")]
+fn save_subscriptions_plans(_token: AdminToken, data: Json<Value>) -> JsonResult {
+    let path = billing_config_path();
+    let content = serde_json::to_string_pretty(&data.into_inner())
+        .map_err(|e| Error::new("Failed to serialize billing config", e.to_string()))?;
+    std::fs::write(path, content).map_err(|e| Error::new("Failed to write billing config file", e.to_string()))?;
+    Ok(Json(json!({"status": "saved"})))
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct UserLicenseUpdate {
+    plan: String,
+    expires_days: Option<i64>,
+    notes: Option<String>,
+}
+
+#[post("/users/<uuid>/license", format = "application/json", data = "<data>")]
+fn set_user_license(_token: AdminToken, uuid: &str, data: Json<UserLicenseUpdate>) -> JsonResult {
+    let data = data.into_inner();
+    let mut licenses = load_user_licenses();
+    let expires_at = data.expires_days.map(|days| (chrono::Utc::now() + chrono::Duration::days(days)).to_rfc3339());
+
+    licenses[uuid] = json!({
+        "plan": data.plan,
+        "expires_at": expires_at,
+        "notes": data.notes.unwrap_or_default(),
+        "updated_at": chrono::Utc::now().to_rfc3339()
+    });
+
+    if let Err(e) = save_user_licenses(&licenses) {
+        err_code!(format!("Failed to save license: {e}"), Status::InternalServerError.code);
+    }
+
+    Ok(Json(json!({
+        "status": "ok",
+        "user": uuid,
+        "license": licenses[uuid]
+    })))
 }
 
 async fn get_user_or_404(user_id: &UserId, conn: &DbConn) -> ApiResult<User> {
@@ -468,6 +790,18 @@ async fn invite_user(data: Json<InviteData>, _token: AdminToken, conn: DbConn) -
     generate_invite(&user, &conn).await.map_err(|e| e.with_code(Status::InternalServerError.code))?;
     user.save(&conn).await.map_err(|e| e.with_code(Status::InternalServerError.code))?;
 
+    if let Some(plan) = data.plan {
+        let mut licenses = load_user_licenses();
+        licenses[user.uuid.to_string()] = json!({
+            "plan": plan,
+            "expires_at": None::<String>,
+            "notes": "Назначено при приглашении администратором",
+            "updated_at": chrono::Utc::now().to_rfc3339()
+        });
+        licenses[user.email.to_lowercase()] = licenses[user.uuid.to_string()].clone();
+        drop(save_user_licenses(&licenses));
+    }
+
     Ok(Json(user.to_json(&conn).await))
 }
 
@@ -491,6 +825,7 @@ fn logout(cookies: &CookieJar<'_>) -> Redirect {
 #[get("/users")]
 async fn get_users_json(_token: AdminToken, conn: DbConn) -> Json<Value> {
     let users = User::get_all(&conn).await;
+    let licenses = load_user_licenses();
     let mut users_json = Vec::with_capacity(users.len());
     for (u, sso_u) in users {
         let mut usr = u.to_json(&conn).await;
@@ -500,6 +835,14 @@ async fn get_users_json(_token: AdminToken, conn: DbConn) -> Json<Value> {
         let orgs_count = Membership::find_confirmed_by_user(&u.uuid, &conn).await.len();
         let sso_id = sso_u.map_or(String::new(), |u| u.identifier.to_string());
 
+        let user_uuid_str = u.uuid.to_string();
+        let user_email_str = u.email.to_lowercase();
+        let license_info = licenses.get(&user_uuid_str).or_else(|| licenses.get(&user_email_str));
+        let plan_name = license_info.and_then(|l| l.get("plan")).and_then(|p| p.as_str()).unwrap_or("Free");
+        let expires = license_info.and_then(|l| l.get("expires_at")).and_then(|e| e.as_str());
+
+        usr["subscriptionPlan"] = json!(plan_name);
+        usr["licenseExpiresAt"] = json!(expires);
         usr["cipher_count"] = json!(c_count);
         usr["ciphersCount"] = json!(c_count);
         usr["attachment_count"] = json!(a_count);

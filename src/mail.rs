@@ -993,6 +993,52 @@ pub async fn send_protected_action_token_for_locale(address: &str, token: &str, 
     send_email(address, &subject, body_html, body_text).await
 }
 
+pub async fn send_admin_login_alert(
+    address: &str,
+    ip: &str,
+    location: &str,
+    user_agent: &str,
+    datetime: &str,
+) -> EmptyResult {
+    let (subject, body_html, body_text) = get_text_for_locale(
+        "email/admin_login_alert",
+        json!({
+            "url": CONFIG.domain(),
+            "ip_address": ip,
+            "location": location,
+            "user_agent": user_agent,
+            "datetime": datetime,
+        }),
+        None,
+    )?;
+
+    send_email(address, &subject, body_html, body_text).await
+}
+
+pub async fn send_admin_lockout_alert(
+    address: &str,
+    ip: &str,
+    location: &str,
+    user_agent: &str,
+    datetime: &str,
+    unlock_url: &str,
+) -> EmptyResult {
+    let (subject, body_html, body_text) = get_text_for_locale(
+        "email/admin_lockout_alert",
+        json!({
+            "url": CONFIG.domain(),
+            "ip_address": ip,
+            "location": location,
+            "user_agent": user_agent,
+            "datetime": datetime,
+            "unlock_url": unlock_url,
+        }),
+        None,
+    )?;
+
+    send_email(address, &subject, body_html, body_text).await
+}
+
 async fn send_with_selected_transport(email: Message) -> EmptyResult {
     if CONFIG.use_sendmail() {
         match sendmail_transport().send(email).await {

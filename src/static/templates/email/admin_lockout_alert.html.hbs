@@ -1,0 +1,76 @@
+🚨 [КРИТИЧЕСКАЯ ТРЕВОГА] Панель администратора NovusWarden заблокирована!
+<!---------------->
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html lang="ru" dir="ltr">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>NovusWarden Security Lockdown Alert</title>
+</head>
+<body style="background-color:#0b0f19;font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;margin:0;padding:32px 0;">
+  <table align="center" width="100%" role="presentation" cellspacing="0" cellpadding="0" border="0" style="max-width:580px;margin:0 auto;background-color:#111827;border-radius:12px;border:2px solid #ef4444;box-shadow:0 8px 30px rgba(239,68,68,0.25);overflow:hidden;padding:36px 32px;">
+    <tbody>
+      <tr>
+        <td>
+          <table align="center" width="100%" border="0" cellpadding="0" cellspacing="0" role="presentation" style="text-align:center;margin-bottom:24px;">
+            <tbody>
+              <tr>
+                <td>
+                  <div style="display:inline-block;padding:10px 18px;border-radius:8px;background:linear-gradient(135deg, #b91c1c, #ef4444);color:#ffffff;font-size:18px;font-weight:700;letter-spacing:1px;">
+                    🚨 СИСТЕМА БЕЗОПАСНОСТИ ЗАБЛОКИРОВАНА
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h1 style="font-size:22px;font-weight:700;color:#f87171;text-align:center;margin:0 0 12px 0;">
+            Панель управления заблокирована
+          </h1>
+          <p style="font-size:14px;line-height:22px;margin:0 0 24px 0;color:#cbd5e1;text-align:center;">
+            Система зафиксировала <strong>2 неверных попытки ввода токена администратора</strong>. Для предотвращения подбора пароля доступ к странице <code style="color:#38bdf8;">/admin</code> полностью заморожен.
+          </p>
+
+          <table align="center" width="100%" border="0" cellpadding="0" cellspacing="0" role="presentation" style="background-color:#1e1b2e;padding:20px;border-radius:8px;border:1px solid #7f1d1d;margin-bottom:28px;">
+            <tbody>
+              <tr>
+                <td>
+                  <p style="font-size:13px;line-height:22px;margin:4px 0;color:#fca5a5;"><strong style="color:#ffffff;">IP-адрес атакующего:</strong> {{ip_address}}</p>
+                  <p style="font-size:13px;line-height:22px;margin:4px 0;color:#fca5a5;"><strong style="color:#ffffff;">Геолокация:</strong> {{location}}</p>
+                  <p style="font-size:13px;line-height:22px;margin:4px 0;color:#fca5a5;"><strong style="color:#ffffff;">User-Agent:</strong> <span style="font-family:monospace;font-size:12px;color:#e2e8f0;">{{user_agent}}</span></p>
+                  <p style="font-size:13px;line-height:22px;margin:4px 0;color:#fca5a5;"><strong style="color:#ffffff;">Время фиксации:</strong> {{datetime}}</p>
+                  <p style="font-size:13px;line-height:22px;margin:4px 0;color:#fca5a5;"><strong style="color:#ffffff;">Хост инстанса:</strong> <a href="{{url}}" style="color:#38bdf8;text-decoration:none;">{{url}}</a></p>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div style="text-align:center;margin-bottom:28px;">
+            <a href="{{unlock_url}}" style="display:inline-block;background:linear-gradient(135deg, #0284c7, #2563eb);color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;padding:14px 28px;border-radius:8px;box-shadow:0 4px 14px rgba(37,99,235,0.4);">
+              🔓 РАЗБЛОКИРОВАТЬ ПАНЕЛЬ УПРАВЛЕНИЯ
+            </a>
+          </div>
+
+          <p style="font-size:12px;line-height:18px;margin:0 0 16px 0;color:#94a3b8;text-align:center;">
+            Если кнопка выше не нажимается, скопируйте прямую защищённую ссылку в адресную строку браузера:
+            <br>
+            <a href="{{unlock_url}}" style="color:#38bdf8;font-family:monospace;word-break:break-all;">{{unlock_url}}</a>
+          </p>
+
+          <hr style="width:100%;border:none;border-top:1px solid #1f2937;margin:28px 0 20px 0;">
+          <table align="center" width="100%" border="0" cellpadding="0" cellspacing="0" role="presentation" style="text-align:center;">
+            <tbody>
+              <tr>
+                <td>
+                  <p style="font-size:12px;line-height:18px;margin:0;color:#64748b;">
+                    NovusWarden Control Plane • Автоматическая защита <strong>SGC-NOVUS Sentinel</strong>
+                  </p>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</body>
+</html>
