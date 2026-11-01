@@ -6,6 +6,7 @@
   "tpl.admin.base.nav.users": "Users",
   "tpl.admin.base.nav.organizations": "Organizations",
   "tpl.admin.base.nav.diagnostics": "Diagnostics",
+  "tpl.admin.base.nav.subscriptions": "Subscriptions & Licensing",
   "tpl.admin.base.nav.vault": "Vault",
   "tpl.admin.base.theme.toggle": "Toggle theme",
   "tpl.admin.base.theme.auto_label": "Toggle theme (auto)",

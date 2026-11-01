@@ -5,12 +5,12 @@ import { api } from './api/client.ts';
 const logoUrl = ["/vw_static", "logo-gray.png"].join("/");
 
 const navItems = [
-  { name: 'Dashboard', path: '/' },
-  { name: 'Users', path: '/users' },
-  { name: 'Organizations', path: '/organizations' },
-  { name: 'Subscriptions', path: '/subscriptions' },
-  { name: 'Settings', path: '/settings' },
-  { name: 'Diagnostics', path: '/diagnostics' },
+  { name: 'Сводка', path: '/' },
+  { name: 'Пользователи', path: '/users' },
+  { name: 'Организации', path: '/organizations' },
+  { name: 'Тарифы и подписки', path: '/subscriptions' },
+  { name: 'Настройки', path: '/settings' },
+  { name: 'Диагностика', path: '/diagnostics' },
 ];
 
 const loggingOut = ref(false);
@@ -24,7 +24,7 @@ async function handleLogout() {
 <template>
   <div style="min-height: 100vh; display: flex; flex-direction: column; background-color: #0b0f19;">
     <!-- Top Bar Header -->
-    <header style="background-color: #111827; border-bottom: 1px solid #1f2937; padding: 12px 24px; display: flex; align-items: center; justify-content: space-between;">
+    <header style="background-color: #111827; border-bottom: 1px solid #1f2937; padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
       <div style="display: flex; align-items: center; gap: 14px;">
         <img
           :src="logoUrl"
@@ -36,13 +36,13 @@ async function handleLogout() {
             NovusWarden Control Plane
           </span>
           <span style="font-size: 11px; color: #9ca3af; font-weight: 500;">
-            SGC-NOVUS Edition • Vue 3 Modern UI
+            SGC-NOVUS Edition • Панель управления Vue 3
           </span>
         </div>
       </div>
 
       <!-- Navigation Links -->
-      <nav style="display: flex; gap: 8px;">
+      <nav style="display: flex; gap: 8px; flex-wrap: wrap;">
         <router-link
           v-for="item in navItems"
           :key="item.path"
@@ -73,18 +73,18 @@ async function handleLogout() {
       <!-- Actions -->
       <div style="display: flex; align-items: center; gap: 10px;">
         <a
-          href="/admin/legacy"
-          style="background-color: #1f2937; color: #9ca3af; text-decoration: none; border: 1px solid #374151; padding: 7px 14px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s ease;"
-          title="Switch to Classic Handlebars Admin"
+          href="/admin"
+          style="background-color: #1f2937; color: #38bdf8; text-decoration: none; border: 1px solid #374151; padding: 7px 14px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s ease;"
+          title="Перейти в классический интерфейс администратора"
         >
-          Classic Admin
+          ← Классическая админка
         </a>
         <button
           @click="handleLogout"
           :disabled="loggingOut"
           style="background-color: #dc2626; color: white; border: none; padding: 7px 14px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer;"
         >
-          {{ loggingOut ? 'Exiting...' : 'Log out' }}
+          {{ loggingOut ? 'Выход...' : 'Выйти' }}
         </button>
       </div>
     </header>
@@ -96,7 +96,7 @@ async function handleLogout() {
 
     <!-- Footer -->
     <footer style="padding: 16px 24px; text-align: center; font-size: 12px; color: #6b7280; border-top: 1px solid #1f2937;">
-      NovusWarden Community Edition • Maintained by <strong>SGC-NOVUS (System Generations Core Novus)</strong> • AGPL-3.0
+      NovusWarden Community Edition • Разработано и поддерживается <strong>SGC-NOVUS (System Generations Core Novus)</strong> • AGPL-3.0
     </footer>
   </div>
 </template>

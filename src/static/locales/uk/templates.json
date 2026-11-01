@@ -6,6 +6,7 @@
   "tpl.admin.base.nav.users": "Користувачі",
   "tpl.admin.base.nav.organizations": "Організації",
   "tpl.admin.base.nav.diagnostics": "Діагностика",
+  "tpl.admin.base.nav.subscriptions": "Підписки та ліцензії",
   "tpl.admin.base.nav.vault": "Сховище",
   "tpl.admin.base.theme.toggle": "Перемкнути тему",
   "tpl.admin.base.theme.auto_label": "Перемкнути тему (авто)",

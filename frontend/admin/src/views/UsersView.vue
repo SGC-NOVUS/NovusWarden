@@ -23,7 +23,7 @@ async function loadUsers() {
 const filteredUsers = computed(() => {
   const q = search.value.toLowerCase().trim();
   if (!q) return users.value;
-  return users.value.filter(u => u.Email.toLowerCase().includes(q) || u.Name?.toLowerCase().includes(q));
+  return users.value.filter(u => u.email.toLowerCase().includes(q) || u.name?.toLowerCase().includes(q));
 });
 
 async function handleInvite() {
@@ -31,7 +31,7 @@ async function handleInvite() {
   inviting.value = true;
   try {
     await api.inviteUser(inviteEmail.value);
-    message.value = { text: `Invitation dispatched to ${inviteEmail.value} successfully.` };
+    message.value = { text: `Приглашение успешно отправлено на ${inviteEmail.value}.` };
     inviteEmail.value = '';
     await loadUsers();
   } catch (err: any) {
@@ -42,10 +42,10 @@ async function handleInvite() {
 }
 
 async function handleDeauth(uuid: string) {
-  if (!confirm('Revoke all active sessions for this user?')) return;
+  if (!confirm('Отозвать все активные сессии для этого пользователя?')) return;
   try {
     await api.deauthUser(uuid);
-    message.value = { text: 'Sessions revoked successfully.' };
+    message.value = { text: 'Сессии пользователя успешно аннулированы.' };
     await loadUsers();
   } catch (err: any) {
     message.value = { text: err.message, error: true };
@@ -53,10 +53,10 @@ async function handleDeauth(uuid: string) {
 }
 
 async function handleRemove2FA(uuid: string) {
-  if (!confirm('Remove two-factor authentication for this user?')) return;
+  if (!confirm('Сбросить двухфакторную аутентификацию (2FA) для этого пользователя?')) return;
   try {
     await api.remove2FA(uuid);
-    message.value = { text: 'Two-factor authentication disabled.' };
+    message.value = { text: 'Двухфакторная аутентификация успешно отключена.' };
     await loadUsers();
   } catch (err: any) {
     message.value = { text: err.message, error: true };
@@ -64,10 +64,10 @@ async function handleRemove2FA(uuid: string) {
 }
 
 async function handleDelete(uuid: string, email: string) {
-  if (!confirm(`Are you sure you want to permanently delete user ${email}?`)) return;
+  if (!confirm(`Вы действительно хотите безвозвратно удалить пользователя ${email}? Все зашифрованные данные пользователя будут стёрты.`)) return;
   try {
     await api.deleteUser(uuid);
-    message.value = { text: `User ${email} deleted.` };
+    message.value = { text: `Пользователь ${email} успешно удалён.` };
     await loadUsers();
   } catch (err: any) {
     message.value = { text: err.message, error: true };
@@ -82,10 +82,10 @@ onMounted(loadUsers);
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 16px;">
       <div>
         <h1 style="font-size: 24px; font-weight: 700; color: #f9fafb; margin: 0 0 6px 0;">
-          Vault Users
+          Пользователи хранилища
         </h1>
         <p style="font-size: 14px; color: #9ca3af; margin: 0;">
-          Manage registered accounts, invite users, revoke sessions, and reset credentials.
+          Управление учётными записями, приглашение сотрудников, отзыв активных сессий и сброс двухфакторной аутентификации.
         </p>
       </div>
 
@@ -103,7 +103,7 @@ onMounted(loadUsers);
           :disabled="inviting"
           style="background-color: #2563eb; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;"
         >
-          {{ inviting ? 'Inviting...' : 'Invite' }}
+          {{ inviting ? 'Отправка...' : 'Пригласить' }}
         </button>
       </form>
     </div>
@@ -130,7 +130,7 @@ onMounted(loadUsers);
       <input
         v-model="search"
         type="text"
-        placeholder="Search users by name or email..."
+        placeholder="Поиск пользователей по имени или email адресу..."
         style="width: 100%; box-sizing: border-box; background-color: #111827; border: 1px solid #1f2937; color: white; padding: 10px 16px; border-radius: 8px; font-size: 14px;"
       />
     </div>
@@ -140,33 +140,41 @@ onMounted(loadUsers);
       <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 13px;">
         <thead>
           <tr style="border-bottom: 1px solid #1f2937; color: #9ca3af; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px;">
-            <th style="padding: 14px 18px;">User</th>
+            <th style="padding: 14px 18px;">Пользователь</th>
             <th style="padding: 14px 18px;">2FA</th>
-            <th style="padding: 14px 18px;">Vault Items</th>
-            <th style="padding: 14px 18px;">Organizations</th>
-            <th style="padding: 14px 18px;">Created</th>
-            <th style="padding: 14px 18px; text-align: right;">Actions</th>
+            <th style="padding: 14px 18px;">Записи</th>
+            <th style="padding: 14px 18px;">Вложения</th>
+            <th style="padding: 14px 18px;">Организации</th>
+            <th style="padding: 14px 18px;">Создан</th>
+            <th style="padding: 14px 18px; text-align: right;">Действия</th>
           </tr>
         </thead>
         <tbody>
           <tr v-if="loading">
-            <td colspan="6" style="padding: 32px; text-align: center; color: #9ca3af;">
-              Loading user accounts from NovusWarden...
+            <td colspan="7" style="padding: 32px; text-align: center; color: #9ca3af;">
+              Загрузка учётных записей пользователей из базы NovusWarden...
             </td>
           </tr>
           <tr v-else-if="filteredUsers.length === 0">
-            <td colspan="6" style="padding: 32px; text-align: center; color: #6b7280;">
-              No users found matching query.
+            <td colspan="7" style="padding: 32px; text-align: center; color: #6b7280;">
+              Пользователей не найдено по данному запросу.
             </td>
           </tr>
           <tr
             v-for="user in filteredUsers"
-            :key="user.Id"
+            :key="user.id"
             style="border-bottom: 1px solid #1f2937; transition: background-color 0.15s ease;"
           >
             <td style="padding: 14px 18px;">
-              <div style="font-weight: 600; color: #f9fafb;">{{ user.Name || '—' }}</div>
-              <div style="font-size: 12px; color: #9ca3af;">{{ user.Email }}</div>
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <div style="width: 32px; height: 32px; border-radius: 6px; background-color: #1e3a8a; color: #93c5fd; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px;">
+                  {{ (user.name || user.email || 'U').charAt(0).toUpperCase() }}
+                </div>
+                <div>
+                  <div style="font-weight: 600; color: #f9fafb;">{{ user.name || user.email }}</div>
+                  <div style="font-size: 12px; color: #9ca3af;">{{ user.email }}</div>
+                </div>
+              </div>
             </td>
             <td style="padding: 14px 18px;">
               <span
@@ -176,39 +184,43 @@ onMounted(loadUsers);
                   borderRadius: '999px',
                   fontSize: '11px',
                   fontWeight: 600,
-                  backgroundColor: user.TwoFactorEnabled ? '#064e3b' : '#1f2937',
-                  color: user.TwoFactorEnabled ? '#34d399' : '#9ca3af',
+                  backgroundColor: user.twoFactorEnabled ? '#064e3b' : '#1f2937',
+                  color: user.twoFactorEnabled ? '#34d399' : '#9ca3af',
+                  border: user.twoFactorEnabled ? '1px solid #059669' : '1px solid #374151',
                 }"
               >
-                {{ user.TwoFactorEnabled ? 'Enabled' : 'Disabled' }}
+                {{ user.twoFactorEnabled ? 'Включено' : 'Отключено' }}
               </span>
             </td>
-            <td style="padding: 14px 18px; color: #cbd5e1;">{{ user.CiphersCount }}</td>
-            <td style="padding: 14px 18px; color: #cbd5e1;">{{ user.OrganizationsCount }}</td>
-            <td style="padding: 14px 18px; color: #9ca3af; font-size: 12px;">{{ user.CreatedAt }}</td>
+            <td style="padding: 14px 18px; color: #cbd5e1; font-weight: 600;">{{ user.ciphersCount }}</td>
+            <td style="padding: 14px 18px; color: #9ca3af; font-size: 12px;">
+              {{ user.attachmentsCount }} ({{ user.attachmentsSize }})
+            </td>
+            <td style="padding: 14px 18px; color: #cbd5e1;">{{ user.organizationsCount }}</td>
+            <td style="padding: 14px 18px; color: #9ca3af; font-size: 12px;">{{ user.createdAt }}</td>
             <td style="padding: 14px 18px; text-align: right;">
               <div style="display: flex; gap: 6px; justify-content: flex-end;">
                 <button
-                  @click="handleDeauth(user.Id)"
-                  title="Revoke active sessions"
+                  @click="handleDeauth(user.id)"
+                  title="Отозвать активные сессии"
                   style="background: #1f2937; color: #e5e7eb; border: 1px solid #374151; padding: 5px 10px; border-radius: 4px; font-size: 11px; cursor: pointer;"
                 >
-                  Deauth
+                  Сброс сессий
                 </button>
                 <button
-                  v-if="user.TwoFactorEnabled"
-                  @click="handleRemove2FA(user.Id)"
-                  title="Remove 2FA"
+                  v-if="user.twoFactorEnabled"
+                  @click="handleRemove2FA(user.id)"
+                  title="Сбросить 2FA"
                   style="background: #1f2937; color: #fbbf24; border: 1px solid #374151; padding: 5px 10px; border-radius: 4px; font-size: 11px; cursor: pointer;"
                 >
-                  Reset 2FA
+                  Сброс 2FA
                 </button>
                 <button
-                  @click="handleDelete(user.Id, user.Email)"
-                  title="Delete user"
+                  @click="handleDelete(user.id, user.email)"
+                  title="Удалить пользователя"
                   style="background: #450a0a; color: #f87171; border: 1px solid #991b1b; padding: 5px 10px; border-radius: 4px; font-size: 11px; cursor: pointer;"
                 >
-                  Delete
+                  Удалить
                 </button>
               </div>
             </td>
@@ -218,4 +230,3 @@ onMounted(loadUsers);
     </div>
   </div>
 </template>
-

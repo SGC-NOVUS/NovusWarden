@@ -257,7 +257,7 @@ fn post_admin_login(
         cookies.add(cookie);
         if let Some(redirect) = redirect {
             let redirect_target = if redirect.is_empty() || redirect == "/" {
-                format!("{}/ui", admin_path())
+                admin_path()
             } else if redirect.starts_with('/') {
                 format!("{}{redirect}", admin_path())
             } else {
@@ -265,7 +265,7 @@ fn post_admin_login(
             };
             Ok(Redirect::to(redirect_target))
         } else {
-            Ok(Redirect::to(format!("{}/ui", admin_path())))
+            Ok(Redirect::to(admin_path()))
         }
     } else {
         error!("Invalid admin token. IP: {}", ip.ip);
@@ -336,8 +336,8 @@ fn render_admin_page(locale: &str) -> ApiResult<Html<String>> {
 
 #[get("/")]
 #[allow(clippy::needless_pass_by_value)]
-fn admin_page(_token: AdminToken) -> Redirect {
-    Redirect::to(format!("{}/ui", admin_path()))
+fn admin_page(_token: AdminToken, locale: RequestLocale) -> ApiResult<Html<String>> {
+    render_admin_page(&locale.locale)
 }
 
 #[get("/legacy")]
@@ -457,14 +457,30 @@ fn logout(cookies: &CookieJar<'_>) -> Redirect {
 async fn get_users_json(_token: AdminToken, conn: DbConn) -> Json<Value> {
     let users = User::get_all(&conn).await;
     let mut users_json = Vec::with_capacity(users.len());
-    for (u, _) in users {
+    for (u, sso_u) in users {
         let mut usr = u.to_json(&conn).await;
+        let c_count = Cipher::count_owned_by_user(&u.uuid, &conn).await;
+        let a_count = Attachment::count_by_user(&u.uuid, &conn).await;
+        let a_size = get_display_size(Attachment::size_by_user(&u.uuid, &conn).await);
+        let orgs_count = Membership::find_confirmed_by_user(&u.uuid, &conn).await.len();
+        let sso_id = sso_u.map_or(String::new(), |u| u.identifier.to_string());
+
+        usr["cipher_count"] = json!(c_count);
+        usr["ciphersCount"] = json!(c_count);
+        usr["attachment_count"] = json!(a_count);
+        usr["attachment_size"] = json!(a_size);
+        usr["organizationsCount"] = json!(orgs_count);
         usr["userEnabled"] = json!(u.enabled);
+        usr["user_enabled"] = json!(u.enabled);
         usr["createdAt"] = json!(format_naive_datetime_local(&u.created_at, DT_FMT));
+        usr["created_at"] = json!(format_naive_datetime_local(&u.created_at, DT_FMT));
         usr["lastActive"] = match u.last_active(&conn).await {
             Some(dt) => json!(format_naive_datetime_local(&dt, DT_FMT)),
             None => json!(None::<String>),
         };
+        usr["last_active"] = usr["lastActive"].clone();
+        usr["sso_identifier"] = json!(sso_id);
+
         users_json.push(usr);
     }
 
