@@ -404,7 +404,7 @@ fn admin_ui_index(_token: AdminToken) -> ApiResult<Html<String>> {
 
 #[get("/ui/<p..>", rank = 5)]
 #[allow(clippy::needless_pass_by_value)]
-fn admin_ui_files(p: PathBuf, _token: AdminToken) -> Option<(ContentType, &'static [u8])> {
+fn admin_ui_files(p: PathBuf) -> Option<(ContentType, &'static [u8])> {
     let path_str = p.to_string_lossy();
     if let Some(file) = ADMIN_UI_DIR.get_file(&*path_str) {
         let ext = p.extension().and_then(|e| e.to_str()).unwrap_or_default();
