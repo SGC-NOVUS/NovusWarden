@@ -70,7 +70,8 @@ async function compileAllEmails() {
         await fs.writeFile(targetPath, finalOutput, 'utf-8');
         console.log(`  ✓ Compiled: ${template} -> ${path.basename(targetPath)}`);
       } catch (err) {
-        console.warn(`  ⚠ Pre-compiling fallback for ${template}:`, err.message);
+        console.error(`  ✗ Error compiling ${template}:`, err);
+        throw err;
       }
     }
 
