@@ -1,6 +1,6 @@
 /**
  * NovusWarden Admin API Client
- * Connects directly to backend /admin endpoints with session cookie auth.
+ * Full typed client connecting to /admin REST endpoints with session cookie auth.
  */
 
 export interface UserSummary {
@@ -9,11 +9,13 @@ export interface UserSummary {
   email: string;
   emailVerified: boolean;
   twoFactorEnabled: boolean;
+  status: number;
+  userEnabled: boolean;
+  organizations: Array<{ id: string; name: string; type: number }>;
   organizationsCount: number;
   ciphersCount: number;
   attachmentsCount: number;
   attachmentsSize: string;
-  userEnabled: boolean;
   createdAt: string;
   lastActive: string;
   ssoIdentifier: string;
@@ -23,18 +25,79 @@ export interface OrgSummary {
   id: string;
   name: string;
   billingEmail: string;
-  usersCount: number;
-  ciphersCount: number;
+  user_count: number;
+  cipher_count: number;
+  collection_count: number;
+  group_count: number;
+  event_count: number;
+  attachment_count: number;
+  attachment_size: string;
 }
 
-export interface DiagnosticsConfig {
-  version: string;
-  server_time: string;
+export interface ConfigElement {
+  name: string;
+  value: any;
+  default: any;
+  type: 'text' | 'number' | 'checkbox' | 'password';
+  editable: boolean;
+  overridden: boolean;
+  doc: {
+    name: string;
+    description: string;
+    name_localized?: string;
+    desc_localized?: string;
+  };
+}
+
+export interface ConfigGroup {
+  group: string;
+  grouptoggle: string;
+  groupdoc: string;
+  groupdoc_localized?: string;
+  elements: ConfigElement[];
+}
+
+export interface ConfigResponse {
+  config: ConfigGroup[];
+  can_backup: boolean;
+}
+
+export interface DiagnosticsData {
+  dns_resolved: string;
+  current_release: string;
+  latest_release: string;
+  latest_commit: string;
+  web_vault_enabled: boolean;
+  active_web_release: string;
+  latest_web_release: string;
+  web_vault_compare: string;
+  running_within_container: boolean;
+  container_base_image: string;
+  has_http_access: boolean;
+  ip_header_exists: boolean;
+  ip_header_match: boolean;
+  ip_header_name: string;
+  ip_header_config: string;
+  uses_proxy: boolean;
+  enable_websocket: boolean;
   db_type: string;
-  overrides: Record<string, unknown>;
+  db_version: string;
+  admin_url: string;
+  overrides: string;
+  config_file_status: string;
+  template_overrides: string;
+  invalid_env_vars: string;
+  invalid_feature_flags: string[];
+  host_arch: string;
+  host_os: string;
+  tz_env: string;
+  server_time_local: string;
+  server_time: string;
+  ntp_time: string;
 }
 
 export const api = {
+  // --- Users ---
   async getUsers(): Promise<UserSummary[]> {
     const res = await fetch('/admin/users');
     if (!res.ok) throw new Error(`Ошибка загрузки пользователей: ${res.statusText}`);
@@ -45,13 +108,19 @@ export const api = {
       email: u.email || u.Email || '',
       emailVerified: !!(u.emailVerified ?? u.EmailVerified),
       twoFactorEnabled: !!(u.twoFactorEnabled ?? u.TwoFactorEnabled ?? u.twofactor_enabled),
-      ciphersCount: u.ciphersCount ?? u.cipher_count ?? u.CiphersCount ?? 0,
-      organizationsCount: u.organizationsCount ?? u.OrganizationsCount ?? (Array.isArray(u.organizations) ? u.organizations.length : 0),
+      status: u._status ?? (u.password_hash ? 2 : 1),
+      userEnabled: !!(u.userEnabled ?? u.user_enabled ?? u.UserEnabled ?? true),
+      organizations: Array.isArray(u.organizations) ? u.organizations.map((o: any) => ({
+        id: o.id || o.Id || '',
+        name: o.name || o.Name || '',
+        type: o.type ?? o.Type ?? 2,
+      })) : [],
+      organizationsCount: u.organizationsCount ?? (Array.isArray(u.organizations) ? u.organizations.length : 0),
+      ciphersCount: u.ciphersCount ?? u.cipher_count ?? 0,
       attachmentsCount: u.attachment_count ?? 0,
       attachmentsSize: u.attachment_size ?? '0 B',
-      userEnabled: !!(u.userEnabled ?? u.user_enabled ?? u.UserEnabled ?? true),
-      createdAt: u.createdAt ?? u.created_at ?? u.CreatedAt ?? '',
-      lastActive: u.lastActive ?? u.last_active ?? u.LastActive ?? '',
+      createdAt: u.createdAt ?? u.created_at ?? '',
+      lastActive: u.lastActive ?? u.last_active ?? '',
       ssoIdentifier: u.sso_identifier ?? u.ssoIdentifier ?? '',
     }));
   },
@@ -62,32 +131,180 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email }),
     });
-    if (!res.ok) throw new Error(`Ошибка приглашения пользователя: ${res.statusText}`);
+    if (!res.ok) {
+      const err = await res.text().catch(() => res.statusText);
+      throw new Error(`Ошибка приглашения: ${err}`);
+    }
+  },
+
+  async resendInvite(uuid: string): Promise<void> {
+    const res = await fetch(`/admin/users/${uuid}/invite/resend`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (!res.ok) throw new Error('Ошибка повторной отправки приглашения');
   },
 
   async deauthUser(uuid: string): Promise<void> {
-    const res = await fetch(`/admin/users/${uuid}/deauth`, { method: 'POST' });
+    const res = await fetch(`/admin/users/${uuid}/deauth`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
     if (!res.ok) throw new Error('Ошибка деавторизации сессий пользователя');
   },
 
   async remove2FA(uuid: string): Promise<void> {
-    const res = await fetch(`/admin/users/${uuid}/remove-2fa`, { method: 'POST' });
+    const res = await fetch(`/admin/users/${uuid}/remove-2fa`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
     if (!res.ok) throw new Error('Ошибка сброса двухфакторной аутентификации');
   },
 
+  async disableUser(uuid: string): Promise<void> {
+    const res = await fetch(`/admin/users/${uuid}/disable`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (!res.ok) throw new Error('Ошибка отключения пользователя');
+  },
+
+  async enableUser(uuid: string): Promise<void> {
+    const res = await fetch(`/admin/users/${uuid}/enable`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (!res.ok) throw new Error('Ошибка включения пользователя');
+  },
+
   async deleteUser(uuid: string): Promise<void> {
-    const res = await fetch(`/admin/users/${uuid}/delete`, { method: 'POST' });
+    const res = await fetch(`/admin/users/${uuid}/delete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
     if (!res.ok) throw new Error('Ошибка удаления пользователя');
   },
 
-  async getDiagnostics(): Promise<DiagnosticsConfig> {
-    const res = await fetch('/admin/diagnostics/config');
-    if (!res.ok) throw new Error('Ошибка загрузки диагностических параметров');
+  async deleteSSO(uuid: string): Promise<void> {
+    const res = await fetch(`/admin/users/${uuid}/sso`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (!res.ok) throw new Error('Ошибка удаления SSO связи');
+  },
+
+  async updateRevision(): Promise<void> {
+    const res = await fetch('/admin/users/update_revision', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (!res.ok) throw new Error('Ошибка принудительной синхронизации ревизий');
+  },
+
+  async updateMembershipType(user_uuid: string, org_uuid: string, user_type: number): Promise<void> {
+    const res = await fetch('/admin/users/org_type', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_uuid, org_uuid, user_type }),
+    });
+    if (!res.ok) throw new Error('Ошибка изменения роли в организации');
+  },
+
+  // --- Organizations ---
+  async getOrganizations(): Promise<OrgSummary[]> {
+    const res = await fetch('/admin/organizations');
+    if (!res.ok) throw new Error(`Ошибка загрузки организаций: ${res.statusText}`);
+    const data = await res.json();
+    return data.map((o: any) => ({
+      id: o.id || o.uuid || '',
+      name: o.name || '',
+      billingEmail: o.billingEmail || o.billing_email || '',
+      user_count: o.user_count ?? 0,
+      cipher_count: o.cipher_count ?? 0,
+      collection_count: o.collection_count ?? 0,
+      group_count: o.group_count ?? 0,
+      event_count: o.event_count ?? 0,
+      attachment_count: o.attachment_count ?? 0,
+      attachment_size: o.attachment_size ?? '0 B',
+    }));
+  },
+
+  async deleteOrganization(id: string): Promise<void> {
+    const res = await fetch(`/admin/organizations/${id}/delete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (!res.ok) throw new Error('Ошибка удаления организации');
+  },
+
+  // --- Configuration ---
+  async getConfig(): Promise<ConfigResponse> {
+    const res = await fetch('/admin/config');
+    if (!res.ok) throw new Error(`Ошибка загрузки конфигурации: ${res.statusText}`);
     return res.json();
   },
 
+  async saveConfig(data: Record<string, any>): Promise<void> {
+    const res = await fetch('/admin/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const err = await res.text().catch(() => res.statusText);
+      throw new Error(`Ошибка сохранения параметров: ${err}`);
+    }
+  },
+
+  async resetConfig(): Promise<void> {
+    const res = await fetch('/admin/config/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (!res.ok) throw new Error('Ошибка сброса конфигурации к значениям по умолчанию');
+  },
+
+  async backupDatabase(): Promise<string> {
+    const res = await fetch('/admin/config/backup_db', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (!res.ok) throw new Error('Ошибка создания резервной копии базы данных');
+    return res.text();
+  },
+
+  async testSmtp(email: string): Promise<void> {
+    const res = await fetch('/admin/test/smtp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+    if (!res.ok) {
+      const err = await res.text().catch(() => res.statusText);
+      throw new Error(`Ошибка теста SMTP: ${err}`);
+    }
+  },
+
+  // --- Diagnostics ---
+  async getDiagnosticsData(): Promise<DiagnosticsData> {
+    const res = await fetch('/admin/diagnostics/data');
+    if (!res.ok) throw new Error(`Ошибка сбора телеметрии: ${res.statusText}`);
+    return res.json();
+  },
+
+  async getDiagnosticsConfig(): Promise<Record<string, any>> {
+    const res = await fetch('/admin/diagnostics/config');
+    if (!res.ok) throw new Error('Ошибка генерации отчёта поддержки');
+    return res.json();
+  },
+
+  async testHttpCode(code: number): Promise<void> {
+    await fetch(`/admin/diagnostics/http?code=${code}`);
+  },
+
+  // --- Auth ---
   async logout(): Promise<void> {
-    await fetch('/admin/logout', { method: 'POST' });
+    await fetch('/admin/logout', { method: 'POST' }).catch(() => {});
     window.location.href = '/admin';
   },
 };

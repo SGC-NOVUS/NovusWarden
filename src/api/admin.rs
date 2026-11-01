@@ -62,14 +62,17 @@ pub fn routes() -> Vec<Route> {
         remove_2fa,
         update_membership_type,
         update_revision_users,
+        get_config_json,
         post_config,
         delete_config,
         backup_db,
         test_smtp,
         users_overview,
+        get_organizations_json,
         organizations_overview,
         delete_organization,
         diagnostics,
+        get_diagnostics_data,
         get_diagnostics_config,
         resend_user_invite,
         get_diagnostics_http,
@@ -336,14 +339,46 @@ fn render_admin_page(locale: &str) -> ApiResult<Html<String>> {
 
 #[get("/")]
 #[allow(clippy::needless_pass_by_value)]
-fn admin_page(_token: AdminToken, locale: RequestLocale) -> ApiResult<Html<String>> {
-    render_admin_page(&locale.locale)
+fn admin_page(token: AdminToken, _locale: RequestLocale) -> ApiResult<Html<String>> {
+    admin_ui_index(token)
 }
 
 #[get("/legacy")]
 #[allow(clippy::needless_pass_by_value)]
 fn admin_page_legacy(_token: AdminToken, locale: RequestLocale) -> ApiResult<Html<String>> {
     render_admin_page(&locale.locale)
+}
+
+#[get("/config")]
+#[allow(clippy::needless_pass_by_value)]
+fn get_config_json(_token: AdminToken, locale: RequestLocale) -> Json<Value> {
+    let mut config_json = CONFIG.prepare_json();
+    if let Value::Array(groups) = &mut config_json {
+        for group in groups {
+            if let Some(doc_str) = group.get("groupdoc").and_then(|v| v.as_str()) {
+                let localized = crate::i18n::tr_lookup(&locale.locale, doc_str).unwrap_or(doc_str);
+                group["groupdoc_localized"] = json!(localized);
+            }
+            if let Some(Value::Array(elements)) = group.get_mut("elements") {
+                for el in elements {
+                    if let Some(doc) = el.get_mut("doc") {
+                        if let Some(name_str) = doc.get("name").and_then(|v| v.as_str()) {
+                            let loc_name = crate::i18n::tr_lookup(&locale.locale, name_str).unwrap_or(name_str);
+                            doc["name_localized"] = json!(loc_name);
+                        }
+                        if let Some(desc_str) = doc.get("description").and_then(|v| v.as_str()) {
+                            let loc_desc = crate::i18n::tr_lookup(&locale.locale, desc_str).unwrap_or(desc_str);
+                            doc["desc_localized"] = json!(loc_desc);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    Json(json!({
+        "config": config_json,
+        "can_backup": *CAN_BACKUP,
+    }))
 }
 
 #[get("/", rank = 2)]
@@ -721,22 +756,32 @@ async fn update_revision_users(_token: AdminToken, conn: DbConn) -> EmptyResult 
     User::update_all_revisions(&conn).await
 }
 
-#[get("/organizations/overview")]
-async fn organizations_overview(_token: AdminToken, locale: RequestLocale, conn: DbConn) -> ApiResult<Html<String>> {
-    let organizations = Organization::get_all(&conn).await;
+async fn build_organizations_json(conn: &DbConn) -> Vec<Value> {
+    let organizations = Organization::get_all(conn).await;
     let mut organizations_json = Vec::with_capacity(organizations.len());
     for o in organizations {
         let mut org = o.to_json();
-        org["user_count"] = json!(Membership::count_by_org(&o.uuid, &conn).await);
-        org["cipher_count"] = json!(Cipher::count_by_org(&o.uuid, &conn).await);
-        org["collection_count"] = json!(Collection::count_by_org(&o.uuid, &conn).await);
-        org["group_count"] = json!(Group::count_by_org(&o.uuid, &conn).await);
-        org["event_count"] = json!(Event::count_by_org(&o.uuid, &conn).await);
-        org["attachment_count"] = json!(Attachment::count_by_org(&o.uuid, &conn).await);
-        org["attachment_size"] = json!(get_display_size(Attachment::size_by_org(&o.uuid, &conn).await));
+        org["user_count"] = json!(Membership::count_by_org(&o.uuid, conn).await);
+        org["cipher_count"] = json!(Cipher::count_by_org(&o.uuid, conn).await);
+        org["collection_count"] = json!(Collection::count_by_org(&o.uuid, conn).await);
+        org["group_count"] = json!(Group::count_by_org(&o.uuid, conn).await);
+        org["event_count"] = json!(Event::count_by_org(&o.uuid, conn).await);
+        org["attachment_count"] = json!(Attachment::count_by_org(&o.uuid, conn).await);
+        org["attachment_size"] = json!(get_display_size(Attachment::size_by_org(&o.uuid, conn).await));
         organizations_json.push(org);
     }
+    organizations_json
+}
 
+#[get("/organizations")]
+async fn get_organizations_json(_token: AdminToken, conn: DbConn) -> Json<Value> {
+    let orgs = build_organizations_json(&conn).await;
+    Json(Value::Array(orgs))
+}
+
+#[get("/organizations/overview")]
+async fn organizations_overview(_token: AdminToken, locale: RequestLocale, conn: DbConn) -> ApiResult<Html<String>> {
+    let organizations_json = build_organizations_json(&conn).await;
     let text = AdminTemplateData::new("admin/organizations", json!(organizations_json), &locale.locale).render()?;
     Ok(Html(text))
 }
@@ -878,13 +923,7 @@ fn folder_has_hbs_files(dir: &std::path::Path) -> bool {
     })
 }
 
-#[get("/diagnostics")]
-async fn diagnostics(
-    _token: AdminToken,
-    locale: RequestLocale,
-    ip_header: IpHeader,
-    conn: DbConn,
-) -> ApiResult<Html<String>> {
+async fn collect_diagnostics_json(ip_header: &IpHeader, conn: &DbConn) -> Value {
     use chrono::prelude::*;
     use std::net::ToSocketAddrs;
 
@@ -906,7 +945,7 @@ async fn diagnostics(
     let active_web_release = get_active_web_release();
     let web_vault_compare = web_vault_compare(&active_web_release, &latest_web_release);
 
-    let ip_header_name = &ip_header.0.unwrap_or_default();
+    let ip_header_name = ip_header.0.as_deref().unwrap_or_default();
 
     let invalid_feature_flags: Vec<String> = parse_experimental_client_feature_flags(
         &CONFIG.experimental_client_feature_flags(),
@@ -917,7 +956,7 @@ async fn diagnostics(
 
     let invalid_env_vars = crate::util::INVALID_ENV_VARS.lock().unwrap().join(", ");
 
-    let diagnostics_json = json!({
+    json!({
         "dns_resolved": dns_resolved,
         "current_release": VERSION,
         "latest_release": latest_vw_release,
@@ -936,7 +975,7 @@ async fn diagnostics(
         "uses_proxy": uses_proxy,
         "enable_websocket": &CONFIG.enable_websocket(),
         "db_type": *DB_TYPE,
-        "db_version": get_sql_server_version(&conn).await,
+        "db_version": get_sql_server_version(conn).await,
         "admin_url": format!("{}/diagnostics", admin_url()),
         "overrides": &CONFIG.get_overrides().join(", "),
         "config_file_status": &CONFIG.get_config_file_status(),
@@ -949,10 +988,25 @@ async fn diagnostics(
         "server_time_local": Local::now().format("%Y-%m-%d %H:%M:%S %Z").to_string(),
         "server_time": Utc::now().format("%Y-%m-%d %H:%M:%S UTC").to_string(), // Run the server date/time check as late as possible to minimize the time difference
         "ntp_time": get_ntp_time(has_http_access).await, // Run the ntp check as late as possible to minimize the time difference
-    });
+    })
+}
 
+#[get("/diagnostics")]
+async fn diagnostics(
+    _token: AdminToken,
+    locale: RequestLocale,
+    ip_header: IpHeader,
+    conn: DbConn,
+) -> ApiResult<Html<String>> {
+    let diagnostics_json = collect_diagnostics_json(&ip_header, &conn).await;
     let text = AdminTemplateData::new("admin/diagnostics", diagnostics_json, &locale.locale).render()?;
     Ok(Html(text))
+}
+
+#[get("/diagnostics/data")]
+async fn get_diagnostics_data(_token: AdminToken, ip_header: IpHeader, conn: DbConn) -> Json<Value> {
+    let diagnostics_json = collect_diagnostics_json(&ip_header, &conn).await;
+    Json(diagnostics_json)
 }
 
 #[get("/diagnostics/config", format = "application/json")]

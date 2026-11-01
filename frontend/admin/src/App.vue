@@ -9,7 +9,7 @@ const navItems = [
   { name: 'Пользователи', path: '/users' },
   { name: 'Организации', path: '/organizations' },
   { name: 'Тарифы и подписки', path: '/subscriptions' },
-  { name: 'Настройки', path: '/settings' },
+  { name: 'Настройки сервера', path: '/settings' },
   { name: 'Диагностика', path: '/diagnostics' },
 ];
 
@@ -32,11 +32,16 @@ async function handleLogout() {
           style="height: 32px; width: auto; object-fit: contain;"
         />
         <div style="display: flex; flex-direction: column;">
-          <span style="font-size: 16px; font-weight: 700; color: #f9fafb; letter-spacing: -0.3px;">
-            NovusWarden Control Plane
-          </span>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 16px; font-weight: 700; color: #f9fafb; letter-spacing: -0.3px;">
+              NovusWarden Control Plane
+            </span>
+            <span style="background-color: #1e3a8a; color: #93c5fd; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 4px; font-family: monospace;">
+              Vue 3 Modern
+            </span>
+          </div>
           <span style="font-size: 11px; color: #9ca3af; font-weight: 500;">
-            SGC-NOVUS Edition • Панель управления Vue 3
+            SGC-NOVUS Edition • Центральная консоль управления
           </span>
         </div>
       </div>
@@ -73,11 +78,19 @@ async function handleLogout() {
       <!-- Actions -->
       <div style="display: flex; align-items: center; gap: 10px;">
         <a
-          href="/admin"
-          style="background-color: #1f2937; color: #38bdf8; text-decoration: none; border: 1px solid #374151; padding: 7px 14px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s ease;"
-          title="Перейти в классический интерфейс администратора"
+          href="/"
+          target="_blank"
+          style="background-color: #1f2937; color: #34d399; text-decoration: none; border: 1px solid #065f46; padding: 7px 14px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s ease;"
+          title="Открыть хранилище паролей Bitwarden Web Vault"
         >
-          ← Классическая админка
+          Веб-хранилище ↗
+        </a>
+        <a
+          href="/admin/legacy"
+          style="background-color: #1f2937; color: #9ca3af; text-decoration: none; border: 1px solid #374151; padding: 7px 14px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s ease;"
+          title="Перейти в классический интерфейс администратора (Handlebars)"
+        >
+          Классическая админка ↗
         </a>
         <button
           @click="handleLogout"
