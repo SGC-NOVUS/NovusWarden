@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="{{#if lang}}{{lang}}{{else}}en{{/if}}">
+<head>
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <meta name="robots" content="noindex,nofollow" />
+    <link rel="icon" type="image/png" href="{{urlpath}}/vw_static/vaultwarden-favicon.png">
+    <title>{{t "web.404.title" locale=lang}}</title>
+    <link rel="stylesheet" href="{{urlpath}}/vw_static/bootstrap.css" />
+    <link rel="stylesheet" href="{{urlpath}}/vw_static/404.css" />
+</head>
+
+<body class="bg-light">
+
+    <nav class="navbar navbar-expand-md navbar-dark bg-dark mb-4 shadow fixed-top">
+        <div class="container">
+            <a class="navbar-brand" href="{{urlpath}}/"><img class="vaultwarden-icon" src="{{urlpath}}/vw_static/vaultwarden-icon.png" alt="NovusWarden" style="margin-right: 8px;">NovusWarden</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse"
+                    aria-controls="navbarCollapse" aria-expanded="false" aria-label="{{t "web.404.toggle_navigation" locale=lang}}">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarCollapse">
+                <ul class="navbar-nav me-auto"></ul>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container inner content text-center">
+        <h2>{{t "web.404.title" locale=lang}}</h2>
+        <p class="lead">{{t "web.404.lead" locale=lang}}</p>
+        <p class="display-6">
+            <a href="{{urlpath}}/"><img class="vw-404" src="{{urlpath}}/vw_static/404.png" alt="{{t "web.404.return_alt" locale=lang}}"></a></p>
+        <p>{{t "web.404.prefix" locale=lang}} <a href="{{urlpath}}/">{{t "web.404.return_link" locale=lang}}</a>, {{t "web.404.or" locale=lang}} <a href="https://github.com/SGC-NOVUS/novuswarden">{{t "web.404.contact_link" locale=lang}}</a>.</p>
+    </main>
+
+    <div class="container footer text-muted content">{{t "web.404.footer" locale=lang}}</div>
+</body>
+</html>

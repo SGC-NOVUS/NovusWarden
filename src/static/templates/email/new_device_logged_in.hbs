@@ -1,0 +1,11 @@
+{{t "tpl.email.new_device.subject_prefix" locale=lang}} {{{device_name}}}
+<!---------------->
+{{t "tpl.email.new_device.body_intro" locale=lang}}
+
+* {{t "tpl.email.new_device.label_date" locale=lang}}: {{datetime}}
+* {{t "tpl.email.new_device.label_ip" locale=lang}}: {{ip}}
+* {{t "tpl.email.new_device.label_device_name" locale=lang}}: {{device_name}}
+* {{t "tpl.email.new_device.label_device_type" locale=lang}}: {{device_type}}
+
+{{t "tpl.email.new_device.body_deauth_prefix" locale=lang}} ( {{url}} ) {{t "tpl.email.new_device.body_deauth_suffix" locale=lang}}
+{{> email/email_footer_text }}

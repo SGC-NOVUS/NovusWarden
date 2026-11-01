@@ -1,0 +1,92 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/ci.yml"
+      - "src/**"
+      - "frontend/**"
+      - "migrations/**"
+      - "macros/**"
+      - "Cargo.*"
+      - "build.rs"
+      - "rust-toolchain.toml"
+      - "rustfmt.toml"
+      - "diesel.toml"
+  pull_request:
+    paths:
+      - ".github/workflows/ci.yml"
+      - "src/**"
+      - "frontend/**"
+      - "migrations/**"
+      - "macros/**"
+      - "Cargo.*"
+      - "build.rs"
+      - "rust-toolchain.toml"
+      - "rustfmt.toml"
+      - "diesel.toml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint-and-test:
+    name: Lint and Check
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      RUSTFLAGS: "-Dwarnings"
+
+    steps:
+      - name: Install dependencies Ubuntu
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends openssl build-essential libpq-dev libssl-dev pkg-config
+
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Setup Rust toolchain
+        run: |
+          RUST_TOOLCHAIN="$(grep -m1 -oP 'channel.*"(\K.*?)(?=")' rust-toolchain.toml)"
+          rustup toolchain install "${RUST_TOOLCHAIN}" --profile minimal --component rustfmt clippy --no-self-update
+          rustup default "${RUST_TOOLCHAIN}"
+          rustc -vV
+          cargo -vV
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          prefix-key: "v2026-rust"
+
+      - name: Check Formatting
+        run: cargo fmt --all -- --check
+
+      - name: Run Clippy
+        run: cargo clippy --profile ci --features sqlite,postgresql,enable_mimalloc
+
+      - name: Check PostgreSQL Feature
+        run: cargo check --features postgresql
+
+      - name: Check SQLite Feature
+        run: cargo check --features sqlite
+
+      - name: Run SQLite Tests
+        run: cargo test --profile ci --features sqlite
+
+      - name: Setup Node.js 26 LTS
+        uses: actions/setup-node@v4
+        with:
+          node-version: 26
+
+      - name: Verify Frontend Admin & Email Compilation
+        working-directory: frontend
+        run: |
+          npm install --no-audit --prefer-offline || npm install
+          npm run build
+

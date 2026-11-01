@@ -1,0 +1,11 @@
+{{t "tpl.email.pw_hint_some.subject" locale=lang}}
+<!---------------->
+{{t "tpl.email.pw_hint_some.body_intro" locale=lang}}
+
+{{t "tpl.email.pw_hint_some.body_hint" locale=lang}}: *{{hint}}*
+{{t "tpl.email.pw_hint_some.body_login" locale=lang}}: {{url}}
+
+{{t "tpl.email.pw_hint_none.body_recovery" locale=lang}} ( {{url}}/#/recover-delete ) {{t "tpl.email.pw_hint_none.body_recovery_suffix" locale=lang}}
+
+{{t "tpl.email.pw_hint_some.body_ignore" locale=lang}}
+{{> email/email_footer_text }}

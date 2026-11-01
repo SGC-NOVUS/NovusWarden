@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 44" role="img" aria-label="NovusWarden">
+  <rect width="280" height="44" fill="none"/>
+  <circle cx="22" cy="22" r="18" fill="none" stroke="#1f4ea8" stroke-width="4"/>
+  <path d="M14 30V14h4l12 16V14h4v16h-4L18 14v16z" fill="#1f4ea8"/>
+  <text x="50" y="30" fill="#1f4ea8" font-family="Segoe UI, Arial, sans-serif" font-size="28" font-weight="700">NovusWarden</text>
+</svg>

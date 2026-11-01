@@ -1,0 +1,8 @@
+{{t "tpl.email.ea_invite_accepted.subject_prefix" locale=lang}} {{{grantee_email}}} {{t "tpl.email.ea_invite_accepted.subject_suffix" locale=lang}}
+<!---------------->
+{{t "tpl.email.ea_invite_accepted.body_intro_prefix" locale=lang}} {{grantee_email}} {{t "tpl.email.ea_invite_accepted.body_intro_suffix" locale=lang}}
+
+{{t "tpl.email.ea_invite_accepted.body_confirm_prefix" locale=lang}} ({{url}}), {{t "tpl.email.ea_invite_accepted.body_confirm_suffix" locale=lang}}
+
+{{t "tpl.email.ea_invite_accepted.body_ignore" locale=lang}}
+{{> email/email_footer_text }}

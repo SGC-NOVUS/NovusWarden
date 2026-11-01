@@ -1,0 +1,48 @@
+name: i18n Quality Gates
+
+on:
+  push:
+    paths:
+      - ".github/workflows/i18n-guards.yml"
+      - "src/static/locales/**"
+      - "src/static/templates/**"
+      - "src/static/scripts/admin*.js"
+      - "tools/check_*.py"
+  pull_request:
+    paths:
+      - ".github/workflows/i18n-guards.yml"
+      - "src/static/locales/**"
+      - "src/static/templates/**"
+      - "src/static/scripts/admin*.js"
+      - "tools/check_*.py"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-i18n:
+    name: Validate i18n Catalogs & Templates
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Validate Admin UI i18n Keys
+        run: python3 tools/check_admin_i18n_keys.py
+
+      - name: Validate Template i18n Keys
+        run: python3 tools/check_template_i18n_keys.py
+
+      - name: Validate No Locale-Duplicated Templates
+        run: python3 tools/check_template_locale_duplicates.py
+

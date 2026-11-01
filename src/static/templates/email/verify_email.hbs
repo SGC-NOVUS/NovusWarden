@@ -1,0 +1,8 @@
+{{t "tpl.email.verify_email.subject" locale=lang}}
+<!---------------->
+{{t "tpl.email.verify_email.body_intro" locale=lang}}
+
+{{t "tpl.email.verify_email.cta" locale=lang}}: {{url}}/#/verify-email/?userId={{user_id}}&token={{token}}
+
+{{t "tpl.email.verify_email.body_ignore" locale=lang}}
+{{> email/email_footer_text }}

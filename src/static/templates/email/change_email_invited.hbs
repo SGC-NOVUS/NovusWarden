@@ -1,0 +1,11 @@
+{{t "tpl.email.change_email_invited.subject" locale=lang}}
+<!---------------->
+{{t "tpl.email.change_email_invited.body_intro" locale=lang}} ({{ acting_address }}) {{t "tpl.email.change_email_invited.body_intro_mid" locale=lang}} ({{ existing_address }}). {{t "tpl.email.change_email_invited.body_intro_suffix" locale=lang}}
+
+{{t "tpl.email.change_email_invited.body_delete_intro" locale=lang}} ({{ existing_address }}):
+{{t "tpl.email.change_email_invited.cta" locale=lang}}: {{url}}/#/recover-delete
+
+{{t "tpl.email.change_email_invited.body_after" locale=lang}}
+
+{{t "tpl.email.change_email_invited.body_ignore" locale=lang}}
+{{> email/email_footer_text }}

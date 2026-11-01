@@ -1,0 +1,11 @@
+{{t "tpl.email.incomplete_2fa.subject_prefix" locale=lang}} {{{device_name}}}
+<!---------------->
+{{t "tpl.email.incomplete_2fa.body_intro_prefix" locale=lang}} {{time_limit}} {{t "tpl.email.incomplete_2fa.body_intro_suffix" locale=lang}}
+
+* {{t "tpl.email.incomplete_2fa.label_date" locale=lang}}: {{datetime}}
+* {{t "tpl.email.incomplete_2fa.label_ip" locale=lang}}: {{ip}}
+* {{t "tpl.email.incomplete_2fa.label_device_name" locale=lang}}: {{device_name}}
+* {{t "tpl.email.incomplete_2fa.label_device_type" locale=lang}}: {{device_type}}
+
+{{t "tpl.email.incomplete_2fa.body_warning" locale=lang}}
+{{> email/email_footer_text }}

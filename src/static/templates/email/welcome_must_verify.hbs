@@ -1,0 +1,8 @@
+{{t "tpl.email.welcome_must_verify.subject" locale=lang}}
+<!---------------->
+{{t "tpl.email.welcome_must_verify.body_intro" locale=lang}} {{url}}. {{t "tpl.email.welcome_must_verify.body_intro_suffix" locale=lang}}
+
+{{t "tpl.email.welcome_must_verify.cta" locale=lang}}: {{url}}/#/verify-email/?userId={{user_id}}&token={{token}}
+
+{{t "tpl.email.welcome_must_verify.body_ignore" locale=lang}}
+{{> email/email_footer_text }}

@@ -1,0 +1,10 @@
+{{t "tpl.email.send_org_invite.subject_prefix" locale=lang}} {{{org_name}}}
+<!---------------->
+{{t "tpl.email.send_org_invite.body_intro_prefix" locale=lang}} *{{org_name}}* {{t "tpl.email.send_org_invite.body_intro_suffix" locale=lang}}
+
+
+{{t "tpl.email.send_org_invite.body_cta" locale=lang}}: {{{url}}}
+
+
+{{t "tpl.email.send_org_invite.body_ignore" locale=lang}}
+{{> email/email_footer_text }}

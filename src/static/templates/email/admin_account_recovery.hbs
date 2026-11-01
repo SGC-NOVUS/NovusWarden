@@ -1,0 +1,12 @@
+{{t "tpl.email.admin_account_recovery.subject_prefix" locale=lang}} {{org_name}} {{t "tpl.email.admin_account_recovery.subject_suffix" locale=lang}}
+<!---------------->
+{{#if reset_password}}
+{{t "tpl.email.admin_account_recovery.body_reset_password_prefix" locale=lang}} {{user_name}} {{t "tpl.email.admin_account_recovery.body_reset_password_suffix" locale=lang}}
+{{/if}}
+{{#if reset_2fa}}
+{{t "tpl.email.admin_account_recovery.body_reset_2fa" locale=lang}}{{#if fallback_2fa_email}} {{t "tpl.email.admin_account_recovery.body_fallback_2fa" locale=lang}}{{/if}}
+{{/if}}
+
+{{t "tpl.email.admin_account_recovery.body_ignore" locale=lang}}
+
+{{> email/email_footer_text }}

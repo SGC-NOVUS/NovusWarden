@@ -1,0 +1,8 @@
+{{t "tpl.email.delete_account.subject" locale=lang}}
+<!---------------->
+{{t "tpl.email.delete_account.body_intro" locale=lang}}
+
+{{t "tpl.email.delete_account.cta" locale=lang}}: {{url}}/#/verify-recover-delete?userId={{user_id}}&token={{token}}&email={{email}}
+
+{{t "tpl.email.delete_account.body_ignore" locale=lang}}
+{{> email/email_footer_text }}

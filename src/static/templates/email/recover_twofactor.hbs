@@ -1,0 +1,9 @@
+{{t "tpl.email.recover_twofactor.subject_prefix" locale=lang}} {{ip}}
+<!---------------->
+{{t "tpl.email.recover_twofactor.body_intro" locale=lang}}
+
+* {{t "tpl.email.recover_twofactor.label_date" locale=lang}}: {{datetime}}
+* {{t "tpl.email.recover_twofactor.label_ip" locale=lang}}: {{ip}}
+
+{{t "tpl.email.recover_twofactor.body_ignore" locale=lang}}
+{{> email/email_footer_text }}

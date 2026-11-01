@@ -1,0 +1,6 @@
+{{t "tpl.email.ea_recovery_initiated.subject_prefix" locale=lang}} {{{grantee_name}}} {{t "tpl.email.ea_recovery_initiated.subject_suffix" locale=lang}}
+<!---------------->
+{{grantee_name}} {{t "tpl.email.ea_recovery_initiated.body_intro_mid" locale=lang}} {{atype}} {{t "tpl.email.ea_recovery_initiated.body_intro_suffix_prefix" locale=lang}} ({{url}}) {{t "tpl.email.ea_recovery_initiated.body_intro_suffix" locale=lang}}
+
+{{t "tpl.email.ea_recovery_initiated.body_wait_prefix" locale=lang}} {{wait_time_days}} {{t "tpl.email.ea_recovery_initiated.body_wait_suffix" locale=lang}}
+{{> email/email_footer_text }}

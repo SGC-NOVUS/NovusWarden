@@ -1,0 +1,158 @@
+<main class="container-xxl">
+    <div id="users-block" class="my-3 p-3 rounded shadow">
+        <h6 class="border-bottom pb-2 mb-3">{{t "tpl.admin.users.registered_users" locale=lang}}</h6>
+        <div class="table-responsive-xl small">
+            <table id="users-table" class="table table-sm table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th class="vw-account-details">{{t "tpl.admin.users.user" locale=lang}}</th>
+                        {{#if sso_enabled}}
+                        <th class="vw-sso-identifier">{{t "tpl.admin.users.sso_identifier" locale=lang}}</th>
+                        {{/if}}
+                        <th class="vw-created-at">{{t "tpl.admin.users.created_at" locale=lang}}</th>
+                        <th class="vw-last-active">{{t "tpl.admin.users.last_active" locale=lang}}</th>
+                        <th class="vw-entries">{{t "tpl.admin.users.entries" locale=lang}}</th>
+                        <th class="vw-attachments">{{t "tpl.admin.users.attachments" locale=lang}}</th>
+                        <th class="vw-organizations">{{t "tpl.admin.users.organizations" locale=lang}}</th>
+                        <th class="vw-actions text-end">{{t "tpl.admin.users.actions" locale=lang}}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{#each page_data}}
+                    <tr>
+                        <td>
+                            <svg width="48" height="48" class="float-start me-2 rounded" data-jdenticon-value="{{email}}">
+                            <div>
+                                <strong>{{name}}</strong>
+                                <span class="d-block">{{email}}</span>
+                                <span class="d-block">
+                                    {{#unless user_enabled}}
+                                        <span class="badge bg-danger me-2" title="{{t "tpl.admin.users.badge_disabled_title" locale=../../lang}}">{{t "tpl.admin.users.badge_disabled" locale=../../lang}}</span>
+                                    {{/unless}}
+                                    {{#if twoFactorEnabled}}
+                                        <span class="badge bg-success me-2" title="{{t "tpl.admin.users.badge_2fa_title" locale=../../lang}}">2FA</span>
+                                    {{/if}}
+                                    {{#case _status 1}}
+                                        <span class="badge bg-warning text-dark me-2" title="{{t "tpl.admin.users.badge_invited_title" locale=../../lang}}">{{t "tpl.admin.users.badge_invited" locale=../../lang}}</span>
+                                    {{/case}}
+                                    {{#if emailVerified}}
+                                        <span class="badge bg-success me-2" title="{{t "tpl.admin.users.badge_verified_title" locale=../../lang}}">{{t "tpl.admin.users.badge_verified" locale=../../lang}}</span>
+                                    {{/if}}
+                                </span>
+                            </div>
+                        </td>
+                        {{#if ../sso_enabled}}
+                        <td>
+                            <span class="d-block text-break text-wrap">{{sso_identifier}}</span>
+                        </td>
+                        {{/if}}
+                        <td>
+                            <span class="d-block" data-sort-type="date-iso">{{created_at}}</span>
+                        </td>
+                        <td>
+                            <span class="d-block" data-sort-type="date-iso">{{last_active}}</span>
+                        </td>
+                        <td>
+                            <span class="d-block">{{cipher_count}}</span>
+                        </td>
+                        <td>
+                            <span class="d-block"><strong>{{t "tpl.admin.users.amount" locale=../lang}}</strong> {{attachment_count}}</span>
+                            {{#if attachment_count}}
+                            <span class="d-block"><strong>{{t "tpl.admin.users.size" locale=../lang}}</strong> {{attachment_size}}</span>
+                            {{/if}}
+                        </td>
+                        <td>
+                            <div class="overflow-auto vw-org-cell" data-vw-user-email="{{email}}" data-vw-user-uuid="{{id}}">
+                            {{#each organizations}}
+                            <button class="badge" data-bs-toggle="modal" data-bs-target="#userOrgTypeDialog" data-vw-org-type="{{type}}" data-vw-org-uuid="{{id}}" data-vw-org-name="{{name}}">{{name}}</button>
+                            {{/each}}
+                            </div>
+                        </td>
+                        <td class="text-end px-1 small">
+                            <span data-vw-user-uuid="{{id}}" data-vw-user-email="{{email}}">
+                                {{#if twoFactorEnabled}}
+                                <button type="button" class="btn btn-sm btn-link p-0 border-0 float-right" vw-remove2fa>{{t "tpl.admin.users.remove_all_2fa" locale=../lang}}</button><br>
+                                {{/if}}
+                                <button type="button" class="btn btn-sm btn-link p-0 border-0 float-right" vw-deauth-user>{{t "tpl.admin.users.deauth_sessions" locale=../lang}}</button><br>
+                                <button type="button" class="btn btn-sm btn-link p-0 border-0 float-right" vw-delete-user>{{t "tpl.admin.users.delete_user" locale=../lang}}</button><br>
+                                {{#if ../sso_enabled}}
+                                <button type="button" class="btn btn-sm btn-link p-0 border-0 float-right" vw-delete-sso-user>{{t "tpl.admin.users.delete_sso_assoc" locale=../../lang}}</button><br>
+                                {{/if}}
+                                {{#if user_enabled}}
+                                <button type="button" class="btn btn-sm btn-link p-0 border-0 float-right" vw-disable-user>{{t "tpl.admin.users.disable_user" locale=../lang}}</button><br>
+                                {{else}}
+                                <button type="button" class="btn btn-sm btn-link p-0 border-0 float-right" vw-enable-user>{{t "tpl.admin.users.enable_user" locale=../lang}}</button><br>
+                                {{/if}}
+                                {{#case _status 1}}
+                                <button type="button" class="btn btn-sm btn-link p-0 border-0 float-right" vw-resend-user-invite>{{t "tpl.admin.users.resend_invite" locale=../lang}}</button><br>
+                                {{/case}}
+                            </span>
+                        </td>
+                    </tr>
+                    {{/each}}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="mt-3 clearfix">
+            <button type="button" class="btn btn-sm btn-danger" id="updateRevisions"
+                title="{{t "tpl.admin.users.force_resync_title" locale=lang}}">
+                {{t "tpl.admin.users.force_resync" locale=lang}}
+            </button>
+
+            <button type="button" class="btn btn-sm btn-primary float-end" id="reload">{{t "tpl.admin.users.reload" locale=lang}}</button>
+        </div>
+    </div>
+
+    <div id="inviteUserFormBlock" class="align-items-center p-3 mb-3 text-white-50 bg-secondary rounded shadow">
+        <div>
+            <h6 class="mb-0 text-white">{{t "tpl.admin.users.invite_user" locale=lang}}</h6>
+            <small>{{t "tpl.admin.users.email" locale=lang}}</small>
+
+            <form class="form-inline input-group w-50" id="inviteUserForm">
+                <input type="email" class="form-control me-2" id="inviteEmail" placeholder="{{t "tpl.admin.users.enter_email" locale=lang}}" required spellcheck="false">
+                <button type="submit" class="btn btn-primary">{{t "tpl.admin.users.invite" locale=lang}}</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="userOrgTypeDialog" class="modal fade" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h6 class="modal-title">
+                        <b>{{t "tpl.admin.users.update_user_type" locale=lang}}</b><br><b>{{t "tpl.admin.users.organization" locale=lang}}</b> <span id="userOrgTypeDialogOrgName"></span><br><b>{{t "tpl.admin.users.user_label" locale=lang}}</b> <span id="userOrgTypeDialogUserEmail"></span>
+                    </h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{t "tpl.admin.settings.close" locale=lang}}"></button>
+                </div>
+                <form class="form" id="userOrgTypeForm">
+                    <input type="hidden" name="user_uuid" id="userOrgTypeUserUuid" value="">
+                    <input type="hidden" name="org_uuid" id="userOrgTypeOrgUuid" value="">
+                    <div class="modal-body">
+                        <div class="radio">
+                            <label><input type="radio" value="2" class="form-radio-input" name="user_type" id="userOrgTypeUser">&nbsp;{{t "tpl.admin.users.role_user" locale=lang}}</label>
+                        </div>
+                        <div class="radio">
+                            <label><input type="radio" value="3" class="form-radio-input" name="user_type" id="userOrgTypeManager">&nbsp;{{t "tpl.admin.users.role_manager" locale=lang}}</label>
+                        </div>
+                        <div class="radio">
+                            <label><input type="radio" value="1" class="form-radio-input" name="user_type" id="userOrgTypeAdmin">&nbsp;{{t "tpl.admin.users.role_admin" locale=lang}}</label>
+                        </div>
+                        <div class="radio">
+                            <label><input type="radio" value="0" class="form-radio-input" name="user_type" id="userOrgTypeOwner">&nbsp;{{t "tpl.admin.users.role_owner" locale=lang}}</label>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">{{t "tpl.admin.users.cancel" locale=lang}}</button>
+                        <button type="submit" class="btn btn-sm btn-primary">{{t "tpl.admin.users.change_role" locale=lang}}</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</main>
+
+<link rel="stylesheet" href="{{urlpath}}/vw_static/datatables.css" />
+<script src="{{urlpath}}/vw_static/datatables.js"></script>
+<script src="{{urlpath}}/vw_static/admin_users.js"></script>
+<script src="{{urlpath}}/vw_static/jdenticon-3.3.0.js"></script>

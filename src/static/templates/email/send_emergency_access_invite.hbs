@@ -1,0 +1,8 @@
+{{t "tpl.email.ea_invite.subject_prefix" locale=lang}} {{{grantor_name}}}
+<!---------------->
+{{t "tpl.email.ea_invite.body_intro_prefix" locale=lang}} {{grantor_name}}. {{t "tpl.email.ea_invite.body_intro_suffix" locale=lang}}
+
+{{t "tpl.email.ea_invite.body_cta" locale=lang}}: {{{url}}}
+
+{{t "tpl.email.ea_invite.body_ignore_prefix" locale=lang}} {{grantor_name}}, {{t "tpl.email.ea_invite.body_ignore_suffix" locale=lang}}
+{{> email/email_footer_text }}

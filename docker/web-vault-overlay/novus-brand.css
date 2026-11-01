@@ -1,0 +1,31 @@
+/*
+ * Force branded web-vault header logo.
+ * The login header uses an inline SVG from bundled JS; hide it and show our branded asset.
+ */
+header a[href="#/"] > bit-svg svg {
+    display: none !important;
+}
+
+header a[href="#/"] > bit-svg {
+    display: block !important;
+    width: 100%;
+}
+
+header a[href="#/"] > bit-svg::before {
+    content: "";
+    display: block;
+    width: 100%;
+    min-height: 34px;
+    background-repeat: no-repeat;
+    background-position: left center;
+    background-size: contain;
+    background-image: url("images/logo-white.svg");
+}
+
+.theme_light header a[href="#/"] > bit-svg::before {
+    background-image: url("images/logo.svg");
+}
+
+.theme_dark header a[href="#/"] > bit-svg::before {
+    background-image: url("images/logo-white.svg");
+}
