@@ -1,16 +1,11 @@
-# Local build artifacts
 target
-
-# Data folder
+Cargo.lock
+*.env
 data
-
-# IDE files
-.vscode
-.idea
-*.iml
-
-# Environment file
-.env
 
 # Web vault
 web-vault
+
+# Frontend build & dependencies
+node_modules
+frontend/dist

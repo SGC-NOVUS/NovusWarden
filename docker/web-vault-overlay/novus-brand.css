@@ -3,33 +3,39 @@
  * Applied to Bitwarden Web Vault UI (angular layout_frontend)
  */
 
-/* 1. Header Logo */
-header a[href="#/"] > bit-svg svg {
+/* 1. Header & Landing Logos */
+header a[href="#/"] > bit-svg svg,
+bit-landing-header a[routerlink] > bit-svg svg {
     display: none !important;
 }
 
-header a[href="#/"] > bit-svg {
+header a[href="#/"] > bit-svg,
+bit-landing-header a[routerlink] > bit-svg {
     display: block !important;
-    width: 100%;
+    width: 100% !important;
 }
 
-header a[href="#/"] > bit-svg::before {
-    content: "";
-    display: block;
-    width: 100%;
-    min-height: 34px;
-    background-repeat: no-repeat;
-    background-position: left center;
-    background-size: contain;
-    background-image: url("images/logo-white.svg");
+header a[href="#/"] > bit-svg::before,
+bit-landing-header a[routerlink] > bit-svg::before {
+    content: "" !important;
+    display: block !important;
+    width: 200px !important;
+    min-height: 38px !important;
+    background-repeat: no-repeat !important;
+    background-position: left center !important;
+    background-size: contain !important;
+    background-image: url("images/logo-white.svg") !important;
 }
 
-.theme_light header a[href="#/"] > bit-svg::before {
-    background-image: url("images/logo.svg");
-}
-
-.theme_dark header a[href="#/"] > bit-svg::before {
-    background-image: url("images/logo-white.svg");
+/* Force NovusWarden logo on all new-logo-themed image tags */
+img.new-logo-themed,
+.theme_light img.new-logo-themed,
+.theme_dark img.new-logo-themed {
+    content: url("images/logo-white.svg") !important;
+    width: 190px !important;
+    height: auto !important;
+    max-height: 42px !important;
+    object-fit: contain !important;
 }
 
 /* 2. Global Frontend Layout & Background */
@@ -45,9 +51,26 @@ body.layout_frontend {
     filter: drop-shadow(0 0 12px #0284c7) !important;
 }
 
-/* 3. Hero Section & Cartoon Safe Icon Replacement */
+/* Prevent hero icon clipping at top edge of viewport */
+.layout_frontend bit-landing-content > div,
+.layout_frontend main {
+    padding-top: 50px !important;
+}
+
+/* 3. Hero Section & Cyber Shield Icon Replacement */
+bit-landing-hero bit-svg,
+bit-landing-hero bit-svg svg,
+bit-landing-hero .tw-size-20 svg,
+bit-landing-hero .sm\:tw-size-24 svg,
 bit-landing-hero svg {
     display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    width: 0 !important;
+    height: 0 !important;
+    max-width: 0 !important;
+    max-height: 0 !important;
+    overflow: hidden !important;
 }
 
 bit-landing-hero div.tw-size-20,
@@ -55,13 +78,13 @@ bit-landing-hero div.sm\:tw-size-24 {
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    width: 80px !important;
-    height: 80px !important;
-    margin: 0 auto 16px auto !important;
-    background: linear-gradient(135deg, rgba(14, 165, 233, 0.15), rgba(99, 102, 241, 0.15)) !important;
-    border: 1px solid rgba(56, 189, 248, 0.35) !important;
+    width: 76px !important;
+    height: 76px !important;
+    margin: 12px auto 16px auto !important;
+    background: linear-gradient(135deg, rgba(14, 165, 233, 0.25), rgba(99, 102, 241, 0.25)) !important;
+    border: 1px solid rgba(56, 189, 248, 0.5) !important;
     border-radius: 20px !important;
-    box-shadow: 0 0 30px rgba(14, 165, 233, 0.3), inset 0 0 15px rgba(56, 189, 248, 0.15) !important;
+    box-shadow: 0 0 30px rgba(14, 165, 233, 0.35), inset 0 0 15px rgba(56, 189, 248, 0.2) !important;
     position: relative !important;
     animation: novusPulseGlow 3s ease-in-out infinite alternate !important;
 }
@@ -69,11 +92,11 @@ bit-landing-hero div.sm\:tw-size-24 {
 @keyframes novusPulseGlow {
     0% {
         box-shadow: 0 0 20px rgba(14, 165, 233, 0.25), inset 0 0 10px rgba(56, 189, 248, 0.1);
-        border-color: rgba(56, 189, 248, 0.3);
+        border-color: rgba(56, 189, 248, 0.35);
     }
     100% {
-        box-shadow: 0 0 40px rgba(14, 165, 233, 0.5), inset 0 0 20px rgba(56, 189, 248, 0.25);
-        border-color: rgba(56, 189, 248, 0.6);
+        box-shadow: 0 0 40px rgba(14, 165, 233, 0.55), inset 0 0 20px rgba(56, 189, 248, 0.3);
+        border-color: rgba(56, 189, 248, 0.7);
     }
 }
 
@@ -81,25 +104,25 @@ bit-landing-hero div.tw-size-20::before,
 bit-landing-hero div.sm\:tw-size-24::before {
     content: "" !important;
     display: block !important;
-    width: 44px !important;
-    height: 44px !important;
+    width: 42px !important;
+    height: 42px !important;
     background-repeat: no-repeat !important;
     background-position: center !important;
     background-size: contain !important;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2338bdf8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z'/%3E%3Cpath d='m9 12 2 2 4-4' stroke='%2338bdf8' stroke-width='2'/%3E%3C/svg%3E") !important;
 }
 
-/* Hero Title ("Войти") */
+/* Hero Title ("Войти", "Создать аккаунт") */
 bit-landing-hero h1,
 bit-landing-hero h2 {
     color: #f8fafc !important;
     font-weight: 700 !important;
-    font-size: 26px !important;
+    font-size: 24px !important;
     letter-spacing: -0.5px !important;
     text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5) !important;
 }
 
-/* 4. Login Card (Glassmorphism) */
+/* 4. Login & Signup Card (Glassmorphism) */
 bit-landing-card,
 bit-landing-card bit-base-card,
 bit-landing-card > div {
@@ -113,31 +136,56 @@ bit-landing-card > div {
     color: #f1f5f9 !important;
 }
 
-/* 5. Input Fields & Labels */
+/* 5. Clean Single-Border Input Fields */
+/* Neutralize outer Tailwind wrapper rings and borders */
+.layout_frontend bit-form-field,
+.layout_frontend bit-form-field > div,
+.layout_frontend bit-form-field .tw-relative {
+    background: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+    outline: none !important;
+}
+
+.layout_frontend [class*="tw-ring-"] {
+    --tw-ring-shadow: none !important;
+    --tw-ring-color: transparent !important;
+    box-shadow: none !important;
+}
+
 .layout_frontend input[type="email"],
 .layout_frontend input[type="password"],
-.layout_frontend input[type="text"] {
-    background: #0b0f19 !important;
+.layout_frontend input[type="text"],
+.layout_frontend input[bitinput] {
+    background-color: #0b0f19 !important;
     border: 1px solid #334155 !important;
     color: #f8fafc !important;
     border-radius: 8px !important;
     padding: 10px 14px !important;
     font-size: 14px !important;
-    transition: all 0.2s ease !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    height: 44px !important;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
 }
 
 .layout_frontend input[type="email"]:focus,
 .layout_frontend input[type="password"]:focus,
-.layout_frontend input[type="text"]:focus {
+.layout_frontend input[type="text"]:focus,
+.layout_frontend input[bitinput]:focus {
     border-color: #38bdf8 !important;
     box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.25) !important;
     outline: none !important;
 }
 
-.layout_frontend label {
+/* Form labels */
+.layout_frontend label,
+.layout_frontend bit-label {
     color: #cbd5e1 !important;
-    font-weight: 500 !important;
+    font-weight: 600 !important;
     font-size: 13px !important;
+    margin-bottom: 6px !important;
+    display: block !important;
 }
 
 /* Checkbox styling */
@@ -154,7 +202,8 @@ bit-landing-card > div {
     border-radius: 8px !important;
     font-weight: 600 !important;
     font-size: 14px !important;
-    padding: 10px 20px !important;
+    padding: 11px 20px !important;
+    height: 44px !important;
     box-shadow: 0 4px 15px rgba(2, 132, 199, 0.35) !important;
     transition: all 0.2s ease !important;
     cursor: pointer !important;
@@ -167,7 +216,7 @@ bit-landing-card > div {
     transform: translateY(-1px) !important;
 }
 
-/* 7. Secondary Buttons ("Использовать единый вход", "Прочее") */
+/* 7. Secondary Buttons & Enterprise SSO Button */
 .layout_frontend [buttonType="secondary"],
 .layout_frontend button[type="button"]:not([buttonType="primary"]):not([buttonType="side-nav"]):not([aria-label]) {
     background: #1e293b !important;
@@ -175,7 +224,8 @@ bit-landing-card > div {
     color: #e2e8f0 !important;
     border-radius: 8px !important;
     font-weight: 500 !important;
-    padding: 9px 18px !important;
+    padding: 10px 18px !important;
+    height: 42px !important;
     transition: all 0.2s ease !important;
 }
 
@@ -186,7 +236,23 @@ bit-landing-card > div {
     color: #ffffff !important;
 }
 
-/* 8. Links ("Создать аккаунт") & Footer */
+/* Prominent Enterprise SSO button */
+.layout_frontend .vw-sso-login,
+.layout_frontend button:has(> bit-icon[name="bwi-enterprise"]) {
+    background: linear-gradient(135deg, rgba(14, 165, 233, 0.15), rgba(99, 102, 241, 0.15)) !important;
+    border: 1px solid rgba(56, 189, 248, 0.45) !important;
+    color: #38bdf8 !important;
+    font-weight: 600 !important;
+}
+
+.layout_frontend .vw-sso-login:hover,
+.layout_frontend button:has(> bit-icon[name="bwi-enterprise"]):hover {
+    background: linear-gradient(135deg, rgba(14, 165, 233, 0.25), rgba(99, 102, 241, 0.25)) !important;
+    border-color: #38bdf8 !important;
+    box-shadow: 0 0 15px rgba(56, 189, 248, 0.2) !important;
+}
+
+/* 8. Links ("Создать аккаунт", "Войти") & Footer Rebranding */
 .layout_frontend a {
     color: #38bdf8 !important;
     font-weight: 500 !important;
@@ -199,8 +265,25 @@ bit-landing-card > div {
     text-decoration: underline !important;
 }
 
-.layout_frontend bit-landing-footer,
+/* Rebrand footer title */
+.layout_frontend footer [bitTypography="body2"]:first-of-type {
+    font-size: 0 !important;
+}
+.layout_frontend footer [bitTypography="body2"]:first-of-type::after {
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    color: #94a3b8 !important;
+    content: "NovusWarden Web 2026.11" !important;
+}
+
+/* Rebrand footer disclaimer */
 .layout_frontend #vw-disclaimer {
-    color: #64748b !important;
+    font-size: 0 !important;
+    line-height: 1.5 !important;
+}
+.layout_frontend #vw-disclaimer::after {
     font-size: 11px !important;
+    color: #64748b !important;
+    display: block !important;
+    content: "NovusWarden Community Edition • Разработано и поддерживается SGC-NOVUS" !important;
 }

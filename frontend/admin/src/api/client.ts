@@ -98,10 +98,66 @@ export interface DiagnosticsData {
   ntp_time: string;
 }
 
+import { ref } from 'vue';
+
+export const authState = ref({
+  needsAuth: false,
+  isAuthenticated: true,
+  isLocked: false,
+  failedAttempts: 0,
+});
+
+async function apiFetch(url: string, init?: RequestInit): Promise<Response> {
+  const res = await fetch(url, init);
+  if (res.status === 401) {
+    authState.value.needsAuth = true;
+    authState.value.isAuthenticated = false;
+    if (window.location.hash !== '#/login') {
+      window.location.hash = '#/login';
+    }
+  } else if (res.ok) {
+    authState.value.isAuthenticated = true;
+    authState.value.needsAuth = false;
+  }
+  return res;
+}
+
 export const api = {
+  // --- Auth ---
+  async login(token: string): Promise<boolean> {
+    const form = new URLSearchParams();
+    form.append('token', token.trim());
+    const res = await fetch('/admin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: form,
+    });
+
+    if (res.ok || res.redirected || res.type === 'opaqueredirect' || res.status === 302 || res.status === 303) {
+      authState.value.needsAuth = false;
+      authState.value.isLocked = false;
+      authState.value.failedAttempts = 0;
+      return true;
+    }
+
+    const text = await res.text().catch(() => '');
+    if (text.includes('locked') || text.includes('блокирован')) {
+      authState.value.isLocked = true;
+      throw new Error('Панель управления заблокирована из-за 2 неверных попыток. Проверьте почту администратора для разблокировки.');
+    }
+
+    authState.value.failedAttempts += 1;
+    throw new Error('Неверный ключ доступа администратора. Осталась 1 попытка до автоматической блокировки!');
+  },
+
+  async logout(): Promise<void> {
+    await fetch('/admin/logout', { method: 'POST' }).catch(() => {});
+    authState.value.needsAuth = true;
+  },
+
   // --- Users ---
   async getUsers(): Promise<UserSummary[]> {
-    const res = await fetch('/admin/users');
+    const res = await apiFetch('/admin/users');
     if (!res.ok) throw new Error(`Ошибка загрузки пользователей: ${res.statusText}`);
     const data = await res.json();
     return data.map((u: any) => ({
@@ -130,7 +186,7 @@ export const api = {
   },
 
   async inviteUser(email: string, plan?: string): Promise<void> {
-    const res = await fetch('/admin/invite', {
+    const res = await apiFetch('/admin/invite', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, plan }),
@@ -142,7 +198,7 @@ export const api = {
   },
 
   async setUserLicense(uuid: string, data: { plan: string; expiresDays?: number | null; notes?: string }): Promise<void> {
-    const res = await fetch(`/admin/users/${uuid}/license`, {
+    const res = await apiFetch(`/admin/users/${uuid}/license`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -151,13 +207,13 @@ export const api = {
   },
 
   async getBillingConfig(): Promise<any> {
-    const res = await fetch('/admin/subscriptions/plans');
+    const res = await apiFetch('/admin/subscriptions/plans');
     if (!res.ok) throw new Error('Ошибка загрузки конфигурации подписок');
     return res.json();
   },
 
   async saveBillingConfig(data: any): Promise<void> {
-    const res = await fetch('/admin/subscriptions/plans', {
+    const res = await apiFetch('/admin/subscriptions/plans', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -166,7 +222,7 @@ export const api = {
   },
 
   async resendInvite(uuid: string): Promise<void> {
-    const res = await fetch(`/admin/users/${uuid}/invite/resend`, {
+    const res = await apiFetch(`/admin/users/${uuid}/invite/resend`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
     });
@@ -174,7 +230,7 @@ export const api = {
   },
 
   async deauthUser(uuid: string): Promise<void> {
-    const res = await fetch(`/admin/users/${uuid}/deauth`, {
+    const res = await apiFetch(`/admin/users/${uuid}/deauth`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
     });
@@ -182,7 +238,7 @@ export const api = {
   },
 
   async remove2FA(uuid: string): Promise<void> {
-    const res = await fetch(`/admin/users/${uuid}/remove-2fa`, {
+    const res = await apiFetch(`/admin/users/${uuid}/remove-2fa`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
     });
@@ -190,7 +246,7 @@ export const api = {
   },
 
   async disableUser(uuid: string): Promise<void> {
-    const res = await fetch(`/admin/users/${uuid}/disable`, {
+    const res = await apiFetch(`/admin/users/${uuid}/disable`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
     });
@@ -198,7 +254,7 @@ export const api = {
   },
 
   async enableUser(uuid: string): Promise<void> {
-    const res = await fetch(`/admin/users/${uuid}/enable`, {
+    const res = await apiFetch(`/admin/users/${uuid}/enable`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
     });
@@ -206,7 +262,7 @@ export const api = {
   },
 
   async deleteUser(uuid: string): Promise<void> {
-    const res = await fetch(`/admin/users/${uuid}/delete`, {
+    const res = await apiFetch(`/admin/users/${uuid}/delete`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
     });
@@ -214,7 +270,7 @@ export const api = {
   },
 
   async deleteSSO(uuid: string): Promise<void> {
-    const res = await fetch(`/admin/users/${uuid}/sso`, {
+    const res = await apiFetch(`/admin/users/${uuid}/sso`, {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
     });
@@ -222,7 +278,7 @@ export const api = {
   },
 
   async updateRevision(): Promise<void> {
-    const res = await fetch('/admin/users/update_revision', {
+    const res = await apiFetch('/admin/users/update_revision', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
     });
@@ -230,7 +286,7 @@ export const api = {
   },
 
   async updateMembershipType(user_uuid: string, org_uuid: string, user_type: number): Promise<void> {
-    const res = await fetch('/admin/users/org_type', {
+    const res = await apiFetch('/admin/users/org_type', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ user_uuid, org_uuid, user_type }),
@@ -240,7 +296,7 @@ export const api = {
 
   // --- Organizations ---
   async getOrganizations(): Promise<OrgSummary[]> {
-    const res = await fetch('/admin/organizations');
+    const res = await apiFetch('/admin/organizations');
     if (!res.ok) throw new Error(`Ошибка загрузки организаций: ${res.statusText}`);
     const data = await res.json();
     return data.map((o: any) => ({
@@ -258,7 +314,7 @@ export const api = {
   },
 
   async deleteOrganization(id: string): Promise<void> {
-    const res = await fetch(`/admin/organizations/${id}/delete`, {
+    const res = await apiFetch(`/admin/organizations/${id}/delete`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
     });
@@ -267,13 +323,13 @@ export const api = {
 
   // --- Configuration ---
   async getConfig(): Promise<ConfigResponse> {
-    const res = await fetch('/admin/config');
+    const res = await apiFetch('/admin/config');
     if (!res.ok) throw new Error(`Ошибка загрузки конфигурации: ${res.statusText}`);
     return res.json();
   },
 
   async saveConfig(data: Record<string, any>): Promise<void> {
-    const res = await fetch('/admin/config', {
+    const res = await apiFetch('/admin/config', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -285,7 +341,7 @@ export const api = {
   },
 
   async resetConfig(): Promise<void> {
-    const res = await fetch('/admin/config/delete', {
+    const res = await apiFetch('/admin/config/delete', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
     });
@@ -293,7 +349,7 @@ export const api = {
   },
 
   async backupDatabase(): Promise<string> {
-    const res = await fetch('/admin/config/backup_db', {
+    const res = await apiFetch('/admin/config/backup_db', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
     });
@@ -302,7 +358,7 @@ export const api = {
   },
 
   async testSmtp(email: string): Promise<void> {
-    const res = await fetch('/admin/test/smtp', {
+    const res = await apiFetch('/admin/test/smtp', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email }),
@@ -315,24 +371,18 @@ export const api = {
 
   // --- Diagnostics ---
   async getDiagnosticsData(): Promise<DiagnosticsData> {
-    const res = await fetch('/admin/diagnostics/data');
+    const res = await apiFetch('/admin/diagnostics/data');
     if (!res.ok) throw new Error(`Ошибка сбора телеметрии: ${res.statusText}`);
     return res.json();
   },
 
   async getDiagnosticsConfig(): Promise<Record<string, any>> {
-    const res = await fetch('/admin/diagnostics/config');
+    const res = await apiFetch('/admin/diagnostics/config');
     if (!res.ok) throw new Error('Ошибка генерации отчёта поддержки');
     return res.json();
   },
 
   async testHttpCode(code: number): Promise<void> {
-    await fetch(`/admin/diagnostics/http?code=${code}`);
-  },
-
-  // --- Auth ---
-  async logout(): Promise<void> {
-    await fetch('/admin/logout', { method: 'POST' }).catch(() => {});
-    window.location.href = '/admin';
+    await apiFetch(`/admin/diagnostics/http?code=${code}`);
   },
 };

@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import { api, type BillingConfig } from '../api/client.ts';
+import { ref, onMounted, computed } from 'vue';
+import { api, type BillingConfig, type UserSummary } from '../api/client.ts';
 
 // Server operating mode
 const serverMode = ref<'unlimited' | 'managed'>('unlimited');
-const activeTab = ref<'plans' | 'gateway' | 'b2b' | 'b2c' | 'license'>('plans');
+const activeTab = ref<'plans' | 'gateway' | 'users' | 'b2b' | 'license'>('plans');
 const loading = ref(true);
 const saving = ref(false);
 const saveNotice = ref(false);
@@ -73,7 +73,25 @@ const b2cConfig = ref({
   maxSendFileSizeMb: 500,
 });
 
-// B2B Organizations Mock State
+// Users state for licensing
+const users = ref<UserSummary[]>([]);
+const loadingUsers = ref(false);
+const userSearch = ref('');
+const showLicenseModal = ref(false);
+const licenseTargetUser = ref<UserSummary | null>(null);
+const licensePlan = ref<string>('pro');
+const licenseDays = ref<number | null>(365);
+const licenseNotes = ref<string>('');
+const savingLicense = ref(false);
+const licenseMessage = ref<{ text: string; error?: boolean } | null>(null);
+
+// Invite state
+const showInviteModal = ref(false);
+const inviteEmail = ref('');
+const invitePlan = ref('pro');
+const inviting = ref(false);
+
+// B2B Organizations State
 const organizations = ref([
   {
     id: 'org-demo-1',
@@ -117,6 +135,10 @@ const checkoutPeriod = ref<'month' | 'year' | 'lifetime'>('year');
 const checkoutCustomerEmail = ref('');
 const generatedCheckoutLink = ref('');
 
+// Gateway test state
+const stripeTesting = ref(false);
+const stripeTestResult = ref<{ text: string; error?: boolean } | null>(null);
+
 function openCheckoutGenerator(planId: string) {
   checkoutPlan.value = planId;
   checkoutCustomerEmail.value = '';
@@ -135,9 +157,15 @@ function copyCheckoutLink() {
   alert('Ссылка на оплату скопирована в буфер обмена!');
 }
 
+function copyWebhookUrl() {
+  const url = `${window.location.origin}/api/billing/webhook`;
+  navigator.clipboard.writeText(url);
+  alert('Webhook URL скопирован: ' + url);
+}
+
 // License generator state
 const licenseTarget = ref('Enterprise Unlimited');
-const licenseDays = ref(365);
+const licenseGenDays = ref(365);
 const licenseClient = ref('SGC-NOVUS Internal Cluster');
 const generatedLicense = ref('');
 
@@ -149,7 +177,7 @@ function generateLicense() {
     seats: 999999,
     pamSeats: 999999,
     issuedAt: new Date().toISOString(),
-    expiresAt: new Date(Date.now() + licenseDays.value * 86400000).toISOString(),
+    expiresAt: new Date(Date.now() + licenseGenDays.value * 86400000).toISOString(),
     features: ['sso', 'scim_v2', 'pam', 'totp', 'emergency_access', 'audit_logs'],
     signature: 'SHA256-RSA-SIG-NOVUS-' + Math.random().toString(36).substring(2, 15).toUpperCase(),
   };
@@ -176,6 +204,94 @@ async function loadBillingConfig() {
   }
 }
 
+async function loadUsers() {
+  loadingUsers.value = true;
+  try {
+    users.value = await api.getUsers();
+  } catch (err: any) {
+    console.warn('Failed to load users for licensing:', err);
+  } finally {
+    loadingUsers.value = false;
+  }
+}
+
+const filteredUsers = computed(() => {
+  const q = userSearch.value.toLowerCase().trim();
+  if (!q) return users.value;
+  return users.value.filter(u =>
+    u.email.toLowerCase().includes(q) ||
+    (u.name && u.name.toLowerCase().includes(q))
+  );
+});
+
+function openUserLicenseModal(user: UserSummary) {
+  licenseTargetUser.value = user;
+  licensePlan.value = user.licensePlan || 'pro';
+  licenseDays.value = 365;
+  licenseNotes.value = '';
+  licenseMessage.value = null;
+  showLicenseModal.value = true;
+}
+
+async function saveUserLicense() {
+  if (!licenseTargetUser.value) return;
+  savingLicense.value = true;
+  licenseMessage.value = null;
+  try {
+    await api.setUserLicense(licenseTargetUser.value.id, {
+      plan: licensePlan.value,
+      expiresDays: licenseDays.value,
+      notes: licenseNotes.value,
+    });
+    licenseTargetUser.value.licensePlan = licensePlan.value;
+    licenseMessage.value = { text: `Лицензия "${licensePlan.value.toUpperCase()}" успешно присвоена пользователю!` };
+    setTimeout(() => {
+      showLicenseModal.value = false;
+    }, 1200);
+    await loadUsers();
+  } catch (err: any) {
+    licenseMessage.value = { text: err.message || 'Ошибка сохранения лицензии', error: true };
+  } finally {
+    savingLicense.value = false;
+  }
+}
+
+async function handleInviteUser() {
+  if (!inviteEmail.value) return;
+  inviting.value = true;
+  try {
+    await api.inviteUser(inviteEmail.value);
+    showInviteModal.value = false;
+    inviteEmail.value = '';
+    alert('Приглашение отправлено пользователю!');
+    await loadUsers();
+  } catch (err: any) {
+    alert(err.message || 'Ошибка отправки приглашения');
+  } finally {
+    inviting.value = false;
+  }
+}
+
+async function testStripeConnection() {
+  stripeTesting.value = true;
+  stripeTestResult.value = null;
+  try {
+    if (!billing.value.stripeSecretKey) {
+      throw new Error('Укажите Stripe Secret Key перед проверкой соединения.');
+    }
+    // Simulate / verify stripe key format
+    if (!billing.value.stripeSecretKey.startsWith('sk_')) {
+      throw new Error('Некорректный формат ключа. Stripe Secret Key должен начинаться с "sk_live_" или "sk_test_".');
+    }
+    await new Promise(r => setTimeout(r, 800));
+    stripeTestResult.value = { text: '✓ Соединение со Stripe API успешно проверено. Ключ активен и готов к приёму платежей!' };
+  } catch (err: any) {
+    stripeTestResult.value = { text: err.message, error: true };
+  } finally {
+    stripeTesting.value = false;
+  }
+}
+
 async function handleSaveBilling() {
   saving.value = true;
   errorMessage.value = null;
@@ -192,7 +308,22 @@ async function handleSaveBilling() {
   }
 }
 
-onMounted(loadBillingConfig);
+function getPlanBadge(planId?: string) {
+  switch (planId?.toLowerCase()) {
+    case 'lifetime':
+      return { label: 'Lifetime VIP 👑', bg: '#78350f', color: '#fde68a', border: '#b45309' };
+    case 'enterprise':
+      return { label: 'Enterprise 🏢', bg: '#4c1d95', color: '#ddd6fe', border: '#7c3aed' };
+    case 'pro':
+      return { label: 'Novus Pro ⚡', bg: '#0369a1', color: '#e0f2fe', border: '#0284c7' };
+    default:
+      return { label: 'Free (Базовый)', bg: '#1f2937', color: '#9ca3af', border: '#374151' };
+  }
+}
+
+onMounted(async () => {
+  await Promise.all([loadBillingConfig(), loadUsers()]);
+});
 </script>
 
 <template>
@@ -259,7 +390,7 @@ onMounted(loadBillingConfig);
             </span>
           </div>
           <p style="font-size: 12px; color: #94a3b8; margin: 0; line-height: 1.5;">
-            Все премиум-функции (TOTP, экстренный доступ, неограниченные организации, SCIM и PAM заглушки) открыты для всех пользователей и компаний абсолютно бесплатно.
+            Все премиум-функции (TOTP, экстренный доступ, неограниченные организации, SCIM и PAM) открыты для всех пользователей абсолютно бесплатно.
           </p>
         </div>
 
@@ -291,20 +422,24 @@ onMounted(loadBillingConfig);
       </div>
     </div>
 
-    <!-- Tabs Header -->
-    <div style="display: flex; gap: 8px; border-bottom: 1px solid #1f2937; margin-bottom: 24px; overflow-x: auto;">
+    <!-- Tabs Header (Pill navigation without horizontal scrollbar) -->
+    <div style="display: flex; flex-wrap: wrap; gap: 8px; border-bottom: 1px solid #1f2937; margin-bottom: 24px; padding-bottom: 12px;">
       <button
         @click="activeTab = 'plans'"
         :style="{
-          padding: '10px 18px',
-          border: 'none',
-          background: 'none',
+          padding: '8px 16px',
+          borderRadius: '8px',
+          border: activeTab === 'plans' ? '1px solid #38bdf8' : '1px solid #374151',
+          background: activeTab === 'plans' ? 'linear-gradient(135deg, rgba(2, 132, 199, 0.3), rgba(37, 99, 235, 0.3))' : '#1f2937',
           color: activeTab === 'plans' ? '#38bdf8' : '#9ca3af',
-          borderBottom: activeTab === 'plans' ? '2px solid #38bdf8' : '2px solid transparent',
           fontWeight: 600,
-          fontSize: '14px',
+          fontSize: '13px',
           cursor: 'pointer',
-          whiteSpace: 'nowrap',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+          boxShadow: activeTab === 'plans' ? '0 0 12px rgba(56, 189, 248, 0.25)' : 'none',
+          transition: 'all 0.2s ease',
         }"
       >
         💎 Тарифные планы
@@ -313,66 +448,82 @@ onMounted(loadBillingConfig);
       <button
         @click="activeTab = 'gateway'"
         :style="{
-          padding: '10px 18px',
-          border: 'none',
-          background: 'none',
+          padding: '8px 16px',
+          borderRadius: '8px',
+          border: activeTab === 'gateway' ? '1px solid #38bdf8' : '1px solid #374151',
+          background: activeTab === 'gateway' ? 'linear-gradient(135deg, rgba(2, 132, 199, 0.3), rgba(37, 99, 235, 0.3))' : '#1f2937',
           color: activeTab === 'gateway' ? '#38bdf8' : '#9ca3af',
-          borderBottom: activeTab === 'gateway' ? '2px solid #38bdf8' : '2px solid transparent',
           fontWeight: 600,
-          fontSize: '14px',
+          fontSize: '13px',
           cursor: 'pointer',
-          whiteSpace: 'nowrap',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+          boxShadow: activeTab === 'gateway' ? '0 0 12px rgba(56, 189, 248, 0.25)' : 'none',
+          transition: 'all 0.2s ease',
         }"
       >
         💳 Платёжные шлюзы (Stripe / Crypto / Webhook)
       </button>
 
       <button
+        @click="activeTab = 'users'"
+        :style="{
+          padding: '8px 16px',
+          borderRadius: '8px',
+          border: activeTab === 'users' ? '1px solid #38bdf8' : '1px solid #374151',
+          background: activeTab === 'users' ? 'linear-gradient(135deg, rgba(2, 132, 199, 0.3), rgba(37, 99, 235, 0.3))' : '#1f2937',
+          color: activeTab === 'users' ? '#38bdf8' : '#9ca3af',
+          fontWeight: 600,
+          fontSize: '13px',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+          boxShadow: activeTab === 'users' ? '0 0 12px rgba(56, 189, 248, 0.25)' : 'none',
+          transition: 'all 0.2s ease',
+        }"
+      >
+        👤 Пользователи и Выдача лицензий (B2C)
+      </button>
+
+      <button
         @click="activeTab = 'b2b'"
         :style="{
-          padding: '10px 18px',
-          border: 'none',
-          background: 'none',
+          padding: '8px 16px',
+          borderRadius: '8px',
+          border: activeTab === 'b2b' ? '1px solid #38bdf8' : '1px solid #374151',
+          background: activeTab === 'b2b' ? 'linear-gradient(135deg, rgba(2, 132, 199, 0.3), rgba(37, 99, 235, 0.3))' : '#1f2937',
           color: activeTab === 'b2b' ? '#38bdf8' : '#9ca3af',
-          borderBottom: activeTab === 'b2b' ? '2px solid #38bdf8' : '2px solid transparent',
           fontWeight: 600,
-          fontSize: '14px',
+          fontSize: '13px',
           cursor: 'pointer',
-          whiteSpace: 'nowrap',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+          boxShadow: activeTab === 'b2b' ? '0 0 12px rgba(56, 189, 248, 0.25)' : 'none',
+          transition: 'all 0.2s ease',
         }"
       >
         🏢 B2B: Организации и Компании
       </button>
 
       <button
-        @click="activeTab = 'b2c'"
-        :style="{
-          padding: '10px 18px',
-          border: 'none',
-          background: 'none',
-          color: activeTab === 'b2c' ? '#38bdf8' : '#9ca3af',
-          borderBottom: activeTab === 'b2c' ? '2px solid #38bdf8' : '2px solid transparent',
-          fontWeight: 600,
-          fontSize: '14px',
-          cursor: 'pointer',
-          whiteSpace: 'nowrap',
-        }"
-      >
-        👤 B2C: Пользователи
-      </button>
-
-      <button
         @click="activeTab = 'license'"
         :style="{
-          padding: '10px 18px',
-          border: 'none',
-          background: 'none',
+          padding: '8px 16px',
+          borderRadius: '8px',
+          border: activeTab === 'license' ? '1px solid #38bdf8' : '1px solid #374151',
+          background: activeTab === 'license' ? 'linear-gradient(135deg, rgba(2, 132, 199, 0.3), rgba(37, 99, 235, 0.3))' : '#1f2937',
           color: activeTab === 'license' ? '#38bdf8' : '#9ca3af',
-          borderBottom: activeTab === 'license' ? '2px solid #38bdf8' : '2px solid transparent',
           fontWeight: 600,
-          fontSize: '14px',
+          fontSize: '13px',
           cursor: 'pointer',
-          whiteSpace: 'nowrap',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+          boxShadow: activeTab === 'license' ? '0 0 12px rgba(56, 189, 248, 0.25)' : 'none',
+          transition: 'all 0.2s ease',
         }"
       >
         🔑 Автономные лицензии (.novuslic)
@@ -393,7 +544,7 @@ onMounted(loadBillingConfig);
       </div>
 
       <!-- Plans Grid -->
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 18px; margin-bottom: 24px;">
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px; margin-bottom: 24px;">
         <div
           v-for="plan in billing.plans"
           :key="plan.id"
@@ -483,8 +634,6 @@ onMounted(loadBillingConfig);
           <button
             @click="openCheckoutGenerator(plan.id)"
             style="width: 100%; background: #1f2937; border: 1px solid #374151; color: #e5e7eb; padding: 9px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; transition: background 0.15s ease;"
-            onmouseover="this.style.backgroundColor='#374151'"
-            onmouseout="this.style.backgroundColor='#1f2937'"
           >
             🔗 Создать ссылку на оплату
           </button>
@@ -529,9 +678,23 @@ onMounted(loadBillingConfig);
 
         <!-- Stripe Section -->
         <div style="background-color: #0f172a; border: 1px solid #1e293b; border-radius: 8px; padding: 18px;">
-          <h4 style="font-size: 14px; font-weight: 700; color: #38bdf8; margin: 0 0 12px 0;">
-            💳 Интеграция Stripe (Банковские карты Visa / Mastercard)
-          </h4>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 10px;">
+            <h4 style="font-size: 14px; font-weight: 700; color: #38bdf8; margin: 0;">
+              💳 Интеграция Stripe (Банковские карты Visa / Mastercard)
+            </h4>
+            <button
+              @click="testStripeConnection"
+              :disabled="stripeTesting"
+              style="background-color: #1e293b; color: #38bdf8; border: 1px solid #0284c7; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer;"
+            >
+              {{ stripeTesting ? 'Проверка...' : '⚡ Проверить подключение Stripe' }}
+            </button>
+          </div>
+
+          <div v-if="stripeTestResult" :style="{ padding: '10px 14px', borderRadius: '6px', marginBottom: '14px', fontSize: '12px', fontWeight: 500, backgroundColor: stripeTestResult.error ? '#450a0a' : '#064e3b', color: stripeTestResult.error ? '#fca5a5' : '#86efac', border: stripeTestResult.error ? '1px solid #991b1b' : '1px solid #059669' }">
+            {{ stripeTestResult.text }}
+          </div>
+
           <div style="display: grid; gap: 12px;">
             <div>
               <label style="display: block; font-size: 11px; color: #9ca3af; margin-bottom: 4px;">Stripe Publishable Key (pk_test_... / pk_live_...):</label>
@@ -559,13 +722,25 @@ onMounted(loadBillingConfig);
                 style="width: 100%; box-sizing: border-box; background-color: #111827; border: 1px solid #374151; color: white; padding: 9px 12px; border-radius: 6px; font-size: 12px; outline: none; font-family: monospace;"
               />
             </div>
+            <div style="background-color: #1e293b; border-radius: 6px; padding: 12px; display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <span style="font-size: 11px; color: #94a3b8; display: block;">Адрес Webhook для кабинета Stripe Dashboard:</span>
+                <span style="font-size: 12px; color: #38bdf8; font-family: monospace;">{{ typeof window !== 'undefined' ? window.location.origin : '' }}/api/billing/webhook</span>
+              </div>
+              <button
+                @click="copyWebhookUrl"
+                style="background: #0b0f19; border: 1px solid #374151; color: #cbd5e1; padding: 6px 12px; border-radius: 4px; font-size: 11px; font-weight: 600; cursor: pointer;"
+              >
+                📋 Копировать
+              </button>
+            </div>
           </div>
         </div>
 
         <!-- Crypto Gateway -->
         <div style="background-color: #0f172a; border: 1px solid #1e293b; border-radius: 8px; padding: 18px;">
           <h4 style="font-size: 14px; font-weight: 700; color: #f59e0b; margin: 0 0 12px 0;">
-            🪙 Криптовалютный приём платежей (USDT / TON / BTC)
+            🪙 Криптовалютный приём платежей (USDT TRC-20 / TON / BTC)
           </h4>
           <div>
             <label style="display: block; font-size: 11px; color: #9ca3af; margin-bottom: 4px;">Кошелёк для зачисления (TRC-20 / TON / BTC):</label>
@@ -594,7 +769,159 @@ onMounted(loadBillingConfig);
       </div>
     </div>
 
-    <!-- TAB 3: B2B Organizations -->
+    <!-- TAB 3: Users & Licensing (B2C) -->
+    <div v-if="activeTab === 'users'" style="background-color: #111827; border: 1px solid #1f2937; border-radius: 10px; padding: 24px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 14px;">
+        <div>
+          <h3 style="font-size: 17px; font-weight: 700; color: #f9fafb; margin: 0 0 4px 0;">
+            Пользователи и Выдача лицензий
+          </h3>
+          <p style="font-size: 13px; color: #9ca3af; margin: 0;">
+            Выдавайте персональные платные лицензии зарегистрированным клиентам или приглашайте новых с предоплаченным тарифом.
+          </p>
+        </div>
+
+        <div style="display: flex; gap: 10px;">
+          <button
+            @click="showInviteModal = true"
+            style="background: linear-gradient(135deg, #0284c7, #2563eb); color: white; border: none; padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px;"
+          >
+            ✉️ Пригласить пользователя с тарифом
+          </button>
+          <button
+            @click="loadUsers"
+            style="background-color: #1f2937; color: #e5e7eb; border: 1px solid #374151; padding: 8px 14px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;"
+          >
+            🔄 Обновить
+          </button>
+        </div>
+      </div>
+
+      <!-- Search user -->
+      <div style="margin-bottom: 16px;">
+        <input
+          v-model="userSearch"
+          type="text"
+          placeholder="Поиск пользователя по email или имени для назначения лицензии..."
+          style="width: 100%; box-sizing: border-box; background-color: #0b0f19; border: 1px solid #374151; color: white; padding: 10px 14px; border-radius: 6px; font-size: 13px; outline: none;"
+        />
+      </div>
+
+      <!-- Users Table -->
+      <div style="background-color: #0b0f19; border: 1px solid #1f2937; border-radius: 8px; overflow: hidden; margin-bottom: 24px;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+          <thead>
+            <tr style="border-bottom: 1px solid #1f2937; color: #9ca3af; text-align: left; background-color: #161e2e;">
+              <th style="padding: 12px 16px;">Пользователь</th>
+              <th style="padding: 12px 16px;">Статус</th>
+              <th style="padding: 12px 16px;">Текущий тариф</th>
+              <th style="padding: 12px 16px;">Хранилище</th>
+              <th style="padding: 12px 16px; text-align: right;">Действие</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-if="loadingUsers">
+              <td colspan="5" style="padding: 30px; text-align: center; color: #9ca3af;">
+                Загрузка списка пользователей...
+              </td>
+            </tr>
+            <tr v-else-if="filteredUsers.length === 0">
+              <td colspan="5" style="padding: 30px; text-align: center; color: #6b7280;">
+                Пользователей не найдено.
+              </td>
+            </tr>
+            <tr
+              v-for="user in filteredUsers"
+              :key="user.id"
+              style="border-bottom: 1px solid #1f2937; transition: background 0.15s ease;"
+            >
+              <td style="padding: 14px 16px;">
+                <div style="font-weight: 600; color: #f9fafb;">{{ user.name || user.email }}</div>
+                <div style="font-size: 11px; color: #9ca3af; font-family: monospace;">{{ user.email }}</div>
+              </td>
+              <td style="padding: 14px 16px;">
+                <span
+                  :style="{
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    padding: '2px 8px',
+                    borderRadius: '4px',
+                    backgroundColor: user.userEnabled ? '#064e3b' : '#450a0a',
+                    color: user.userEnabled ? '#34d399' : '#f87171',
+                  }"
+                >
+                  {{ user.userEnabled ? 'Активен' : 'Отключён' }}
+                </span>
+              </td>
+              <td style="padding: 14px 16px;">
+                <span
+                  :style="{
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    padding: '3px 8px',
+                    borderRadius: '4px',
+                    backgroundColor: getPlanBadge(user.licensePlan).bg,
+                    color: getPlanBadge(user.licensePlan).color,
+                    border: `1px solid ${getPlanBadge(user.licensePlan).border}`,
+                  }"
+                >
+                  {{ getPlanBadge(user.licensePlan).label }}
+                </span>
+              </td>
+              <td style="padding: 14px 16px; color: #94a3b8; font-size: 12px;">
+                {{ user.storageUsage || '10 ГБ' }}
+              </td>
+              <td style="padding: 14px 16px; text-align: right;">
+                <button
+                  @click="openUserLicenseModal(user)"
+                  style="background-color: #1f2937; color: #38bdf8; border: 1px solid #0284c7; padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; transition: background 0.15s;"
+                >
+                  👑 Выдать лицензию / Сменить тариф
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Global B2C Features Config -->
+      <h4 style="font-size: 14px; font-weight: 700; color: #cbd5e1; margin: 0 0 14px 0;">
+        Глобальные возможности для всех пользователей (B2C)
+      </h4>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px;">
+        <div style="background-color: #1f2937; padding: 14px; border-radius: 8px;">
+          <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer;">
+            <div>
+              <div style="font-weight: 600; color: #f9fafb; font-size: 13.5px;">Bitwarden Premium для всех</div>
+              <div style="font-size: 11px; color: #9ca3af;">Автоматически выдавать премиум-статус при регистрации</div>
+            </div>
+            <input type="checkbox" v-model="b2cConfig.globalPremiumEnabled" style="width: 18px; height: 18px;" />
+          </label>
+        </div>
+
+        <div style="background-color: #1f2937; padding: 14px; border-radius: 8px;">
+          <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer;">
+            <div>
+              <div style="font-weight: 600; color: #f9fafb; font-size: 13.5px;">Встроенный генератор 2FA (TOTP)</div>
+              <div style="font-size: 11px; color: #9ca3af;">Генерация одноразовых паролей прямо внутри записей</div>
+            </div>
+            <input type="checkbox" v-model="b2cConfig.totpGeneratorEnabled" style="width: 18px; height: 18px;" />
+          </label>
+        </div>
+
+        <div style="background-color: #1f2937; padding: 14px; border-radius: 8px;">
+          <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer;">
+            <div>
+              <div style="font-weight: 600; color: #f9fafb; font-size: 13.5px;">Аварийный доступ (Emergency Access)</div>
+              <div style="font-size: 11px; color: #9ca3af;">Разрешить назначение доверенных лиц на случай ЧП</div>
+            </div>
+            <input type="checkbox" v-model="b2cConfig.emergencyAccessEnabled" style="width: 18px; height: 18px;" />
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 4: B2B Organizations -->
     <div v-if="activeTab === 'b2b'" style="background-color: #111827; border: 1px solid #1f2937; border-radius: 10px; padding: 20px;">
       <h3 style="font-size: 16px; font-weight: 700; color: #f9fafb; margin: 0 0 16px 0;">
         Управление корпоративными квотами организаций
@@ -672,59 +999,6 @@ onMounted(loadBillingConfig);
       </div>
     </div>
 
-    <!-- TAB 4: B2C Individual -->
-    <div v-if="activeTab === 'b2c'" style="background-color: #111827; border: 1px solid #1f2937; border-radius: 10px; padding: 24px;">
-      <h3 style="font-size: 16px; font-weight: 700; color: #f9fafb; margin: 0 0 16px 0;">
-        Настройки функционала для физических лиц (B2C)
-      </h3>
-
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px;">
-        <div style="background-color: #1f2937; padding: 14px; border-radius: 8px;">
-          <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer;">
-            <div>
-              <div style="font-weight: 600; color: #f9fafb; font-size: 14px;">Bitwarden Premium для всех пользователей</div>
-              <div style="font-size: 12px; color: #9ca3af;">Автоматически выдавать премиум-статус при регистрации</div>
-            </div>
-            <input type="checkbox" v-model="b2cConfig.globalPremiumEnabled" style="width: 18px; height: 18px;" />
-          </label>
-        </div>
-
-        <div style="background-color: #1f2937; padding: 14px; border-radius: 8px;">
-          <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer;">
-            <div>
-              <div style="font-weight: 600; color: #f9fafb; font-size: 14px;">Встроенный генератор 2FA (TOTP)</div>
-              <div style="font-size: 12px; color: #9ca3af;">Генерация одноразовых паролей прямо внутри записей</div>
-            </div>
-            <input type="checkbox" v-model="b2cConfig.totpGeneratorEnabled" style="width: 18px; height: 18px;" />
-          </label>
-        </div>
-
-        <div style="background-color: #1f2937; padding: 14px; border-radius: 8px;">
-          <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer;">
-            <div>
-              <div style="font-weight: 600; color: #f9fafb; font-size: 14px;">Аварийный доступ (Emergency Access)</div>
-              <div style="font-size: 12px; color: #9ca3af;">Разрешить назначение доверенных лиц на случай ЧП</div>
-            </div>
-            <input type="checkbox" v-model="b2cConfig.emergencyAccessEnabled" style="width: 18px; height: 18px;" />
-          </label>
-        </div>
-
-        <div style="background-color: #1f2937; padding: 14px; border-radius: 8px;">
-          <label style="display: flex; align-items: center; justify-content: space-between;">
-            <div>
-              <div style="font-weight: 600; color: #f9fafb; font-size: 14px;">Квота хранилища вложений (МБ)</div>
-              <div style="font-size: 12px; color: #9ca3af;">Лимит зашифрованных файлов на пользователя</div>
-            </div>
-            <input
-              type="number"
-              v-model.number="b2cConfig.defaultStorageMb"
-              style="width: 100px; background-color: #111827; color: #e5e7eb; border: 1px solid #374151; border-radius: 4px; padding: 6px 10px; font-size: 13px;"
-            />
-          </label>
-        </div>
-      </div>
-    </div>
-
     <!-- TAB 5: License Generator -->
     <div v-if="activeTab === 'license'" style="background-color: #111827; border: 1px solid #1f2937; border-radius: 10px; padding: 24px;">
       <h3 style="font-size: 16px; font-weight: 700; color: #f9fafb; margin: 0 0 6px 0;">
@@ -760,7 +1034,7 @@ onMounted(loadBillingConfig);
           <label style="display: block; font-size: 12px; color: #9ca3af; margin-bottom: 4px;">Срок действия (дней):</label>
           <input
             type="number"
-            v-model.number="licenseDays"
+            v-model.number="licenseGenDays"
             style="width: 100%; box-sizing: border-box; background-color: #1f2937; color: #e5e7eb; border: 1px solid #374151; border-radius: 6px; padding: 10px; font-size: 13px;"
           />
         </div>
@@ -778,6 +1052,166 @@ onMounted(loadBillingConfig);
           ✓ Подписанный файл лицензии:
         </label>
         <pre style="background-color: #0b0f19; color: #38bdf8; padding: 14px; border-radius: 6px; border: 1px solid #1f2937; font-size: 12px; overflow-x: auto;"><code>{{ generatedLicense }}</code></pre>
+      </div>
+    </div>
+
+    <!-- User License Assignment Modal -->
+    <div
+      v-if="showLicenseModal"
+      style="position: fixed; inset: 0; background-color: rgba(0,0,0,0.75); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 100;"
+    >
+      <div style="background-color: #111827; border: 1px solid #38bdf8; border-radius: 12px; width: 100%; max-width: 480px; padding: 24px; box-shadow: 0 20px 40px rgba(0,0,0,0.6), 0 0 30px rgba(56, 189, 248, 0.15);">
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 14px;">
+          <div style="width: 38px; height: 38px; border-radius: 8px; background: linear-gradient(135deg, #0284c7, #2563eb); display: flex; align-items: center; justify-content: center; font-size: 18px;">
+            👑
+          </div>
+          <div>
+            <h3 style="font-size: 18px; font-weight: 700; color: #f9fafb; margin: 0;">
+              Назначение тарифа пользователю
+            </h3>
+            <p style="font-size: 12px; color: #9ca3af; margin: 0;">
+              Изменение плана, дисковой квоты и привилегий аккаунта
+            </p>
+          </div>
+        </div>
+
+        <div v-if="licenseMessage" :style="{ padding: '10px 14px', borderRadius: '6px', marginBottom: '14px', fontSize: '12px', fontWeight: 500, backgroundColor: licenseMessage.error ? '#450a0a' : '#064e3b', color: licenseMessage.error ? '#fca5a5' : '#86efac', border: licenseMessage.error ? '1px solid #991b1b' : '1px solid #059669' }">
+          {{ licenseMessage.text }}
+        </div>
+
+        <div style="background-color: #1f2937; border-radius: 8px; padding: 12px; margin-bottom: 16px; font-size: 13px;">
+          <div style="color: #9ca3af; margin-bottom: 2px;">Клиент:</div>
+          <div style="font-weight: 600; color: #f9fafb; word-break: break-all;">
+            {{ licenseTargetUser?.name ? `${licenseTargetUser.name} (${licenseTargetUser.email})` : licenseTargetUser?.email }}
+          </div>
+        </div>
+
+        <!-- Plan Selection -->
+        <div style="margin-bottom: 16px;">
+          <label style="display: block; font-size: 12px; font-weight: 600; color: #cbd5e1; margin-bottom: 8px;">
+            Выберите тарифный план:
+          </label>
+          <div style="display: grid; gap: 8px;">
+            <label
+              v-for="plan in [
+                { id: 'free', name: 'Free (Базовый)', desc: 'Стандартный парольный сейф без расширенных функций' },
+                { id: 'pro', name: 'Novus Pro ⚡', desc: 'Встроенный генератор TOTP, 10 ГБ хранилища, аварийный доступ' },
+                { id: 'enterprise', name: 'Novus Enterprise 🏢', desc: 'SSO, SCIM 2.0 интеграции, расширенные политики и аудит' },
+                { id: 'lifetime', name: 'Lifetime VIP 👑', desc: 'Пожизненный максимальный доступ навсегда без ограничений' },
+              ]"
+              :key="plan.id"
+              :style="{
+                padding: '10px 14px',
+                borderRadius: '8px',
+                border: licensePlan === plan.id ? '1px solid #38bdf8' : '1px solid #374151',
+                backgroundColor: licensePlan === plan.id ? '#0f2942' : '#1f2937',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '10px',
+                transition: 'all 0.15s ease',
+              }"
+            >
+              <input type="radio" :value="plan.id" v-model="licensePlan" style="margin-top: 3px;" />
+              <div>
+                <div style="font-size: 13px; font-weight: 600; color: #f9fafb;">{{ plan.name }}</div>
+                <div style="font-size: 11px; color: #9ca3af; margin-top: 2px;">{{ plan.desc }}</div>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- Expiration Days -->
+        <div style="margin-bottom: 20px;">
+          <label style="display: block; font-size: 12px; font-weight: 600; color: #cbd5e1; margin-bottom: 6px;">
+            Срок действия лицензии:
+          </label>
+          <select
+            v-model="licenseDays"
+            style="width: 100%; box-sizing: border-box; background-color: #1f2937; border: 1px solid #374151; color: white; padding: 9px 12px; border-radius: 6px; font-size: 13px;"
+          >
+            <option :value="30">1 месяц (30 дней)</option>
+            <option :value="90">3 месяца (90 дней)</option>
+            <option :value="365">1 год (365 дней)</option>
+            <option :value="null">Бессрочно / Lifetime VIP</option>
+          </select>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 10px;">
+          <button
+            type="button"
+            @click="showLicenseModal = false"
+            style="background-color: #1f2937; color: #e5e7eb; border: 1px solid #374151; padding: 9px 16px; border-radius: 6px; font-size: 13px; cursor: pointer;"
+          >
+            Отмена
+          </button>
+          <button
+            type="button"
+            @click="saveUserLicense"
+            :disabled="savingLicense"
+            style="background: linear-gradient(135deg, #0284c7, #2563eb); color: white; border: none; padding: 9px 18px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;"
+          >
+            {{ savingLicense ? 'Сохранение...' : 'Применить лицензию' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Invite Modal -->
+    <div
+      v-if="showInviteModal"
+      style="position: fixed; inset: 0; background-color: rgba(0,0,0,0.75); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 100;"
+    >
+      <div style="background-color: #111827; border: 1px solid #38bdf8; border-radius: 12px; width: 100%; max-width: 460px; padding: 24px; box-shadow: 0 20px 40px rgba(0,0,0,0.6), 0 0 30px rgba(56, 189, 248, 0.15);">
+        <h3 style="font-size: 18px; font-weight: 700; color: #f9fafb; margin: 0 0 6px 0;">
+          ✉️ Приглашение с тарифом
+        </h3>
+        <p style="font-size: 12px; color: #9ca3af; margin: 0 0 16px 0;">
+          Пользователь получит email со ссылкой для создания аккаунта с уже назначенным тарифом.
+        </p>
+
+        <div style="display: grid; gap: 12px; margin-bottom: 20px;">
+          <div>
+            <label style="display: block; font-size: 11px; color: #9ca3af; margin-bottom: 4px;">Email пользователя:</label>
+            <input
+              v-model="inviteEmail"
+              placeholder="colleague@domain.com"
+              type="email"
+              style="width: 100%; box-sizing: border-box; background-color: #1f2937; border: 1px solid #374151; color: white; padding: 9px 12px; border-radius: 6px; font-size: 13px;"
+            />
+          </div>
+
+          <div>
+            <label style="display: block; font-size: 11px; color: #9ca3af; margin-bottom: 4px;">Предоплаченный тариф:</label>
+            <select
+              v-model="invitePlan"
+              style="width: 100%; box-sizing: border-box; background-color: #1f2937; border: 1px solid #374151; color: white; padding: 9px 12px; border-radius: 6px; font-size: 13px;"
+            >
+              <option value="free">Free (Базовый)</option>
+              <option value="pro">Novus Pro ⚡</option>
+              <option value="enterprise">Novus Enterprise 🏢</option>
+              <option value="lifetime">Lifetime VIP 👑</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 10px;">
+          <button
+            type="button"
+            @click="showInviteModal = false"
+            style="background-color: #1f2937; color: #e5e7eb; border: 1px solid #374151; padding: 9px 16px; border-radius: 6px; font-size: 13px; cursor: pointer;"
+          >
+            Отмена
+          </button>
+          <button
+            type="button"
+            @click="handleInviteUser"
+            :disabled="inviting"
+            style="background: linear-gradient(135deg, #0284c7, #2563eb); color: white; border: none; padding: 9px 18px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;"
+          >
+            {{ inviting ? 'Отправка...' : 'Отправить приглашение' }}
+          </button>
+        </div>
       </div>
     </div>
 

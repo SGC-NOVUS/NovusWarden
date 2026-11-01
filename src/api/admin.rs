@@ -511,8 +511,8 @@ fn render_admin_page(locale: &str) -> ApiResult<Html<String>> {
 
 #[get("/")]
 #[allow(clippy::needless_pass_by_value)]
-fn admin_page(token: AdminToken, _locale: RequestLocale) -> ApiResult<Html<String>> {
-    admin_ui_index(token)
+fn admin_page(_locale: RequestLocale) -> ApiResult<Html<String>> {
+    admin_ui_index()
 }
 
 #[get("/legacy")]
@@ -586,7 +586,7 @@ fn admin_unlock(token: &str, locale: RequestLocale) -> ApiResult<Html<String>> {
 static ADMIN_UI_DIR: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/src/static/admin_ui");
 
 #[get("/ui")]
-fn admin_ui_index(_token: AdminToken) -> ApiResult<Html<String>> {
+fn admin_ui_index() -> ApiResult<Html<String>> {
     if let Some(file) = ADMIN_UI_DIR.get_file("index.html") {
         let content = String::from_utf8_lossy(file.contents()).into_owned();
         Ok(Html(content))
