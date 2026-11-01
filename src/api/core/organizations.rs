@@ -68,6 +68,11 @@ pub fn routes() -> Vec<Route> {
         get_policy,
         put_policy,
         get_plans,
+        get_plans_preview,
+        get_plans_tax_rates,
+        get_org_subscription_preview,
+        get_org_plan_change_preview,
+        post_org_subscription,
         post_org_keys,
         get_organization_keys,
         get_organization_public_key,
@@ -2315,31 +2320,157 @@ async fn put_policy(
     Ok(Json(policy.to_json()))
 }
 
+#[derive(Copy, Clone, FromForm)]
+struct OrgSubscriptionPreviewParams {
+    plan: Option<i32>,
+    seats: Option<i32>,
+    #[field(name = "pamSeats")]
+    pam_seats: Option<i32>,
+}
+
 #[get("/plans")]
 fn get_plans() -> Json<Value> {
-    // Respond with a minimal json just enough to allow the creation of an new organization.
     Json(json!({
         "object": "list",
-        "data": [{
-            "object": "plan",
-            "type": 0,
-            "product": 0,
-            "name": "Free",
-            "nameLocalizationKey": "planNameFree",
-            "bitwardenProduct": 0,
-            "maxUsers": 0,
-            "descriptionLocalizationKey": "planDescFree"
-        },{
-            "object": "plan",
-            "type": 0,
-            "product": 1,
-            "name": "Free",
-            "nameLocalizationKey": "planNameFree",
-            "bitwardenProduct": 1,
-            "maxUsers": 0,
-            "descriptionLocalizationKey": "planDescFree"
-        }],
+        "data": [
+            {
+                "object": "plan",
+                "type": 0,
+                "product": 0,
+                "name": "Free",
+                "nameLocalizationKey": "planNameFree",
+                "bitwardenProduct": 0,
+                "maxUsers": 2,
+                "descriptionLocalizationKey": "planDescFree",
+                "isPremium": false,
+                "hasPolicies": false,
+                "hasSso": false
+            },
+            {
+                "object": "plan",
+                "type": 1,
+                "product": 0,
+                "name": "Families",
+                "nameLocalizationKey": "planNameFamilies",
+                "bitwardenProduct": 0,
+                "maxUsers": 6,
+                "descriptionLocalizationKey": "planDescFamilies",
+                "isPremium": true,
+                "hasPolicies": false,
+                "hasSso": false
+            },
+            {
+                "object": "plan",
+                "type": 2,
+                "product": 0,
+                "name": "Teams",
+                "nameLocalizationKey": "planNameTeams",
+                "bitwardenProduct": 0,
+                "maxUsers": 1000,
+                "descriptionLocalizationKey": "planDescTeams",
+                "isPremium": true,
+                "hasPolicies": true,
+                "hasSso": false
+            },
+            {
+                "object": "plan",
+                "type": 3,
+                "product": 0,
+                "name": "Enterprise",
+                "nameLocalizationKey": "planNameEnterprise",
+                "bitwardenProduct": 0,
+                "maxUsers": 10000,
+                "descriptionLocalizationKey": "planDescEnterprise",
+                "isPremium": true,
+                "hasPolicies": true,
+                "hasSso": true
+            }
+        ],
         "continuationToken": null
+    }))
+}
+
+#[get("/plans/preview?<params..>")]
+fn get_plans_preview(params: OrgSubscriptionPreviewParams) -> Json<Value> {
+    let seats = params.seats.unwrap_or(10);
+    let pam_seats = params.pam_seats.unwrap_or(0);
+    Json(json!({
+        "object": "planPreview",
+        "billingPeriod": 1,
+        "seats": seats,
+        "pamSeats": pam_seats,
+        "maxAutoscalePamSeats": 0,
+        "total": 0.0,
+        "currency": "USD"
+    }))
+}
+
+#[get("/plans/tax-rates")]
+fn get_plans_tax_rates() -> Json<Value> {
+    Json(json!({
+        "object": "list",
+        "data": [],
+        "continuationToken": null
+    }))
+}
+
+#[get("/organizations/<_org_id>/subscription/preview?<params..>")]
+fn get_org_subscription_preview(
+    _org_id: OrganizationId,
+    _headers: Headers,
+    params: OrgSubscriptionPreviewParams,
+) -> Json<Value> {
+    let seats = params.seats.unwrap_or(1000);
+    let pam_seats = params.pam_seats.unwrap_or(0);
+    let plan = params.plan.unwrap_or(3); // Default Enterprise
+
+    Json(json!({
+        "object": "organizationSubscriptionPreview",
+        "billingPeriod": 1,
+        "storageGb": 100,
+        "maxCollections": 1000,
+        "maxUsers": 1000,
+        "seats": seats,
+        "pamSeats": pam_seats,
+        "maxAutoscalePamSeats": 0,
+        "total": 0.0,
+        "currency": "USD",
+        "plan": plan,
+        "planType": plan,
+        "status": "Active"
+    }))
+}
+
+#[get("/organizations/<_org_id>/plan-change-preview?<params..>")]
+fn get_org_plan_change_preview(
+    _org_id: OrganizationId,
+    _headers: Headers,
+    params: OrgSubscriptionPreviewParams,
+) -> Json<Value> {
+    let seats = params.seats.unwrap_or(1000);
+    let pam_seats = params.pam_seats.unwrap_or(0);
+
+    Json(json!({
+        "object": "organizationPlanChangePreview",
+        "billingPeriod": 1,
+        "seats": seats,
+        "pamSeats": pam_seats,
+        "maxAutoscalePamSeats": 0,
+        "total": 0.0,
+        "currency": "USD"
+    }))
+}
+
+#[post("/organizations/<_org_id>/subscription", data = "<_data>")]
+fn post_org_subscription(_org_id: OrganizationId, _headers: OwnerHeaders, _data: Json<Value>) -> Json<Value> {
+    Json(json!({
+        "object": "organizationSubscription",
+        "status": "Active",
+        "billingPeriod": 1,
+        "seats": 1000,
+        "pamSeats": 0,
+        "total": 0.0,
+        "currency": "USD"
     }))
 }
 

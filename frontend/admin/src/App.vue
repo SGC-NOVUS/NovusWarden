@@ -6,6 +6,7 @@ const navItems = [
   { name: 'Dashboard', path: '/' },
   { name: 'Users', path: '/users' },
   { name: 'Organizations', path: '/organizations' },
+  { name: 'Subscriptions', path: '/subscriptions' },
   { name: 'Settings', path: '/settings' },
   { name: 'Diagnostics', path: '/diagnostics' },
 ];

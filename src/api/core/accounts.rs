@@ -695,12 +695,12 @@ async fn post_password(data: Json<ChangePassData>, headers: Headers, conn: DbCon
 
 fn set_kdf_data(user: &mut User, data: &KDFData) -> EmptyResult {
     let locale = &CONFIG.default_locale();
-    if data.kdf == UserKdfType::Pbkdf2 as i32 && data.kdf_iterations < 100_000 {
+    if data.kdf == UserKdfType::Pbkdf2 as i32 && !(100_000..=2_000_000).contains(&data.kdf_iterations) {
         err!(crate::i18n::accounts_pbkdf2_min_iterations(locale))
     }
 
     if data.kdf == UserKdfType::Argon2id as i32 {
-        if data.kdf_iterations < 1 {
+        if !(1..=64).contains(&data.kdf_iterations) {
             err!(crate::i18n::accounts_argon2_min_iterations(locale))
         }
         if let Some(m) = data.kdf_memory {

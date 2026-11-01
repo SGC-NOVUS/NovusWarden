@@ -237,6 +237,9 @@ impl Organization {
             "maxAutoscaleSeats": null,
             "maxAutoscaleSmSeats": null,
             "maxAutoscaleSmServiceAccounts": null,
+            "pamSeats": 0,
+            "pamSeatMinimum": 0,
+            "maxAutoscalePamSeats": 0,
 
             "secretsManagerPlan": null,
             "smSeats": null,
@@ -470,6 +473,9 @@ impl Membership {
             "identifier": null, // Not supported
             "name": org.name,
             "seats": 20, // hardcoded maxEmailsCount in the web-vault
+            "pamSeats": 0,
+            "pamSeatMinimum": 0,
+            "maxAutoscalePamSeats": 0,
             "maxCollections": null,
             "usersGetPremium": true,
             "use2fa": true,

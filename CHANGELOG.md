@@ -36,6 +36,14 @@ This is the initial independent release of **NovusWarden**, a high-performance, 
   * Support for embedded SQLite (<30 MB RAM) and external PostgreSQL.
   * Unified Object Storage backend powered by Apache OpenDAL supporting Cloudflare R2 (zero egress fees), AWS S3, and MinIO.
   * Minimal Alpine 3.24 multi-stage container image (`ghcr.io/sgc-novus/novuswarden:latest`) with a total size of ~50 MB.
+* **B2C & B2B Subscription & Licensing Hub:**
+  * Added Vue 3 Subscriptions Management view (`/subscriptions`) supporting server-wide unlimited tier and configurable B2C/B2B quotas.
+  * Added organization subscription and plan change preview endpoints (`/api/organizations/<id>/subscription/preview`, `/api/organizations/<id>/plan-change-preview`) to guarantee zero-latency compatibility with Bitwarden v2026.10+ client apps.
+  * Built-in Air-Gapped License Generator (`.novuslic`) for offline enterprise activations.
+* **SCIM 2.0 Enterprise Discovery Protocol:**
+  * Implemented standard discovery endpoints (`/scim/v2/ServiceProviderConfig`, `/scim/v2/ResourceTypes`, `/scim/v2/Schemas`) for seamless IdP directory integrations.
+* **Cryptographic KDF Boundary Protection:**
+  * Enforced strict upper bounds on Argon2id (max 64 iterations) and PBKDF2 (max 2,000,000 rounds) parameters to prevent CPU and memory exhaustion attacks.
 * **i18n Quality Gates:**
   * Curated, verified translation catalogs for `en`, `ru`, and `uk` locales covering all 386 template keys and 118 admin UI keys.
   * CI validation guards for template and admin key completeness.
