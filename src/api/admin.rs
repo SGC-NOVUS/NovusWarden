@@ -74,6 +74,7 @@ pub fn routes() -> Vec<Route> {
         get_diagnostics_http,
         admin_ui_index,
         admin_ui_files,
+        export_users_json,
     ]
 }
 
@@ -963,6 +964,38 @@ fn backup_db(_token: AdminToken, locale: RequestLocale) -> ApiResult<String> {
     } else {
         err!(crate::i18n::admin_backup_only_sqlite(&locale.locale));
     }
+}
+
+#[get("/users/export")]
+async fn export_users_json(_token: AdminToken, conn: DbConn) -> Json<Value> {
+    let users = User::get_all(&conn).await;
+    let mut users_data = Vec::with_capacity(users.len());
+    for (u, sso_u) in users {
+        let mut user_entry = u.to_json(&conn).await;
+        user_entry["has_sso"] = json!(sso_u.is_some());
+        user_entry["cipher_count"] = json!(Cipher::count_owned_by_user(&u.uuid, &conn).await);
+        user_entry["attachment_count"] = json!(Attachment::count_by_user(&u.uuid, &conn).await);
+        users_data.push(user_entry);
+    }
+
+    let orgs = Organization::get_all(&conn).await;
+    let mut orgs_data = Vec::with_capacity(orgs.len());
+    for org in orgs {
+        let mut org_entry = org.to_json();
+        org_entry["user_count"] = json!(Membership::count_by_org(&org.uuid, &conn).await);
+        org_entry["cipher_count"] = json!(Cipher::count_by_org(&org.uuid, &conn).await);
+        orgs_data.push(org_entry);
+    }
+
+    Json(json!({
+        "server": "NovusWarden",
+        "version": VERSION.unwrap_or("0.0.1"),
+        "exported_at": chrono::Utc::now().to_rfc3339(),
+        "users_count": users_data.len(),
+        "users": users_data,
+        "organizations_count": orgs_data.len(),
+        "organizations": orgs_data,
+    }))
 }
 
 pub struct AdminToken {

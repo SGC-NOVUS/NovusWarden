@@ -50,7 +50,7 @@ onMounted(async () => {
       <div style="background-color: #111827; border: 1px solid #1f2937; border-radius: 8px; padding: 20px;">
         <div style="font-size: 12px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Server Version</div>
         <div style="font-size: 24px; font-weight: 700; color: #a78bfa; margin-top: 10px;">
-          {{ diag?.version || '1.0.0 (SGC-NOVUS)' }}
+          {{ diag?.version || '0.0.1 (SGC-NOVUS)' }}
         </div>
       </div>
     </div>

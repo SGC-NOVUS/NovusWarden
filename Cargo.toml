@@ -10,7 +10,7 @@ members = ["macros"]
 
 [package]
 name = "novuswarden"
-version = "1.33.2"
+version = "0.0.1"
 authors = [
     "SGC-NOVUS Core Team <support@sgc-novus.fun>",
     "Vaultwarden Contributors (see AUTHORS.md)",
