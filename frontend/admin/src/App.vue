@@ -126,3 +126,25 @@ async function handleLogout() {
     </footer>
   </div>
 </template>
+
+<style>
+/* Modern Cyber Scrollbar across Admin UI */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0b0f19;
+}
+::-webkit-scrollbar-thumb {
+  background: #1f2937;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #38bdf8;
+}
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #1f2937 #0b0f19;
+}
+</style>

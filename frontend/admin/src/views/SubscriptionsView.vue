@@ -927,7 +927,7 @@ onMounted(async () => {
         Управление корпоративными квотами организаций
       </h3>
 
-      <div style="overflow-x: auto;">
+      <div style="overflow-x: auto; scrollbar-width: thin; scrollbar-color: #1f2937 #0b0f19;">
         <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
           <thead>
             <tr style="border-bottom: 1px solid #374151; color: #9ca3af; text-align: left;">

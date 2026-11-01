@@ -3,24 +3,30 @@
  * Applied to Bitwarden Web Vault UI (angular layout_frontend)
  */
 
-/* 1. Header & Landing Logos */
-header a[href="#/"] > bit-svg svg,
-bit-landing-header a[routerlink] > bit-svg svg {
+/* 1. Header & Landing Logos - NovusWarden Rebranding */
+header a > bit-svg svg,
+bit-landing-header a > bit-svg svg,
+bit-landing-header bit-svg svg,
+bit-landing-header svg {
     display: none !important;
 }
 
-header a[href="#/"] > bit-svg,
-bit-landing-header a[routerlink] > bit-svg {
+header a > bit-svg,
+bit-landing-header a > bit-svg,
+bit-landing-header bit-svg {
     display: block !important;
-    width: 100% !important;
+    width: 200px !important;
+    height: 42px !important;
+    position: relative !important;
 }
 
-header a[href="#/"] > bit-svg::before,
-bit-landing-header a[routerlink] > bit-svg::before {
+header a > bit-svg::before,
+bit-landing-header a > bit-svg::before,
+bit-landing-header bit-svg::before {
     content: "" !important;
     display: block !important;
     width: 200px !important;
-    min-height: 38px !important;
+    height: 42px !important;
     background-repeat: no-repeat !important;
     background-position: left center !important;
     background-size: contain !important;
@@ -52,9 +58,15 @@ body.layout_frontend {
 }
 
 /* Prevent hero icon clipping at top edge of viewport */
+bit-landing-hero {
+    margin-top: 36px !important;
+    padding-top: 16px !important;
+}
+
 .layout_frontend bit-landing-content > div,
+.layout_frontend bit-landing-layout,
 .layout_frontend main {
-    padding-top: 50px !important;
+    padding-top: 30px !important;
 }
 
 /* 3. Hero Section & Cyber Shield Icon Replacement */
@@ -137,45 +149,76 @@ bit-landing-card > div {
 }
 
 /* 5. Clean Single-Border Input Fields */
-/* Neutralize outer Tailwind wrapper rings and borders */
-.layout_frontend bit-form-field,
-.layout_frontend bit-form-field > div,
-.layout_frontend bit-form-field .tw-relative {
-    background: transparent !important;
-    box-shadow: none !important;
-    border: none !important;
-    outline: none !important;
-}
-
+/* Neutralize outer Tailwind wrapper rings */
 .layout_frontend [class*="tw-ring-"] {
     --tw-ring-shadow: none !important;
     --tw-ring-color: transparent !important;
     box-shadow: none !important;
 }
 
+/* Outer field container: single clean cyber border */
+.layout_frontend [bitFieldContainer],
+.layout_frontend bit-form-field > div.tw-relative,
+.layout_frontend .tw-relative:has(> input[type="email"]),
+.layout_frontend .tw-relative:has(> input[type="password"]),
+.layout_frontend .tw-relative:has(> input[type="text"]) {
+    background-color: #0b0f19 !important;
+    border: 1px solid #334155 !important;
+    border-radius: 8px !important;
+    box-shadow: none !important;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+    overflow: hidden !important;
+}
+
+/* Focus glow on container */
+.layout_frontend [bitFieldContainer]:focus-within,
+.layout_frontend [bitFieldContainer]:has(input:focus),
+.layout_frontend bit-form-field > div.tw-relative:focus-within,
+.layout_frontend .tw-relative:has(> input:focus) {
+    border-color: #38bdf8 !important;
+    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.25) !important;
+}
+
+/* Inner input is transparent, borderless, and seamless */
 .layout_frontend input[type="email"],
 .layout_frontend input[type="password"],
 .layout_frontend input[type="text"],
-.layout_frontend input[bitinput] {
-    background-color: #0b0f19 !important;
-    border: 1px solid #334155 !important;
+.layout_frontend input[bitinput],
+.layout_frontend [bitFieldContainer] input {
+    background: transparent !important;
+    background-color: transparent !important;
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
     color: #f8fafc !important;
-    border-radius: 8px !important;
+    border-radius: 0 !important;
     padding: 10px 14px !important;
     font-size: 14px !important;
     width: 100% !important;
     box-sizing: border-box !important;
-    height: 44px !important;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+    height: 42px !important;
 }
 
 .layout_frontend input[type="email"]:focus,
 .layout_frontend input[type="password"]:focus,
 .layout_frontend input[type="text"]:focus,
 .layout_frontend input[bitinput]:focus {
-    border-color: #38bdf8 !important;
-    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.25) !important;
+    background: transparent !important;
+    background-color: transparent !important;
+    border: none !important;
     outline: none !important;
+    box-shadow: none !important;
+}
+
+/* Ensure only one email input is ever rendered */
+.vw-email-continue:not([style*="display: none"]):not([style*="display:none"]) ~ .vw-email-sso,
+.vw-email-continue:not([style*="display: none"]):not([style*="display:none"]) + .vw-email-sso {
+    display: none !important;
+}
+
+/* Hide passkey login button on web vault */
+.vw-passkey-login {
+    display: none !important;
 }
 
 /* Form labels */
