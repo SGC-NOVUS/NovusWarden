@@ -1,10 +1,11 @@
-use std::{env, sync::LazyLock};
+use std::{env, path::PathBuf, sync::LazyLock};
 
+use include_dir::{Dir, include_dir};
 use reqwest::Method;
 use rocket::{
     Catcher, Route,
     form::Form,
-    http::{Cookie, CookieJar, MediaType, SameSite, Status},
+    http::{ContentType, Cookie, CookieJar, MediaType, SameSite, Status},
     request::{FromRequest, Outcome, Request},
     response::{Redirect, content::RawHtml as Html},
     serde::json::Json,
@@ -71,6 +72,8 @@ pub fn routes() -> Vec<Route> {
         get_diagnostics_config,
         resend_user_invite,
         get_diagnostics_http,
+        admin_ui_index,
+        admin_ui_files,
     ]
 }
 
@@ -173,7 +176,7 @@ fn admin_login(request: &Request<'_>) -> ApiResult<Html<String>> {
     if request.format() == Some(&MediaType::JSON) {
         err_code!(crate::i18n::authorization_failed(&locale), Status::Unauthorized.code);
     }
-    let redirect = request.segments::<std::path::PathBuf>(0..).unwrap_or_default().display().to_string();
+    let redirect = request.segments::<PathBuf>(0..).unwrap_or_default().display().to_string();
     render_admin_login(None, Some(&redirect), &locale)
 }
 
@@ -332,6 +335,46 @@ fn admin_page(_token: AdminToken, locale: RequestLocale) -> ApiResult<Html<Strin
 #[allow(clippy::needless_pass_by_value)]
 fn admin_page_login(locale: RequestLocale) -> ApiResult<Html<String>> {
     render_admin_login(None, None, &locale.locale)
+}
+
+static ADMIN_UI_DIR: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/src/static/admin_ui");
+
+#[get("/ui")]
+fn admin_ui_index(_token: AdminToken) -> ApiResult<Html<String>> {
+    if let Some(file) = ADMIN_UI_DIR.get_file("index.html") {
+        let content = String::from_utf8_lossy(file.contents()).into_owned();
+        Ok(Html(content))
+    } else {
+        Ok(Html(
+            r#"<!DOCTYPE html><html><head><meta charset="utf-8"><title>NovusWarden Control Plane</title></head><body><h1>NovusWarden Control Plane</h1><p>Vue 3 Control plane bundle initializing.</p></body></html>"#
+                .to_owned(),
+        ))
+    }
+}
+
+#[get("/ui/<p..>", rank = 5)]
+#[allow(clippy::needless_pass_by_value)]
+fn admin_ui_files(p: PathBuf, _token: AdminToken) -> Option<(ContentType, &'static [u8])> {
+    let path_str = p.to_string_lossy();
+    if let Some(file) = ADMIN_UI_DIR.get_file(&*path_str) {
+        let ext = p.extension().and_then(|e| e.to_str()).unwrap_or_default();
+        let content_type = match ext {
+            "html" => ContentType::HTML,
+            "js" | "mjs" => ContentType::JavaScript,
+            "css" => ContentType::CSS,
+            "json" => ContentType::JSON,
+            "png" => ContentType::PNG,
+            "svg" => ContentType::SVG,
+            "ico" => ContentType::Icon,
+            _ => ContentType::Binary,
+        };
+        Some((content_type, file.contents()))
+    } else if let Some(index_file) = ADMIN_UI_DIR.get_file("index.html") {
+        // SPA Fallback: for client-side routing
+        Some((ContentType::HTML, index_file.contents()))
+    } else {
+        None
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -775,7 +818,7 @@ fn web_vault_compare(active: &str, latest: &str) -> i8 {
 }
 
 fn check_template_overrides() -> Vec<&'static str> {
-    let template_folder = std::path::PathBuf::from(CONFIG.templates_folder());
+    let template_folder = PathBuf::from(CONFIG.templates_folder());
     let mut overrides = Vec::new();
     for folder in ["admin", "email", "scss"] {
         if folder_has_hbs_files(&template_folder.join(folder)) {
@@ -941,8 +984,7 @@ impl<'r> FromRequest<'r> for AdminToken {
             let access_token = if let Some(cookie) = cookies.get(COOKIE_NAME) {
                 cookie.value()
             } else {
-                let requested_page =
-                    request.segments::<std::path::PathBuf>(0..).unwrap_or_default().display().to_string();
+                let requested_page = request.segments::<PathBuf>(0..).unwrap_or_default().display().to_string();
                 // When the requested page is empty, it is `/admin`, in that case, Forward, so it will render the login page
                 // Else, return a 401 failure, which will be caught
                 if requested_page.is_empty() {

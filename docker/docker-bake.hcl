@@ -43,16 +43,16 @@ variable "BASE_TAGS" {
 
 // Which container registries should be used for the tagging
 // This can be a comma separated value
-// Use a full URI like `ghcr.io/dani-garcia/vaultwarden,docker.io/vaultwarden/server`
+// Use a full URI like `ghcr.io/sgc-novus/novuswarden`
 variable "CONTAINER_REGISTRIES" {
-  default = "vaultwarden/server"
+  default = "ghcr.io/sgc-novus/novuswarden"
 }
 
 
 // ==== Baking Groups ====
 
 group "default" {
-  targets = ["debian"]
+  targets = ["alpine"]
 }
 
 
@@ -60,10 +60,10 @@ group "default" {
 function "labels" {
   params = []
   result = {
-    "org.opencontainers.image.description" = "Unofficial Bitwarden compatible server written in Rust - ${SOURCE_VERSION}"
+    "org.opencontainers.image.description" = "NovusWarden - High-performance Bitwarden compatible core by SGC-NOVUS - ${SOURCE_VERSION}"
     "org.opencontainers.image.licenses" = "AGPL-3.0-only"
-    "org.opencontainers.image.documentation" = "https://github.com/dani-garcia/vaultwarden/wiki"
-    "org.opencontainers.image.url" = "https://github.com/dani-garcia/vaultwarden"
+    "org.opencontainers.image.documentation" = "https://github.com/SGC-NOVUS/novuswarden"
+    "org.opencontainers.image.url" = "https://github.com/SGC-NOVUS/novuswarden"
     "org.opencontainers.image.created" =  "${formatdate("YYYY-MM-DD'T'hh:mm:ssZZZZZ", timestamp())}"
     "org.opencontainers.image.source" = "${SOURCE_REPOSITORY_URL}"
     "org.opencontainers.image.revision" = "${SOURCE_COMMIT}"

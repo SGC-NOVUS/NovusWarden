@@ -94,7 +94,7 @@ Replace `alpine` with `debian` if you want to build the debian multi arch images
 # Start a buildx bake using a debug build
 CARGO_PROFILE=dev \
 SOURCE_COMMIT="$(git rev-parse HEAD)" \
-CONTAINER_REGISTRIES="localhost:5000/vaultwarden/server" \
+CONTAINER_REGISTRIES="ghcr.io/sgc-novus/novuswarden" \
 docker buildx bake --file docker/docker-bake.hcl alpine-multi
 ```
 
@@ -105,13 +105,13 @@ To make it a bit more easier to trigger a build, there also is a `bake.sh` scrip
 This script calls `docker buildx bake` with all the right parameters and also generates the `SOURCE_COMMIT` and `SOURCE_VERSION` variables.<br>
 This script can be called from both the repo root or within the docker directory.
 
-So, if you want to build a Multi Arch Alpine container pushing to your localhost registry you can run this from within the docker directory. (Just make sure you executed the initialization steps above first)
+So, if you want to build a Multi Arch Alpine container pushing to your registry you can run this from within the docker directory. (Just make sure you executed the initialization steps above first)
 ```bash
-CONTAINER_REGISTRIES="localhost:5000/vaultwarden/server" \
+CONTAINER_REGISTRIES="ghcr.io/sgc-novus/novuswarden" \
 ./bake.sh alpine-multi
 ```
 
-Or if you want to just build a Debian container from the repo root, you can run this.
+Or if you want to just build an Alpine container from the repo root, you can run this.
 ```bash
 docker/bake.sh
 ```
@@ -127,13 +127,13 @@ docker/bake.sh alpine-all --print
 ### Testing baked images
 
 To test these images you can run these images by using the correct tag and provide the platform.<br>
-For example, after you have build an arm64 image via `./bake.sh debian-arm64` you can run:
+For example, after you have build an arm64 image via `./bake.sh alpine-arm64` you can run:
 ```bash
 docker run --rm -it \
   -e DISABLE_ADMIN_TOKEN=true \
   -e I_REALLY_WANT_VOLATILE_STORAGE=true \
   -p8080:80 --platform=linux/arm64 \
-  vaultwarden/server:testing-arm64
+  ghcr.io/sgc-novus/novuswarden:testing-arm64
 ```
 
 
@@ -151,7 +151,7 @@ DB="sqlite,enable_mimalloc" \
 ./podman-bake.sh alpine-arm64
 ```
 
-Or if you want to just build a Debian container from the repo root, you can run this.
+Or if you want to just build an Alpine container from the repo root, you can run this.
 ```bash
 docker/podman-bake.sh
 ```
@@ -172,7 +172,7 @@ podman run --rm -it \
   -e DISABLE_ADMIN_TOKEN=true \
   -e I_REALLY_WANT_VOLATILE_STORAGE=true \
   -p8080:80 --platform=linux/arm64 \
-  localhost/vaultwarden/server:testing-arm64
+  localhost/ghcr.io/sgc-novus/novuswarden:testing-arm64
 ```
 
 
@@ -185,5 +185,5 @@ podman run --rm -it \
 | SOURCE_COMMIT         | null               | The commit hash of the current commit for this build                                                               |
 | SOURCE_VERSION        | null               | The current exact tag of this commit, else the last tag and the first 8 chars of the source commit                 |
 | BASE_TAGS             | testing            | Tags to be used. Can be a comma separated value like "latest,1.29.2"                                               |
-| CONTAINER_REGISTRIES  | vaultwarden/server | Comma separated value of container registries. Like `ghcr.io/dani-garcia/vaultwarden,docker.io/vaultwarden/server` |
+| CONTAINER_REGISTRIES  | ghcr.io/sgc-novus/novuswarden | Comma separated value of container registries. Like `ghcr.io/sgc-novus/novuswarden` |
 | VW_VERSION            | null               | To override the `SOURCE_VERSION` value. This is also used by the `build.rs` code for example                       |

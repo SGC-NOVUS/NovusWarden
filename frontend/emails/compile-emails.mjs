@@ -25,11 +25,18 @@ const emailCompiler = config(TEMPLATES_SRC, {
   },
 });
 
+const SUBJECT_HEADERS = {
+  welcome: '{{t "tpl.email.welcome.subject" locale=lang}}',
+  twofactor_email: '{{t "tpl.email.twofactor.subject" locale=lang}}',
+  new_device_logged_in: '{{t "tpl.email.new_device.subject_prefix" locale=lang}} {{{device_name}}}',
+};
+
 async function compileAllEmails() {
   console.log('🚀 Starting NovusWarden Vue-Email compilation...');
   try {
+    await fs.mkdir(OUTPUT_DIR, { recursive: true });
     const files = await fs.readdir(TEMPLATES_SRC);
-    const vueTemplates = files.filter(f => f.endsWith('.vue'));
+    const vueTemplates = files.filter(f => f.endsWith('.vue') && f !== 'EmailLayout.vue');
 
     console.log(`Found ${vueTemplates.length} Vue email templates to compile.`);
 
@@ -44,6 +51,7 @@ async function compileAllEmails() {
           token: '{{token}}',
           org_name: '{{org_name}}',
           device_type: '{{device_type}}',
+          device_name: '{{device_name}}',
           ip_address: '{{ip_address}}',
           date: '{{datetime}}',
           hint: '{{hint}}',
@@ -56,7 +64,10 @@ async function compileAllEmails() {
           .replace(/&#x7B;&#x7B;/g, '{{')
           .replace(/&#x7D;&#x7D;/g, '}}');
 
-        await fs.writeFile(targetPath, processedHtml, 'utf-8');
+        const subject = SUBJECT_HEADERS[baseName] || `{{t "tpl.email.${baseName}.subject" locale=lang}}`;
+        const finalOutput = `${subject}\n<!---------------->\n${processedHtml}\n`;
+
+        await fs.writeFile(targetPath, finalOutput, 'utf-8');
         console.log(`  ✓ Compiled: ${template} -> ${path.basename(targetPath)}`);
       } catch (err) {
         console.warn(`  ⚠ Pre-compiling fallback for ${template}:`, err.message);
