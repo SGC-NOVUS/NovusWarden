@@ -1,6 +1,6 @@
-# Vaultwarden Container Building
+# NovusWarden Container Building
 
-To build and release new testing and stable releases of Vaultwarden we use `docker buildx bake`.<br>
+To build and release new testing and stable releases of NovusWarden we use `docker buildx bake`.<br>
 This can be used locally by running the command yourself, but it is also used by GitHub Actions.
 
 This makes it easier for us to test and maintain the different architectures we provide.<br>

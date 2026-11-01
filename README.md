@@ -8,7 +8,7 @@ NovusWarden is an enterprise-grade, high-performance Bitwarden-compatible server
 
 - **Maintainer**: SGC-NOVUS (System Generations Core Novus) <https://github.com/SGC-NOVUS>
 - **Contact**: <support@sgc-novus.fun>
-- **Fork Repository**: <https://github.com/SGC-NOVUS/novuswarden>
+- **Repository**: <https://github.com/SGC-NOVUS/NovusWarden>
 - **Upstream Project**: <https://github.com/dani-garcia/vaultwarden>
 - **License**: GNU Affero General Public License v3.0 (AGPL-3.0) — see [LICENSE.txt](./LICENSE.txt)
 - **Contributors & Upstream Attribution**: Full attribution for all upstream authors and contributors is documented in [AUTHORS.md](./AUTHORS.md), [CREDITS.md](./CREDITS.md), and [NOTICE_FORK.md](./NOTICE_FORK.md).
@@ -92,8 +92,8 @@ cargo run --features sqlite
 
 ## Support
 
-- Discussions: https://github.com/SGC-NOVUS/novuswarden/discussions
-- Issues: https://github.com/SGC-NOVUS/novuswarden/issues
+- Discussions: https://github.com/SGC-NOVUS/NovusWarden/discussions
+- Issues: https://github.com/SGC-NOVUS/NovusWarden/issues
 
 If you can reproduce a bug on unmodified upstream Vaultwarden, consider reporting upstream as well.
 
