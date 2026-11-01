@@ -2,6 +2,8 @@
 import { ref } from 'vue';
 import { api } from './api/client.ts';
 
+const logoUrl = ["/vw_static", "logo-gray.png"].join("/");
+
 const navItems = [
   { name: 'Dashboard', path: '/' },
   { name: 'Users', path: '/users' },
@@ -25,7 +27,7 @@ async function handleLogout() {
     <header style="background-color: #111827; border-bottom: 1px solid #1f2937; padding: 12px 24px; display: flex; align-items: center; justify-content: space-between;">
       <div style="display: flex; align-items: center; gap: 14px;">
         <img
-          src="/vw_static/logo-gray.png"
+          :src="logoUrl"
           alt="NovusWarden"
           style="height: 32px; width: auto; object-fit: contain;"
         />
@@ -58,9 +60,9 @@ async function handleLogout() {
               fontWeight: 600,
               textDecoration: 'none',
               transition: 'all 0.15s ease',
-              backgroundColor: isActive ? '#1f2937' : 'transparent',
-              color: isActive ? '#38bdf8' : '#9ca3af',
-              border: isActive ? '1px solid #374151' : '1px solid transparent',
+              backgroundColor: isActive ? '#2563eb' : 'transparent',
+              color: isActive ? '#ffffff' : '#9ca3af',
+              border: isActive ? '1px solid #3b82f6' : '1px solid transparent',
             }"
           >
             {{ item.name }}
@@ -68,14 +70,23 @@ async function handleLogout() {
         </router-link>
       </nav>
 
-      <!-- Logout Action -->
-      <button
-        @click="handleLogout"
-        :disabled="loggingOut"
-        style="background-color: #dc2626; color: white; border: none; padding: 7px 14px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer;"
-      >
-        {{ loggingOut ? 'Exiting...' : 'Log out' }}
-      </button>
+      <!-- Actions -->
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <a
+          href="/admin/legacy"
+          style="background-color: #1f2937; color: #9ca3af; text-decoration: none; border: 1px solid #374151; padding: 7px 14px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s ease;"
+          title="Switch to Classic Handlebars Admin"
+        >
+          Classic Admin
+        </a>
+        <button
+          @click="handleLogout"
+          :disabled="loggingOut"
+          style="background-color: #dc2626; color: white; border: none; padding: 7px 14px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer;"
+        >
+          {{ loggingOut ? 'Exiting...' : 'Log out' }}
+        </button>
+      </div>
     </header>
 
     <!-- Main Content -->
@@ -89,4 +100,3 @@ async function handleLogout() {
     </footer>
   </div>
 </template>
-

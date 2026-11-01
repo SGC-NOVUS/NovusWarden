@@ -50,6 +50,7 @@ pub fn routes() -> Vec<Route> {
         get_user_by_mail_json,
         post_admin_login,
         admin_page,
+        admin_page_legacy,
         admin_page_login,
         invite_user,
         logout,
@@ -255,9 +256,16 @@ fn post_admin_login(
 
         cookies.add(cookie);
         if let Some(redirect) = redirect {
-            Ok(Redirect::to(format!("{}{redirect}", admin_path())))
+            let redirect_target = if redirect.is_empty() || redirect == "/" {
+                format!("{}/ui", admin_path())
+            } else if redirect.starts_with('/') {
+                format!("{}{redirect}", admin_path())
+            } else {
+                format!("{}/{redirect}", admin_path())
+            };
+            Ok(Redirect::to(redirect_target))
         } else {
-            Err(AdminResponse::Ok(render_admin_page(&locale.locale)))
+            Ok(Redirect::to(format!("{}/ui", admin_path())))
         }
     } else {
         error!("Invalid admin token. IP: {}", ip.ip);
@@ -328,7 +336,13 @@ fn render_admin_page(locale: &str) -> ApiResult<Html<String>> {
 
 #[get("/")]
 #[allow(clippy::needless_pass_by_value)]
-fn admin_page(_token: AdminToken, locale: RequestLocale) -> ApiResult<Html<String>> {
+fn admin_page(_token: AdminToken) -> Redirect {
+    Redirect::to(format!("{}/ui", admin_path()))
+}
+
+#[get("/legacy")]
+#[allow(clippy::needless_pass_by_value)]
+fn admin_page_legacy(_token: AdminToken, locale: RequestLocale) -> ApiResult<Html<String>> {
     render_admin_page(&locale.locale)
 }
 
