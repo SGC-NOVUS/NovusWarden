@@ -44,11 +44,35 @@ img.new-logo-themed,
     object-fit: contain !important;
 }
 
-/* 2. Global Frontend Layout & Background */
+/* 2. Global Frontend Layout & Background - Enforce Cyber Dark Aesthetic */
+html,
+html.theme_light,
+html.theme_dark,
+body.layout_frontend,
+.layout_frontend,
+.layout_frontend app-root,
+.layout_frontend bit-landing-layout,
+.layout_frontend bit-landing-header,
+.layout_frontend header,
+.layout_frontend bit-landing-content,
+.layout_frontend main,
+.layout_frontend footer {
+    background-color: #060913 !important;
+    color: #f1f5f9 !important;
+}
+
 body.layout_frontend {
     background: radial-gradient(circle at 50% 15%, #0c1a30 0%, #060913 100%) !important;
     min-height: 100vh !important;
-    color: #f1f5f9 !important;
+}
+
+/* Neutralize light background utility classes from Bitwarden */
+.layout_frontend .tw-bg-background,
+.layout_frontend .tw-bg-background-alt,
+.layout_frontend .tw-bg-bg-primary,
+.layout_frontend .tw-bg-bg-secondary {
+    background: transparent !important;
+    background-color: transparent !important;
 }
 
 /* Dim and colorize decorative background SVGs */
@@ -210,14 +234,25 @@ bit-landing-card > div {
     box-shadow: none !important;
 }
 
-/* Ensure only one email input is ever rendered */
-.vw-email-continue:not([style*="display: none"]):not([style*="display:none"]) ~ .vw-email-sso,
-.vw-email-continue:not([style*="display: none"]):not([style*="display:none"]) + .vw-email-sso {
+/* Always show the primary email and continue button for password login */
+.layout_frontend .vw-email-continue {
+    display: block !important;
+    visibility: visible !important;
+}
+
+.layout_frontend .vw-continue-login {
+    display: block !important;
+    visibility: visible !important;
+}
+
+/* Always hide the duplicate SSO email input */
+.layout_frontend .vw-email-sso {
     display: none !important;
+    visibility: hidden !important;
 }
 
 /* Hide passkey login button on web vault */
-.vw-passkey-login {
+.layout_frontend .vw-passkey-login {
     display: none !important;
 }
 

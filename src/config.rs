@@ -1861,6 +1861,8 @@ where
     reg!("email/email_footer_text");
 
     reg!("email/admin_account_recovery", ".html");
+    reg!("email/admin_lockout_alert", ".html");
+    reg!("email/admin_login_alert", ".html");
     reg!("email/change_email_existing", ".html");
     reg!("email/change_email_invited", ".html");
     reg!("email/change_email", ".html");
@@ -1894,6 +1896,8 @@ where
 
     reg!("admin/base");
     reg!("admin/login");
+    reg!("admin/locked");
+    reg!("admin/unlocked");
     reg!("admin/settings");
     reg!("admin/users");
     reg!("admin/organizations");

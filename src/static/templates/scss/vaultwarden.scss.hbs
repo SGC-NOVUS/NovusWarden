@@ -20,22 +20,22 @@ a[href$="/settings/sponsored-families"] {
   @extend %vw-hide;
 }
 
-/* Hide the sso `Email` input field */
-{{#if (not sso_enabled)}}
+/* Always hide the duplicate sso `Email` input field if sso_only is false */
+{{#if (not sso_only)}}
 .vw-email-sso {
   @extend %vw-hide;
 }
 {{/if}}
 
-/* Hide the default/continue `Email` input field */
-{{#if sso_enabled}}
+/* Hide the default/continue `Email` input field ONLY when sso_only is true */
+{{#if sso_only}}
 .vw-email-continue {
   @extend %vw-hide;
 }
 {{/if}}
 
-/* Hide the `Continue` button on the login page */
-{{#if sso_enabled}}
+/* Hide the `Continue` button on the login page ONLY when sso_only is true */
+{{#if sso_only}}
 .vw-continue-login {
   @extend %vw-hide;
 }

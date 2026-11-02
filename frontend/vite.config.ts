@@ -23,6 +23,13 @@ export default defineConfig({
             return;
           }
 
+          // If user visits /admin in browser (GET /admin or /admin/), redirect to /admin/ui/
+          if (req.method === 'GET' && (req.url === '/admin' || req.url === '/admin/')) {
+            res.writeHead(302, { Location: '/admin/ui/' });
+            res.end();
+            return;
+          }
+
           // Serve live novus-brand.css so edits are reflected immediately
           if (req.url?.startsWith('/novus-brand.css')) {
             const cssPath = resolve(overlayDir, 'novus-brand.css');
