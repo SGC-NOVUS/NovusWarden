@@ -1,7 +1,16 @@
+# Local build artifacts
 target
-Cargo.lock
-*.env
+
+# Data folder
 data
+
+# IDE files
+.vscode
+.idea
+*.iml
+
+# Environment file
+.env
 
 # Web vault
 web-vault
@@ -9,3 +18,8 @@ web-vault
 # Frontend build & dependencies
 node_modules
 frontend/dist
+
+# Raw uploaded design source files in root
+/*.jpeg
+/*.webp
+/*.png
