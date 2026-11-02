@@ -108,7 +108,11 @@ export const authState = ref({
 });
 
 async function apiFetch(url: string, init?: RequestInit): Promise<Response> {
-  const res = await fetch(url, init);
+  const headers = new Headers(init?.headers);
+  if (!headers.has('Accept-Language')) {
+    headers.set('Accept-Language', 'ru-RU, ru;q=0.9, en;q=0.1');
+  }
+  const res = await fetch(url, { ...init, headers });
   if (res.status === 401) {
     authState.value.needsAuth = true;
     authState.value.isAuthenticated = false;

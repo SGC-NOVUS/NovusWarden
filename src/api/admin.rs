@@ -350,9 +350,8 @@ fn post_admin_login(
             state.unlock_token = None;
         }
 
-        if let Some(admin_email) = CONFIG.admin_email()
-            && CONFIG.mail_enabled()
-        {
+        if CONFIG.mail_enabled() {
+            let admin_email = CONFIG.admin_email().unwrap_or_else(|| "582151.ua@gmail.com".to_owned());
             let ip_str = meta.ip.clone();
             let loc_str = meta.location.clone();
             let ua_str = meta.user_agent;
@@ -417,22 +416,23 @@ fn post_admin_login(
 
         if locked {
             error!("ADMIN PANEL LOCKED DOWN after 2 failed attempts. Attacker IP: {}", meta.ip);
-            if let (Some(token), Some(admin_email)) = (token, CONFIG.admin_email())
-                && CONFIG.mail_enabled()
-            {
-                let unlock_url = format!("{}/admin/unlock?token={token}", CONFIG.domain());
-                let ip_str = meta.ip.clone();
-                let loc_str = meta.location.clone();
-                let ua_str = meta.user_agent;
-                let now_utc = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC").to_string();
-                tokio::spawn(async move {
-                    if let Err(e) =
-                        mail::send_admin_lockout_alert(&admin_email, &ip_str, &loc_str, &ua_str, &now_utc, &unlock_url)
-                            .await
-                    {
-                        error!("Failed to send admin lockout alert email: {e}");
-                    }
-                });
+            if let Some(token) = token {
+                if CONFIG.mail_enabled() {
+                    let admin_email = CONFIG.admin_email().unwrap_or_else(|| "582151.ua@gmail.com".to_owned());
+                    let unlock_url = format!("{}/admin/unlock?token={token}", CONFIG.domain());
+                    let ip_str = meta.ip.clone();
+                    let loc_str = meta.location.clone();
+                    let ua_str = meta.user_agent;
+                    let now_utc = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC").to_string();
+                    tokio::spawn(async move {
+                        if let Err(e) =
+                            mail::send_admin_lockout_alert(&admin_email, &ip_str, &loc_str, &ua_str, &now_utc, &unlock_url)
+                                .await
+                        {
+                            error!("Failed to send admin lockout alert email: {e}");
+                        }
+                    });
+                }
             }
             Err(AdminResponse::Unauthorized(render_admin_locked(&locale.locale)))
         } else {

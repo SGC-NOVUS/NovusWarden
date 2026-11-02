@@ -3,6 +3,35 @@
  * Applied to Bitwarden Web Vault UI (angular layout_frontend)
  */
 
+/* 0. Global Theme Custom Properties - Force Cyber Dark Palette Everywhere */
+:root,
+html,
+html.theme_light,
+html.theme_dark,
+body,
+body.layout_frontend {
+    --color-bg-white: #060913 !important;
+    --color-bg-dark: #060913 !important;
+    --color-bg-primary: #060913 !important;
+    --color-bg-secondary: #0b0f19 !important;
+    --color-bg-tertiary: #0c1a30 !important;
+    --color-bg-quaternary: #111c38 !important;
+    --color-bg-inactive: #111c38 !important;
+
+    --color-background: 6 9 19 !important;
+    --color-background-alt: 12 26 48 !important;
+    --color-background-alt2: 17 28 56 !important;
+    --color-background-alt3: 20 35 70 !important;
+    --color-background-alt4: 12 26 48 !important;
+
+    --color-text-main: 241 245 249 !important;
+    --color-fg-primary: #f8fafc !important;
+    --color-fg-secondary: #94a3b8 !important;
+    --color-fg-muted: #64748b !important;
+    --color-border-primary: #1e293b !important;
+    --color-border-secondary: #334155 !important;
+}
+
 /* 1. Header & Landing Logos - NovusWarden Rebranding */
 header a > bit-svg svg,
 bit-landing-header a > bit-svg svg,
@@ -48,15 +77,7 @@ img.new-logo-themed,
 html,
 html.theme_light,
 html.theme_dark,
-body.layout_frontend,
-.layout_frontend,
-.layout_frontend app-root,
-.layout_frontend bit-landing-layout,
-.layout_frontend bit-landing-header,
-.layout_frontend header,
-.layout_frontend bit-landing-content,
-.layout_frontend main,
-.layout_frontend footer {
+body.layout_frontend {
     background-color: #060913 !important;
     color: #f1f5f9 !important;
 }
@@ -66,11 +87,31 @@ body.layout_frontend {
     min-height: 100vh !important;
 }
 
-/* Neutralize light background utility classes from Bitwarden */
+/* Neutralize all light backgrounds & Tailwind utility classes */
+.layout_frontend,
+.layout_frontend * {
+    --color-bg-primary: #060913 !important;
+    --color-bg-tertiary: #0c1a30 !important;
+}
+
 .layout_frontend .tw-bg-background,
+.layout_frontend .sm\:tw-bg-background,
 .layout_frontend .tw-bg-background-alt,
+.layout_frontend .sm\:tw-bg-background-alt,
 .layout_frontend .tw-bg-bg-primary,
-.layout_frontend .tw-bg-bg-secondary {
+.layout_frontend .tw-bg-bg-secondary,
+.layout_frontend bit-landing-layout,
+.layout_frontend bit-landing-header,
+.layout_frontend bit-landing-header > div,
+.layout_frontend bit-landing-content,
+.layout_frontend bit-landing-content > div,
+.layout_frontend bit-landing-footer,
+.layout_frontend bit-landing-footer > footer,
+.layout_frontend header,
+.layout_frontend footer,
+.layout_frontend main,
+.layout_frontend app-root,
+.layout_frontend app-root > div {
     background: transparent !important;
     background-color: transparent !important;
 }
@@ -235,18 +276,25 @@ bit-landing-card > div {
 }
 
 /* Always show the primary email and continue button for password login */
-.layout_frontend .vw-email-continue {
+.layout_frontend .vw-email-continue,
+.layout_frontend input.vw-email-continue,
+.layout_frontend [data-testid="login-email-input"] {
     display: block !important;
     visibility: visible !important;
+    opacity: 1 !important;
 }
 
-.layout_frontend .vw-continue-login {
-    display: block !important;
+.layout_frontend .vw-continue-login,
+.layout_frontend button.vw-continue-login,
+.layout_frontend [data-testid="login-continue-button"] {
+    display: flex !important;
     visibility: visible !important;
+    opacity: 1 !important;
 }
 
 /* Always hide the duplicate SSO email input */
-.layout_frontend .vw-email-sso {
+.layout_frontend .vw-email-sso,
+.layout_frontend input.vw-email-sso {
     display: none !important;
     visibility: hidden !important;
 }

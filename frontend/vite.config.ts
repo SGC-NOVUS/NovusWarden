@@ -40,12 +40,15 @@ export default defineConfig({
             }
           }
 
-          // Proxy /css/vaultwarden.css directly to backendTarget
+          // Proxy /css/vaultwarden.css directly to backendTarget, ensuring continue button is never hidden
           if (req.url?.startsWith('/css/vaultwarden.css')) {
             fetch(`${backendTarget}/css/vaultwarden.css`)
               .then(async (remoteRes) => {
                 if (remoteRes.ok) {
-                  const cssText = await remoteRes.text();
+                  let cssText = await remoteRes.text();
+                  cssText = cssText
+                    .replace(/\.vw-continue-login,?/g, '')
+                    .replace(/\.vw-email-continue,?/g, '');
                   res.setHeader('Content-Type', 'text/css');
                   res.end(cssText);
                 } else {
