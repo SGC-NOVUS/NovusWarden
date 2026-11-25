@@ -12,10 +12,10 @@ defineProps({
 
 <template>
   <EmailLayout :img-src="img_src" :heading="tSubject">
-    <EText class="nw-text" style="font-size: 15px; color: #334155; text-align: center;">{{ tIntro }}</EText>
-    <ESection class="nw-box" style="text-align: center; margin: 24px 0; background-color: #f8fafc; padding: 18px 24px; border-radius: 8px; border: 1px dashed #3b82f6;">
-      <EText style="font-family: monospace; font-size: 30px; font-weight: 800; letter-spacing: 6px; color: #0284c7; margin: 0;">{{ token }}</EText>
+    <EText class="nw-text" style="font-size: 15px; color: #334155; text-align: center">{{ tIntro }}</EText>
+    <ESection class="nw-box" style="text-align: center; margin: 24px 0; background-color: #f8fafc; padding: 18px 24px; border-radius: 8px; border: 1px dashed #3b82f6">
+      <EText style="font-family: monospace; font-size: 30px; font-weight: 800; letter-spacing: 6px; color: #0284c7; margin: 0">{{ token }}</EText>
     </ESection>
-    <EText class="nw-muted" style="font-size: 13px; color: #64748b; text-align: center;">{{ tIgnore }}</EText>
+    <EText class="nw-muted" style="font-size: 13px; color: #64748b; text-align: center">{{ tIgnore }}</EText>
   </EmailLayout>
 </template>

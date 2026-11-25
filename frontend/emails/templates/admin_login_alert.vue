@@ -20,13 +20,13 @@ defineProps({
 
 <template>
   <EmailLayout :img-src="img_src" :heading="tHeading">
-    <EText class="nw-text" style="font-size: 14px; color: #334155; line-height: 22px; text-align: center;">{{ tIntro }}</EText>
-    <ESection class="nw-box" style="background-color: #f8fafc; padding: 18px 20px; border-radius: 8px; border: 1px solid #cbd5e1;">
-      <EText class="nw-text" style="font-size: 13px; color: #334155; margin: 4px 0;"><strong class="nw-strong" style="color: #0f172a;">{{ tLabelIp }}:</strong> {{ ip_address }}</EText>
-      <EText class="nw-text" style="font-size: 13px; color: #334155; margin: 4px 0;"><strong class="nw-strong" style="color: #0f172a;">{{ tLabelLoc }}:</strong> {{ location }}</EText>
-      <EText class="nw-text" style="font-size: 13px; color: #334155; margin: 4px 0;"><strong class="nw-strong" style="color: #0f172a;">{{ tLabelUa }}:</strong> {{ user_agent }}</EText>
-      <EText class="nw-text" style="font-size: 13px; color: #334155; margin: 4px 0;"><strong class="nw-strong" style="color: #0f172a;">{{ tLabelDt }}:</strong> {{ datetime }}</EText>
-      <EText class="nw-text" style="font-size: 13px; color: #334155; margin: 4px 0;"><strong class="nw-strong" style="color: #0f172a;">{{ tLabelHost }}:</strong> <a class="nw-link" :href="url" style="color: #0284c7;">{{ url }}</a></EText>
+    <EText class="nw-text" style="font-size: 14px; color: #334155; line-height: 22px; text-align: center">{{ tIntro }}</EText>
+    <ESection class="nw-box" style="background-color: #f8fafc; padding: 18px 20px; border-radius: 8px; border: 1px solid #cbd5e1">
+      <EText class="nw-text" style="font-size: 13px; color: #334155; margin: 4px 0"><strong class="nw-strong" style="color: #0f172a">{{ tLabelIp }}:</strong> {{ ip_address }}</EText>
+      <EText class="nw-text" style="font-size: 13px; color: #334155; margin: 4px 0"><strong class="nw-strong" style="color: #0f172a">{{ tLabelLoc }}:</strong> {{ location }}</EText>
+      <EText class="nw-text" style="font-size: 13px; color: #334155; margin: 4px 0"><strong class="nw-strong" style="color: #0f172a">{{ tLabelUa }}:</strong> {{ user_agent }}</EText>
+      <EText class="nw-text" style="font-size: 13px; color: #334155; margin: 4px 0"><strong class="nw-strong" style="color: #0f172a">{{ tLabelDt }}:</strong> {{ datetime }}</EText>
+      <EText class="nw-text" style="font-size: 13px; color: #334155; margin: 4px 0"><strong class="nw-strong" style="color: #0f172a">{{ tLabelHost }}:</strong> <a class="nw-link" :href="url" style="color: #0284c7">{{ url }}</a></EText>
     </ESection>
   </EmailLayout>
 </template>

@@ -19,10 +19,10 @@ defineProps({
 
 <template>
   <EmailLayout :img-src="img_src" :heading="tSubject">
-    <EText class="nw-text" style="font-size: 15px; color: #334155; line-height: 24px; text-align: center;">{{ tIntro }} ({{ acting_address }}) {{ tMid }} ({{ existing_address }}). {{ tSuf }}</EText>
-    <EText class="nw-text" style="font-size: 15px; color: #334155; line-height: 24px; text-align: center;">{{ tDelIntro }} ({{ existing_address }}):</EText>
-    <ESection style="text-align: center; margin: 24px 0;"><EButton data-testid="recover-delete" :href="`${url}/#/recover-delete`" style="background-color: #dc2626; color: #ffffff; font-weight: 600; padding: 12px 28px; border-radius: 8px;">{{ tCta }}</EButton></ESection>
-    <EText class="nw-text" style="font-size: 14px; color: #334155; text-align: center;">{{ tAfter }}</EText>
-    <EText class="nw-muted" style="font-size: 13px; color: #64748b; text-align: center;">{{ tIgnore }}</EText>
+    <EText class="nw-text" style="font-size: 15px; color: #334155; line-height: 24px; text-align: center">{{ tIntro }} ({{ acting_address }}) {{ tMid }} ({{ existing_address }}). {{ tSuf }}</EText>
+    <EText class="nw-text" style="font-size: 15px; color: #334155; line-height: 24px; text-align: center">{{ tDelIntro }} ({{ existing_address }}):</EText>
+    <ESection style="text-align: center; margin: 24px 0"><EButton data-testid="recover-delete" :href="`${url}/#/recover-delete`" style="background-color: #dc2626; color: #ffffff; font-weight: 600; padding: 12px 28px; border-radius: 8px">{{ tCta }}</EButton></ESection>
+    <EText class="nw-text" style="font-size: 14px; color: #334155; text-align: center">{{ tAfter }}</EText>
+    <EText class="nw-muted" style="font-size: 13px; color: #64748b; text-align: center">{{ tIgnore }}</EText>
   </EmailLayout>
 </template>

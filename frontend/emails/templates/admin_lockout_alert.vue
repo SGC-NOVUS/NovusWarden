@@ -24,19 +24,19 @@ defineProps({
 
 <template>
   <EmailLayout variant="danger" :img-src="img_src" :heading="tHeading">
-    <EText class="nw-text" style="font-size: 14px; color: #334155; line-height: 22px; text-align: center;">
-      {{ tIntroPre }} <strong class="nw-strong" style="color: #0f172a;">{{ tIntroStrong }}</strong>. {{ tIntroSuf }}
+    <EText class="nw-text" style="font-size: 14px; color: #334155; line-height: 22px; text-align: center">
+      {{ tIntroPre }} <strong class="nw-strong" style="color: #0f172a">{{ tIntroStrong }}</strong>. {{ tIntroSuf }}
     </EText>
-    <ESection class="nw-box" style="background-color: #fef2f2; padding: 18px 20px; border-radius: 8px; border: 1px solid #fca5a5;">
-      <EText class="nw-text" style="font-size: 13px; color: #991b1b; margin: 4px 0;"><strong class="nw-strong" style="color: #0f172a;">{{ tLabelIp }}:</strong> {{ ip_address }}</EText>
-      <EText class="nw-text" style="font-size: 13px; color: #991b1b; margin: 4px 0;"><strong class="nw-strong" style="color: #0f172a;">{{ tLabelLoc }}:</strong> {{ location }}</EText>
-      <EText class="nw-text" style="font-size: 13px; color: #991b1b; margin: 4px 0;"><strong class="nw-strong" style="color: #0f172a;">{{ tLabelUa }}:</strong> {{ user_agent }}</EText>
-      <EText class="nw-text" style="font-size: 13px; color: #991b1b; margin: 4px 0;"><strong class="nw-strong" style="color: #0f172a;">{{ tLabelDt }}:</strong> {{ datetime }}</EText>
-      <EText class="nw-text" style="font-size: 13px; color: #991b1b; margin: 4px 0;"><strong class="nw-strong" style="color: #0f172a;">{{ tLabelHost }}:</strong> <a class="nw-link" :href="url" style="color: #0284c7;">{{ url }}</a></EText>
+    <ESection class="nw-box" style="background-color: #fef2f2; padding: 18px 20px; border-radius: 8px; border: 1px solid #fca5a5">
+      <EText class="nw-text" style="font-size: 13px; color: #991b1b; margin: 4px 0"><strong class="nw-strong" style="color: #0f172a">{{ tLabelIp }}:</strong> {{ ip_address }}</EText>
+      <EText class="nw-text" style="font-size: 13px; color: #991b1b; margin: 4px 0"><strong class="nw-strong" style="color: #0f172a">{{ tLabelLoc }}:</strong> {{ location }}</EText>
+      <EText class="nw-text" style="font-size: 13px; color: #991b1b; margin: 4px 0"><strong class="nw-strong" style="color: #0f172a">{{ tLabelUa }}:</strong> {{ user_agent }}</EText>
+      <EText class="nw-text" style="font-size: 13px; color: #991b1b; margin: 4px 0"><strong class="nw-strong" style="color: #0f172a">{{ tLabelDt }}:</strong> {{ datetime }}</EText>
+      <EText class="nw-text" style="font-size: 13px; color: #991b1b; margin: 4px 0"><strong class="nw-strong" style="color: #0f172a">{{ tLabelHost }}:</strong> <a class="nw-link" :href="url" style="color: #0284c7">{{ url }}</a></EText>
     </ESection>
-    <ESection style="text-align: center; margin: 24px 0;">
-      <EButton :href="unlock_url" style="background-color: #2563eb; color: #ffffff; font-weight: 700; padding: 12px 28px; border-radius: 8px;">{{ tCta }}</EButton>
+    <ESection style="text-align: center; margin: 24px 0">
+      <EButton :href="unlock_url" style="background-color: #2563eb; color: #ffffff; font-weight: 700; padding: 12px 28px; border-radius: 8px">{{ tCta }}</EButton>
     </ESection>
-    <EText class="nw-muted" style="font-size: 12px; color: #64748b; text-align: center; word-break: break-all;">{{ unlock_url }}</EText>
+    <EText class="nw-muted" style="font-size: 12px; color: #64748b; text-align: center; word-break: break-all">{{ unlock_url }}</EText>
   </EmailLayout>
 </template>

@@ -12,10 +12,10 @@ defineProps({
 
 <template>
   <EmailLayout :img-src="img_src" :heading="tSubject" variant="success">
-    <EText class="nw-text" style="font-size: 15px; color: #334155; line-height: 24px; text-align: center; margin-bottom: 16px;">
-      {{ tBodyIntro }} <a :href="url" class="nw-link" style="color: #0284c7;">{{ url }}</a>.
+    <EText class="nw-text" style="font-size: 15px; color: #334155; line-height: 24px; text-align: center; margin-bottom: 16px">
+      {{ tBodyIntro }} <a :href="url" class="nw-link" style="color: #0284c7">{{ url }}</a>.
     </EText>
-    <EText class="nw-heading-success" style="font-size: 14px; color: #059669; line-height: 22px; text-align: center; font-weight: 600;">
+    <EText class="nw-heading-success" style="font-size: 14px; color: #059669; line-height: 22px; text-align: center; font-weight: 600">
       {{ tBodyOk }}
     </EText>
   </EmailLayout>

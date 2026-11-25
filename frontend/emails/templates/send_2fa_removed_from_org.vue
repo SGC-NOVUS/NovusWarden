@@ -15,7 +15,7 @@ defineProps({
 
 <template>
   <EmailLayout variant="danger" :img-src="img_src" :heading="`${tSubjPre} ${org_name} ${tSubjSuf}`">
-    <EText class="nw-text" style="font-size: 15px; color: #334155; text-align: center;">{{ tIntroPre }} <strong style="color: #0f172a;">{{ org_name }}</strong> {{ tIntroSuf }}<br>{{ tSetup }}</EText>
-    <EText class="nw-muted" style="font-size: 13px; color: #64748b; text-align: center;">{{ tEnable }}</EText>
+    <EText class="nw-text" style="font-size: 15px; color: #334155; text-align: center">{{ tIntroPre }} <strong style="color: #0f172a">{{ org_name }}</strong> {{ tIntroSuf }}<br>{{ tSetup }}</EText>
+    <EText class="nw-muted" style="font-size: 13px; color: #64748b; text-align: center">{{ tEnable }}</EText>
   </EmailLayout>
 </template>

@@ -15,8 +15,8 @@ defineProps({
 
 <template>
   <EmailLayout :img-src="img_src" :heading="tSubject">
-    <EText class="nw-text" style="font-size: 15px; color: #334155; text-align: center;">{{ tIntro }}</EText>
-    <EText class="nw-text" style="font-size: 14px; color: #334155; text-align: center;">{{ tRecPre }} <a :href="`${url}/#/recover-delete`" style="color: #0284c7;">{{ tRecLink }}</a> {{ tRecSuf }}</EText>
-    <EText class="nw-muted" style="font-size: 13px; color: #64748b; text-align: center;">{{ tIgnore }}</EText>
+    <EText class="nw-text" style="font-size: 15px; color: #334155; text-align: center">{{ tIntro }}</EText>
+    <EText class="nw-text" style="font-size: 14px; color: #334155; text-align: center">{{ tRecPre }} <a :href="`${url}/#/recover-delete`" style="color: #0284c7">{{ tRecLink }}</a> {{ tRecSuf }}</EText>
+    <EText class="nw-muted" style="font-size: 13px; color: #64748b; text-align: center">{{ tIgnore }}</EText>
   </EmailLayout>
 </template>
