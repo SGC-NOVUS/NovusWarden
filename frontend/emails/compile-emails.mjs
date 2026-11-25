@@ -101,7 +101,7 @@ async function compileAllEmails() {
       const targetPath = path.join(OUTPUT_DIR, `${baseName}.html.hbs`);
 
       try {
-        const { html } = await emailCompiler.render(template, HANDLEBARS_MOCK_PROPS);
+        const { html } = await emailCompiler.render(template, { props: HANDLEBARS_MOCK_PROPS });
 
         // Restore any escaped Handlebars tags and quotes inside {{ ... }}
         const processedHtml = html

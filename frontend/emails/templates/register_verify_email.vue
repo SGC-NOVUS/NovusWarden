@@ -1,6 +1,5 @@
 <script setup>
 import { EText, ESection, EButton } from 'vue-email';
-import EmailLayout from './EmailLayout.vue';
 
 defineProps({
   url: { type: String, default: '{{{url}}}' },

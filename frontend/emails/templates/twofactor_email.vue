@@ -1,6 +1,5 @@
 <script setup>
 import { EText, ESection } from 'vue-email';
-import EmailLayout from './EmailLayout.vue';
 
 defineProps({
   token: { type: String, default: '{{token}}' },
