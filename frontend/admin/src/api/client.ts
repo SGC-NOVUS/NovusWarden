@@ -21,6 +21,29 @@ export interface UserSummary {
   ssoIdentifier: string;
   subscriptionPlan?: string;
   licenseExpiresAt?: string | null;
+  storageUsage?: string;
+}
+
+export interface BillingPlan {
+  id: string;
+  name: string;
+  priceMonthly: number;
+  priceYearly: number;
+  storageGb: number;
+  pamSeats: number;
+  features: string[];
+  badgeColor: string;
+}
+
+export interface BillingConfig {
+  enabled: boolean;
+  currency: string;
+  stripePublishableKey: string;
+  stripeSecretKey: string;
+  stripeWebhookSecret: string;
+  cryptoWallet: string;
+  webhookUrl: string;
+  plans: BillingPlan[];
 }
 
 export interface OrgSummary {
@@ -34,6 +57,20 @@ export interface OrgSummary {
   event_count: number;
   attachment_count: number;
   attachment_size: string;
+}
+
+export interface OrgDetail extends OrgSummary {
+  members: Array<{
+    id: string;
+    userId: string;
+    email: string;
+    name: string;
+    type: number;
+    status: number;
+    accessAll: boolean;
+  }>;
+  collections: Array<{ id: string; name: string; externalId?: string | null }>;
+  groups: Array<{ id: string; name: string; accessAll: boolean }>;
 }
 
 export interface ConfigElement {
@@ -72,7 +109,7 @@ export interface DiagnosticsData {
   web_vault_enabled: boolean;
   active_web_release: string;
   latest_web_release: string;
-  web_vault_compare: string;
+  web_vault_compare: number | string;
   running_within_container: boolean;
   container_base_image: string;
   has_http_access: boolean;
@@ -99,10 +136,22 @@ export interface DiagnosticsData {
 }
 
 import { ref } from 'vue';
+import { getAcceptLanguageHeader } from '@shared/i18n.ts';
+
+export function getBasePath(): string {
+  if (typeof window === 'undefined') return '';
+  const m = window.location.pathname.match(/^(.*?)\/admin(?:\/|$)/);
+  return m ? m[1] : '';
+}
+
+export function adminUrl(path: string): string {
+  return `${getBasePath()}${path}`;
+}
 
 export const authState = ref({
-  needsAuth: false,
-  isAuthenticated: true,
+  needsAuth: true,
+  isAuthenticated: false,
+  checked: false,
   isLocked: false,
   failedAttempts: 0,
 });
@@ -110,28 +159,54 @@ export const authState = ref({
 async function apiFetch(url: string, init?: RequestInit): Promise<Response> {
   const headers = new Headers(init?.headers);
   if (!headers.has('Accept-Language')) {
-    headers.set('Accept-Language', 'ru-RU, ru;q=0.9, en;q=0.1');
+    headers.set('Accept-Language', getAcceptLanguageHeader());
   }
-  const res = await fetch(url, { ...init, headers });
+  const res = await fetch(adminUrl(url), { ...init, headers });
   if (res.status === 401) {
     authState.value.needsAuth = true;
     authState.value.isAuthenticated = false;
+    authState.value.checked = true;
     if (window.location.hash !== '#/login') {
       window.location.hash = '#/login';
     }
   } else if (res.ok) {
     authState.value.isAuthenticated = true;
     authState.value.needsAuth = false;
+    authState.value.checked = true;
   }
   return res;
 }
 
 export const api = {
   // --- Auth ---
+  async checkSession(): Promise<boolean> {
+    try {
+      const res = await fetch(adminUrl('/admin/session'), {
+        headers: { 'Accept-Language': getAcceptLanguageHeader() },
+      });
+      const data = await res.json().catch(() => ({}));
+      authState.value.checked = true;
+      authState.value.isLocked = !!data?.locked;
+      if (res.ok && data?.authenticated) {
+        authState.value.isAuthenticated = true;
+        authState.value.needsAuth = false;
+        return true;
+      }
+      authState.value.isAuthenticated = false;
+      authState.value.needsAuth = true;
+      return false;
+    } catch {
+      authState.value.checked = true;
+      authState.value.isAuthenticated = false;
+      authState.value.needsAuth = true;
+      return false;
+    }
+  },
+
   async login(token: string): Promise<boolean> {
     const form = new URLSearchParams();
     form.append('token', token.trim());
-    const res = await fetch('/admin', {
+    const res = await fetch(adminUrl('/admin'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: form,
@@ -139,24 +214,28 @@ export const api = {
 
     if (res.ok || res.redirected || res.type === 'opaqueredirect' || res.status === 302 || res.status === 303) {
       authState.value.needsAuth = false;
+      authState.value.isAuthenticated = true;
+      authState.value.checked = true;
       authState.value.isLocked = false;
       authState.value.failedAttempts = 0;
       return true;
     }
 
     const text = await res.text().catch(() => '');
-    if (text.includes('locked') || text.includes('блокирован')) {
+    if (res.status === 429 || text.includes('locked') || text.includes('блокирован')) {
       authState.value.isLocked = true;
-      throw new Error('Панель управления заблокирована из-за 2 неверных попыток. Проверьте почту администратора для разблокировки.');
+      throw new Error('Панель управления заблокирована из-за превышения лимита попыток входа. Проверьте почту администратора.');
     }
 
     authState.value.failedAttempts += 1;
-    throw new Error('Неверный ключ доступа администратора. Осталась 1 попытка до автоматической блокировки!');
+    throw new Error('Неверный ключ доступа администратора. Повторная ошибка приведёт к блокировке!');
   },
 
   async logout(): Promise<void> {
-    await fetch('/admin/logout', { method: 'POST' }).catch(() => {});
+    await fetch(adminUrl('/admin/logout'), { method: 'GET' }).catch(() => {});
     authState.value.needsAuth = true;
+    authState.value.isAuthenticated = false;
+    authState.value.checked = true;
   },
 
   // --- Users ---
@@ -186,7 +265,14 @@ export const api = {
       ssoIdentifier: u.sso_identifier ?? u.ssoIdentifier ?? '',
       subscriptionPlan: u.subscriptionPlan || 'Free',
       licenseExpiresAt: u.licenseExpiresAt || null,
+      storageUsage: u.storageUsage ?? u.attachment_size ?? '0 B',
     }));
+  },
+
+  async getUser(uuid: string): Promise<any> {
+    const res = await apiFetch(`/admin/users/${uuid}`);
+    if (!res.ok) throw new Error(`Ошибка загрузки профиля пользователя: ${res.statusText}`);
+    return res.json();
   },
 
   async inviteUser(email: string, plan?: string): Promise<void> {
@@ -317,6 +403,12 @@ export const api = {
     }));
   },
 
+  async getOrganization(id: string): Promise<OrgDetail> {
+    const res = await apiFetch(`/admin/organizations/${id}`);
+    if (!res.ok) throw new Error(`Ошибка загрузки организации: ${res.statusText}`);
+    return res.json();
+  },
+
   async deleteOrganization(id: string): Promise<void> {
     const res = await apiFetch(`/admin/organizations/${id}/delete`, {
       method: 'POST',
@@ -386,7 +478,14 @@ export const api = {
     return res.json();
   },
 
-  async testHttpCode(code: number): Promise<void> {
-    await apiFetch(`/admin/diagnostics/http?code=${code}`);
+  async exportUsers(): Promise<Blob> {
+    const res = await apiFetch('/admin/users/export');
+    if (!res.ok) throw new Error('Ошибка экспорта пользователей');
+    return res.blob();
+  },
+
+  async testHttpCode(code: number): Promise<number> {
+    const res = await fetch(adminUrl(`/admin/diagnostics/http?code=${code}`));
+    return res.status;
   },
 };

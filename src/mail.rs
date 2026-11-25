@@ -993,12 +993,24 @@ pub async fn send_protected_action_token_for_locale(address: &str, token: &str, 
     send_email(address, &subject, body_html, body_text).await
 }
 
+#[allow(dead_code)]
 pub async fn send_admin_login_alert(
     address: &str,
     ip: &str,
     location: &str,
     user_agent: &str,
     datetime: &str,
+) -> EmptyResult {
+    send_admin_login_alert_for_locale(address, ip, location, user_agent, datetime, None).await
+}
+
+pub async fn send_admin_login_alert_for_locale(
+    address: &str,
+    ip: &str,
+    location: &str,
+    user_agent: &str,
+    datetime: &str,
+    locale: Option<&str>,
 ) -> EmptyResult {
     let (subject, body_html, body_text) = get_text_for_locale(
         "email/admin_login_alert",
@@ -1009,12 +1021,13 @@ pub async fn send_admin_login_alert(
             "user_agent": user_agent,
             "datetime": datetime,
         }),
-        None,
+        locale,
     )?;
 
     send_email(address, &subject, body_html, body_text).await
 }
 
+#[allow(dead_code)]
 pub async fn send_admin_lockout_alert(
     address: &str,
     ip: &str,
@@ -1022,6 +1035,18 @@ pub async fn send_admin_lockout_alert(
     user_agent: &str,
     datetime: &str,
     unlock_url: &str,
+) -> EmptyResult {
+    send_admin_lockout_alert_for_locale(address, ip, location, user_agent, datetime, unlock_url, None).await
+}
+
+pub async fn send_admin_lockout_alert_for_locale(
+    address: &str,
+    ip: &str,
+    location: &str,
+    user_agent: &str,
+    datetime: &str,
+    unlock_url: &str,
+    locale: Option<&str>,
 ) -> EmptyResult {
     let (subject, body_html, body_text) = get_text_for_locale(
         "email/admin_lockout_alert",
@@ -1033,7 +1058,7 @@ pub async fn send_admin_lockout_alert(
             "datetime": datetime,
             "unlock_url": unlock_url,
         }),
-        None,
+        locale,
     )?;
 
     send_email(address, &subject, body_html, body_text).await
@@ -1150,4 +1175,103 @@ async fn send_email(address: &str, subject: &str, body_html: String, body_text: 
         .multipart(body)?;
 
     send_with_selected_transport(email).await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::get_text_for_locale;
+    use serde_json::json;
+
+    #[test]
+    fn all_email_templates_render_with_locale_and_theme() {
+        let templates = [
+            "email/admin_account_recovery",
+            "email/admin_lockout_alert",
+            "email/admin_login_alert",
+            "email/change_email",
+            "email/change_email_existing",
+            "email/change_email_invited",
+            "email/delete_account",
+            "email/emergency_access_invite_accepted",
+            "email/emergency_access_invite_confirmed",
+            "email/emergency_access_recovery_approved",
+            "email/emergency_access_recovery_initiated",
+            "email/emergency_access_recovery_rejected",
+            "email/emergency_access_recovery_reminder",
+            "email/emergency_access_recovery_timed_out",
+            "email/incomplete_2fa_login",
+            "email/invite_accepted",
+            "email/invite_confirmed",
+            "email/new_device_logged_in",
+            "email/protected_action",
+            "email/pw_hint_none",
+            "email/pw_hint_some",
+            "email/recover_twofactor",
+            "email/register_verify_email",
+            "email/send_2fa_removed_from_org",
+            "email/send_emergency_access_invite",
+            "email/send_org_invite",
+            "email/send_single_org_removed_from_org",
+            "email/smtp_test",
+            "email/sso_change_email",
+            "email/twofactor_email",
+            "email/verify_email",
+            "email/welcome",
+            "email/welcome_must_verify",
+        ];
+
+        let locales = ["en", "ru", "uk"];
+        for template in templates {
+            let mut rendered_subjects = Vec::new();
+            for locale in locales {
+                let payload = json!({
+                    "url": "https://vault.example.test",
+                    "img_src": "https://vault.example.test/images/",
+                    "token": "123456",
+                    "user_id": "00000000-0000-0000-0000-000000000001",
+                    "email": "alice@example.test",
+                    "org_name": "Novus Corp",
+                    "device_type": "Firefox",
+                    "device_name": "Workstation",
+                    "ip": "203.0.113.10",
+                    "ip_address": "203.0.113.10",
+                    "location": "Kyiv, UA",
+                    "user_agent": "Mozilla/5.0",
+                    "unlock_url": "https://vault.example.test/admin/unlock?token=abc",
+                    "datetime": "2026-11-25 18:00 UTC",
+                    "hint": "test-hint",
+                    "user_name": "Alice",
+                    "acting_address": "alice@example.test",
+                    "existing_address": "bob@example.test",
+                    "grantor_name": "Alice",
+                    "grantee_name": "Bob",
+                    "grantee_email": "bob@example.test",
+                    "atype": "View",
+                    "wait_time_days": 7,
+                    "days_left": 2,
+                    "time_limit": 3,
+                    "fallback_2fa_email": true,
+                    "show_generic_name": true,
+                    "org_id": "org-1",
+                    "member_id": "mem-1",
+                    "emer_id": "emer-1",
+                    "query_string": "token=xyz"
+                });
+
+                let (subject, body_html, body_text) = get_text_for_locale(template, payload, Some(locale))
+                    .unwrap_or_else(|e| panic!("Failed rendering {template} for {locale}: {e:?}"));
+
+                assert!(!subject.trim().is_empty(), "Empty subject for {template} ({locale})");
+                assert!(!body_html.trim().is_empty(), "Empty HTML for {template} ({locale})");
+                assert!(!body_text.trim().is_empty(), "Empty text for {template} ({locale})");
+                assert!(body_html.contains(&format!("lang=\"{locale}\"")), "Missing lang=\"{locale}\" in {template}");
+                assert!(body_html.contains("prefers-color-scheme: dark"), "Missing dark theme CSS in {template}");
+                rendered_subjects.push(subject);
+            }
+
+            // Ensure localized subjects differ across en/ru/uk (not falling back to hardcoded single language)
+            assert_ne!(rendered_subjects[0], rendered_subjects[1], "EN and RU subjects identical for {template}");
+            assert_ne!(rendered_subjects[0], rendered_subjects[2], "EN and UK subjects identical for {template}");
+        }
+    }
 }

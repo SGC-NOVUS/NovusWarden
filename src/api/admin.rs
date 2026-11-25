@@ -53,6 +53,8 @@ pub fn routes() -> Vec<Route> {
         get_user_json,
         get_user_by_mail_json,
         post_admin_login,
+        admin_session,
+        admin_session_unauth,
         admin_page,
         admin_page_legacy,
         admin_page_login,
@@ -73,6 +75,7 @@ pub fn routes() -> Vec<Route> {
         test_smtp,
         users_overview,
         get_organizations_json,
+        get_organization_json,
         organizations_overview,
         delete_organization,
         diagnostics,
@@ -351,16 +354,29 @@ fn post_admin_login(
         }
 
         if CONFIG.mail_enabled() {
-            let admin_email = CONFIG.admin_email().unwrap_or_else(|| "582151.ua@gmail.com".to_owned());
-            let ip_str = meta.ip.clone();
-            let loc_str = meta.location.clone();
-            let ua_str = meta.user_agent;
-            let now_utc = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC").to_string();
-            tokio::spawn(async move {
-                if let Err(e) = mail::send_admin_login_alert(&admin_email, &ip_str, &loc_str, &ua_str, &now_utc).await {
-                    error!("Failed to send admin login alert email: {e}");
-                }
-            });
+            if let Some(admin_email) = CONFIG.admin_email() {
+                let ip_str = meta.ip.clone();
+                let loc_str = meta.location.clone();
+                let ua_str = meta.user_agent;
+                let now_utc = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC").to_string();
+                let alert_locale = locale.locale.clone();
+                tokio::spawn(async move {
+                    if let Err(e) = mail::send_admin_login_alert_for_locale(
+                        &admin_email,
+                        &ip_str,
+                        &loc_str,
+                        &ua_str,
+                        &now_utc,
+                        Some(&alert_locale),
+                    )
+                    .await
+                    {
+                        error!("Failed to send admin login alert email: {e}");
+                    }
+                });
+            } else {
+                warn!("ADMIN_EMAIL is not configured; skipping admin login alert email.");
+            }
         }
 
         let claims = match generate_admin_claims() {
@@ -416,22 +432,36 @@ fn post_admin_login(
 
         if locked {
             error!("ADMIN PANEL LOCKED DOWN after 2 failed attempts. Attacker IP: {}", meta.ip);
-            if let Some(token) = token {
-                if CONFIG.mail_enabled() {
-                    let admin_email = CONFIG.admin_email().unwrap_or_else(|| "582151.ua@gmail.com".to_owned());
+            if let Some(token) = token
+                && CONFIG.mail_enabled()
+            {
+                if let Some(admin_email) = CONFIG.admin_email() {
                     let unlock_url = format!("{}/admin/unlock?token={token}", CONFIG.domain());
                     let ip_str = meta.ip.clone();
                     let loc_str = meta.location.clone();
                     let ua_str = meta.user_agent;
                     let now_utc = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC").to_string();
+                    let alert_locale = locale.locale.clone();
                     tokio::spawn(async move {
-                        if let Err(e) =
-                            mail::send_admin_lockout_alert(&admin_email, &ip_str, &loc_str, &ua_str, &now_utc, &unlock_url)
-                                .await
+                        if let Err(e) = mail::send_admin_lockout_alert_for_locale(
+                            &admin_email,
+                            &ip_str,
+                            &loc_str,
+                            &ua_str,
+                            &now_utc,
+                            &unlock_url,
+                            Some(&alert_locale),
+                        )
+                        .await
                         {
                             error!("Failed to send admin lockout alert email: {e}");
                         }
                     });
+                } else {
+                    warn!(
+                        "ADMIN_EMAIL is not configured; emergency unlock URL: {}/admin/unlock?token={token}",
+                        CONFIG.domain()
+                    );
                 }
             }
             Err(AdminResponse::Unauthorized(render_admin_locked(&locale.locale)))
@@ -507,6 +537,30 @@ fn render_admin_page(locale: &str) -> ApiResult<Html<String>> {
     });
     let text = AdminTemplateData::new("admin/settings", settings_json, locale).render()?;
     Ok(Html(text))
+}
+
+#[get("/session")]
+fn admin_session(_token: AdminToken) -> Json<Value> {
+    Json(json!({
+        "authenticated": true,
+        "locked": is_admin_locked()
+    }))
+}
+
+#[get("/session", rank = 2)]
+fn admin_session_unauth() -> (Status, Json<Value>) {
+    let status = if is_admin_locked() {
+        Status::TooManyRequests
+    } else {
+        Status::Unauthorized
+    };
+    (
+        status,
+        Json(json!({
+            "authenticated": false,
+            "locked": is_admin_locked()
+        })),
+    )
 }
 
 #[get("/")]
@@ -608,13 +662,20 @@ fn admin_ui_files(p: PathBuf) -> Option<(ContentType, &'static [u8])> {
             "html" => ContentType::HTML,
             "js" | "mjs" => ContentType::JavaScript,
             "css" => ContentType::CSS,
-            "json" => ContentType::JSON,
+            "json" | "webmanifest" => ContentType::JSON,
             "png" => ContentType::PNG,
+            "webp" => ContentType::WEBP,
             "svg" => ContentType::SVG,
             "ico" => ContentType::Icon,
+            "woff" => ContentType::WOFF,
+            "woff2" => ContentType::WOFF2,
+            "wasm" => ContentType::WASM,
             _ => ContentType::Binary,
         };
         Some((content_type, file.contents()))
+    } else if p.extension().is_some() {
+        // Do not return index.html for missing static assets
+        None
     } else if let Some(index_file) = ADMIN_UI_DIR.get_file("index.html") {
         // SPA Fallback: for client-side routing
         Some((ContentType::HTML, index_file.contents()))
@@ -664,46 +725,53 @@ fn load_billing_config() -> Value {
 
 fn default_billing_config() -> Value {
     json!({
-        "gateway": {
-            "enabled": false,
-            "provider": "webhook",
-            "webhookUrl": "",
-            "stripePublicKey": "",
-            "cryptoWallet": "",
-            "currency": "USD"
-        },
+        "enabled": false,
+        "currency": "USD",
+        "stripePublishableKey": "",
+        "stripeSecretKey": "",
+        "stripeWebhookSecret": "",
+        "cryptoWallet": "",
+        "webhookUrl": "",
         "plans": [
             {
                 "id": "free",
-                "name": "Free / Базовый",
-                "price": 0,
-                "period": "бесплатно",
+                "name": "Free (Базовый)",
+                "priceMonthly": 0,
+                "priceYearly": 0,
                 "storageGb": 1,
-                "features": ["Стандартное шифрование", "До 2 устройств", "Базовый 2FA"]
+                "pamSeats": 0,
+                "features": ["Хранение паролей и заметок", "Синхронизация между устройствами", "Двухфакторная аутентификация (2FA)"],
+                "badgeColor": "#64748b"
             },
             {
                 "id": "pro",
-                "name": "Novus Pro",
-                "price": 5,
-                "period": "в месяц ($50/год)",
-                "storageGb": 50,
-                "features": ["Неограниченно устройств", "Аппаратные FIDO2/Passkeys", "Экстренный доступ", "Встроенный TOTP", "Приоритетная синхронизация"]
+                "name": "Novus Pro ⚡",
+                "priceMonthly": 3,
+                "priceYearly": 30,
+                "storageGb": 10,
+                "pamSeats": 0,
+                "features": ["Встроенный генератор кодов TOTP", "10 ГБ зашифрованного хранилища", "Аварийный доверенный доступ (Emergency Access)", "Приоритетная синхронизация ревизий"],
+                "badgeColor": "#0284c7"
             },
             {
                 "id": "enterprise",
-                "name": "Novus Enterprise VIP",
-                "price": 15,
-                "period": "за место в месяц",
-                "storageGb": 500,
-                "features": ["Все функции Pro", "SAML 2.0 / OIDC SSO", "SCIM 2.0 провижининг", "PAM привилегированный доступ", "Аудит действий и SIEM", "Выделенный SLA"]
+                "name": "Novus Enterprise 🏢",
+                "priceMonthly": 8,
+                "priceYearly": 80,
+                "storageGb": 50,
+                "pamSeats": 5,
+                "features": ["Единый вход SSO (SAML 2.0 / OIDC)", "Автоматическая синхронизация SCIM 2.0", "Привилегированный доступ PAM (5 мест)", "Политики безопасности и аудит-логи"],
+                "badgeColor": "#7c3aed"
             },
             {
                 "id": "lifetime",
-                "name": "Lifetime Unlimited VIP",
-                "price": 120,
-                "period": "разовый платёж навсегда",
-                "storageGb": 200,
-                "features": ["Все функции Pro пожизненно", "VIP статус и бейдж", "Без абонентской платы", "Ранний доступ к новым функциям"]
+                "name": "Lifetime VIP 👑",
+                "priceMonthly": 0,
+                "priceYearly": 199,
+                "storageGb": 100,
+                "pamSeats": 25,
+                "features": ["Бессрочный максимальный доступ навсегда", "Неограниченные коллекции и организации", "100 ГБ зашифрованного хранилища", "Максимальный уровень PAM и техподдержки"],
+                "badgeColor": "#d97706"
             }
         ]
     })
@@ -732,17 +800,23 @@ struct UserLicenseUpdate {
 }
 
 #[post("/users/<uuid>/license", format = "application/json", data = "<data>")]
-fn set_user_license(_token: AdminToken, uuid: &str, data: Json<UserLicenseUpdate>) -> JsonResult {
+async fn set_user_license(_token: AdminToken, uuid: &str, data: Json<UserLicenseUpdate>, conn: DbConn) -> JsonResult {
     let data = data.into_inner();
     let mut licenses = load_user_licenses();
     let expires_at = data.expires_days.map(|days| (chrono::Utc::now() + chrono::Duration::days(days)).to_rfc3339());
 
-    licenses[uuid] = json!({
+    let entry = json!({
         "plan": data.plan,
         "expires_at": expires_at,
         "notes": data.notes.unwrap_or_default(),
         "updated_at": chrono::Utc::now().to_rfc3339()
     });
+    licenses[uuid] = entry.clone();
+
+    let user_id = UserId::from(uuid.to_owned());
+    if let Some(user) = User::find_by_uuid(&user_id, &conn).await {
+        licenses[user.email.to_lowercase()] = entry;
+    }
 
     if let Err(e) = save_user_licenses(&licenses) {
         err_code!(format!("Failed to save license: {e}"), Status::InternalServerError.code);
@@ -847,6 +921,7 @@ async fn get_users_json(_token: AdminToken, conn: DbConn) -> Json<Value> {
         usr["ciphersCount"] = json!(c_count);
         usr["attachment_count"] = json!(a_count);
         usr["attachment_size"] = json!(a_size);
+        usr["storageUsage"] = json!(a_size);
         usr["organizationsCount"] = json!(orgs_count);
         usr["userEnabled"] = json!(u.enabled);
         usr["user_enabled"] = json!(u.enabled);
@@ -1099,19 +1174,23 @@ async fn update_revision_users(_token: AdminToken, conn: DbConn) -> EmptyResult 
     User::update_all_revisions(&conn).await
 }
 
+async fn build_organization_json(o: &Organization, conn: &DbConn) -> Value {
+    let mut org = o.to_json();
+    org["user_count"] = json!(Membership::count_by_org(&o.uuid, conn).await);
+    org["cipher_count"] = json!(Cipher::count_by_org(&o.uuid, conn).await);
+    org["collection_count"] = json!(Collection::count_by_org(&o.uuid, conn).await);
+    org["group_count"] = json!(Group::count_by_org(&o.uuid, conn).await);
+    org["event_count"] = json!(Event::count_by_org(&o.uuid, conn).await);
+    org["attachment_count"] = json!(Attachment::count_by_org(&o.uuid, conn).await);
+    org["attachment_size"] = json!(get_display_size(Attachment::size_by_org(&o.uuid, conn).await));
+    org
+}
+
 async fn build_organizations_json(conn: &DbConn) -> Vec<Value> {
     let organizations = Organization::get_all(conn).await;
     let mut organizations_json = Vec::with_capacity(organizations.len());
     for o in organizations {
-        let mut org = o.to_json();
-        org["user_count"] = json!(Membership::count_by_org(&o.uuid, conn).await);
-        org["cipher_count"] = json!(Cipher::count_by_org(&o.uuid, conn).await);
-        org["collection_count"] = json!(Collection::count_by_org(&o.uuid, conn).await);
-        org["group_count"] = json!(Group::count_by_org(&o.uuid, conn).await);
-        org["event_count"] = json!(Event::count_by_org(&o.uuid, conn).await);
-        org["attachment_count"] = json!(Attachment::count_by_org(&o.uuid, conn).await);
-        org["attachment_size"] = json!(get_display_size(Attachment::size_by_org(&o.uuid, conn).await));
-        organizations_json.push(org);
+        organizations_json.push(build_organization_json(&o, conn).await);
     }
     organizations_json
 }
@@ -1120,6 +1199,37 @@ async fn build_organizations_json(conn: &DbConn) -> Vec<Value> {
 async fn get_organizations_json(_token: AdminToken, conn: DbConn) -> Json<Value> {
     let orgs = build_organizations_json(&conn).await;
     Json(Value::Array(orgs))
+}
+
+#[get("/organizations/<org_id>")]
+async fn get_organization_json(org_id: OrganizationId, _token: AdminToken, conn: DbConn) -> JsonResult {
+    let locale = CONFIG.default_locale();
+    let org = Organization::find_by_uuid(&org_id, &conn).await.map_res(crate::i18n::org_not_found_short(&locale))?;
+    let mut json = build_organization_json(&org, &conn).await;
+
+    let memberships = Membership::find_by_org(&org_id, &conn).await;
+    let mut members = Vec::with_capacity(memberships.len());
+    for m in memberships {
+        let user = User::find_by_uuid(&m.user_uuid, &conn).await;
+        members.push(json!({
+            "id": m.uuid,
+            "userId": m.user_uuid,
+            "email": user.as_ref().map_or("", |u| u.email.as_str()),
+            "name": user.as_ref().map_or("", |u| u.name.as_str()),
+            "type": m.atype,
+            "status": m.status,
+            "accessAll": m.access_all,
+        }));
+    }
+
+    let collections: Vec<Value> =
+        Collection::find_by_organization(&org_id, &conn).await.iter().map(Collection::to_json).collect();
+    let groups: Vec<Value> = Group::find_by_organization(&org_id, &conn).await.iter().map(Group::to_json).collect();
+
+    json["members"] = json!(members);
+    json["collections"] = json!(collections);
+    json["groups"] = json!(groups);
+    Ok(Json(json))
 }
 
 #[get("/organizations/overview")]

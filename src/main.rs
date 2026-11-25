@@ -537,13 +537,11 @@ fn check_web_vault() {
         return;
     }
 
-    let index_path = Path::new(&CONFIG.web_vault_folder()).join("index.html");
+    let vault_folder = api::active_web_vault_folder();
+    let index_path = Path::new(&vault_folder).join("index.html");
 
     if !index_path.exists() {
-        error!(
-            "Web vault is not found at '{}'. To install it, please follow the steps in: ",
-            CONFIG.web_vault_folder()
-        );
+        error!("Web vault is not found at '{vault_folder}'. To install it, please follow the steps in: ");
         error!("https://github.com/SGC-NOVUS/novuswarden/wiki/Building-binary#install-the-web-vault");
         error!("You can also set the environment variable 'WEB_VAULT_ENABLED=false' to disable it");
         exit(1);

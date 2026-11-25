@@ -39,8 +39,13 @@ pub fn routes() -> Vec<Route> {
             web_index,
             web_index_direct,
             web_index_head,
+            web_login_redirect,
+            web_signup_redirect,
+            web_vault_redirect,
             app_id,
             apple_app_site_association,
+            well_known_webauthn,
+            well_known_assetlinks,
             web_files,
             vaultwarden_css
         ]);
@@ -170,9 +175,24 @@ fn vaultwarden_css() -> EtagCached<String> {
     EtagCached::new(cached.css.clone(), ContentType::CSS, &cached.etag)
 }
 
+pub fn active_web_vault_folder() -> String {
+    let vue_dir = Path::new("web-vault-vue");
+    let has_vue = vue_dir.join("index.html").exists();
+    if CONFIG.web_vault_vue() && has_vue {
+        return String::from("web-vault-vue/");
+    }
+
+    let configured = CONFIG.web_vault_folder();
+    if !Path::new(&configured).join("index.html").exists() && has_vue {
+        return String::from("web-vault-vue/");
+    }
+
+    configured
+}
+
 #[get("/")]
 async fn web_index() -> Cached<Option<NamedFile>> {
-    Cached::short(NamedFile::open(Path::new(&CONFIG.web_vault_folder()).join("index.html")).await.ok(), false)
+    Cached::short(NamedFile::open(Path::new(&active_web_vault_folder()).join("index.html")).await.ok(), false)
 }
 
 // Make sure that `/index.html` redirect to actual domain path.
@@ -180,6 +200,21 @@ async fn web_index() -> Cached<Option<NamedFile>> {
 #[get("/index.html")]
 fn web_index_direct() -> Redirect {
     Redirect::to(format!("{}/", CONFIG.domain_path()))
+}
+
+#[get("/login")]
+fn web_login_redirect() -> Redirect {
+    Redirect::to(format!("{}/#/login", CONFIG.domain_path()))
+}
+
+#[get("/signup")]
+fn web_signup_redirect() -> Redirect {
+    Redirect::to(format!("{}/#/signup", CONFIG.domain_path()))
+}
+
+#[get("/vault")]
+fn web_vault_redirect() -> Redirect {
+    Redirect::to(format!("{}/#/vault", CONFIG.domain_path()))
 }
 
 #[head("/")]
@@ -243,13 +278,45 @@ fn apple_app_site_association() -> Cached<(ContentType, Json<Value>)> {
     )
 }
 
+#[get("/.well-known/webauthn")]
+fn well_known_webauthn() -> Cached<(ContentType, Json<Value>)> {
+    Cached::long(
+        (
+            ContentType::JSON,
+            Json(json!({
+                "origins": [CONFIG.domain_origin()]
+            })),
+        ),
+        true,
+    )
+}
+
+#[get("/.well-known/assetlinks.json")]
+fn well_known_assetlinks() -> Cached<(ContentType, Json<Value>)> {
+    Cached::long((ContentType::JSON, Json(json!([]))), true)
+}
+
+struct AttachmentDownload {
+    file: NamedFile,
+    file_name: String,
+}
+
+impl<'r> rocket::response::Responder<'r, 'static> for AttachmentDownload {
+    fn respond_to(self, req: &'r Request<'_>) -> rocket::response::Result<'static> {
+        rocket::Response::build_from(self.file.respond_to(req)?)
+            .header(ContentType::Binary)
+            .raw_header("Content-Disposition", format!("attachment; filename=\"{}\"", self.file_name))
+            .ok()
+    }
+}
+
 #[get("/<p..>", rank = 10)] // Only match this if the other routes don't match
 async fn web_files(p: PathBuf) -> Cached<Option<NamedFile>> {
-    Cached::long(NamedFile::open(Path::new(&CONFIG.web_vault_folder()).join(p)).await.ok(), true)
+    Cached::long(NamedFile::open(Path::new(&active_web_vault_folder()).join(p)).await.ok(), true)
 }
 
 #[get("/attachments/<cipher_id>/<file_id>?<token>")]
-async fn attachments(cipher_id: CipherId, file_id: AttachmentId, token: String) -> Option<NamedFile> {
+async fn attachments(cipher_id: CipherId, file_id: AttachmentId, token: String) -> Option<AttachmentDownload> {
     let Ok(claims) = decode_file_download(&token) else {
         return None;
     };
@@ -257,7 +324,14 @@ async fn attachments(cipher_id: CipherId, file_id: AttachmentId, token: String) 
         return None;
     }
 
-    NamedFile::open(Path::new(&CONFIG.attachments_folder()).join(cipher_id.as_ref()).join(file_id.as_ref())).await.ok()
+    let file = NamedFile::open(Path::new(&CONFIG.attachments_folder()).join(cipher_id.as_ref()).join(file_id.as_ref()))
+        .await
+        .ok()?;
+    let safe_name = file_id.as_ref().replace(['"', '\\', '/', '\r', '\n'], "_");
+    Some(AttachmentDownload {
+        file,
+        file_name: safe_name,
+    })
 }
 
 // We use DbConn here to let the alive healthcheck also verify the database connection.
@@ -324,8 +398,62 @@ pub static STATIC_FILES: LazyLock<HashMap<&'static str, StaticFile>> = LazyLock:
         ("404.png", ContentType::PNG, &include_bytes!("../static/images/404.png")[..]),
         ("mail-github.png", ContentType::PNG, &include_bytes!("../static/images/mail-github.png")[..]),
         ("logo-gray.png", ContentType::PNG, &include_bytes!("../static/images/logo-gray.png")[..]),
-        ("novuswarden_banner_white.webp", ContentType::WEBP, &include_bytes!("../static/images/novuswarden_banner_white.webp")[..]),
-        ("novuswarden_banner_black.webp", ContentType::WEBP, &include_bytes!("../static/images/novuswarden_banner_black.webp")[..]),
+        (
+            "novuswarden_banner_white.webp",
+            ContentType::WEBP,
+            &include_bytes!("../static/images/novuswarden_banner_white.webp")[..],
+        ),
+        (
+            "novuswarden_banner_white_trans.webp",
+            ContentType::WEBP,
+            &include_bytes!("../static/images/novuswarden_banner_white_trans.webp")[..],
+        ),
+        (
+            "novuswarden_banner_black.webp",
+            ContentType::WEBP,
+            &include_bytes!("../static/images/novuswarden_banner_black.webp")[..],
+        ),
+        (
+            "novuswarden_banner_black_trans.webp",
+            ContentType::WEBP,
+            &include_bytes!("../static/images/novuswarden_banner_black_trans.webp")[..],
+        ),
+        ("logo_black.webp", ContentType::WEBP, &include_bytes!("../static/images/logo_black.webp")[..]),
+        ("logo_white.webp", ContentType::WEBP, &include_bytes!("../static/images/logo_white.webp")[..]),
+        (
+            "novuswarden_storage_lock_black.webp",
+            ContentType::WEBP,
+            &include_bytes!("../static/images/novuswarden_storage_lock_black.webp")[..],
+        ),
+        (
+            "novuswarden_storage_lock_black_crisp.webp",
+            ContentType::WEBP,
+            &include_bytes!("../static/images/novuswarden_storage_lock_black_crisp.webp")[..],
+        ),
+        (
+            "novuswarden_storage_lock_white.webp",
+            ContentType::WEBP,
+            &include_bytes!("../static/images/novuswarden_storage_lock_white.webp")[..],
+        ),
+        (
+            "novuswarden_storage_lock_white_crisp.webp",
+            ContentType::WEBP,
+            &include_bytes!("../static/images/novuswarden_storage_lock_white_crisp.webp")[..],
+        ),
+        (
+            "novuswarden_storage_open_black.webp",
+            ContentType::WEBP,
+            &include_bytes!("../static/images/novuswarden_storage_open_black.webp")[..],
+        ),
+        (
+            "novuswarden_storage_open_white.webp",
+            ContentType::WEBP,
+            &include_bytes!("../static/images/novuswarden_storage_open_white.webp")[..],
+        ),
+        ("favicon.ico", ContentType::Icon, &include_bytes!("../static/images/favicon.ico")[..]),
+        ("favicon-32x32.png", ContentType::PNG, &include_bytes!("../static/images/favicon-32x32.png")[..]),
+        ("favicon-16x16.png", ContentType::PNG, &include_bytes!("../static/images/favicon-16x16.png")[..]),
+        ("apple-touch-icon.png", ContentType::PNG, &include_bytes!("../static/images/apple-touch-icon.png")[..]),
         ("error-x.svg", ContentType::SVG, &include_bytes!("../static/images/error-x.svg")[..]),
         ("hibp.png", ContentType::PNG, &include_bytes!("../static/images/hibp.png")[..]),
         ("vaultwarden-icon.png", ContentType::PNG, &include_bytes!("../static/images/vaultwarden-icon.png")[..]),

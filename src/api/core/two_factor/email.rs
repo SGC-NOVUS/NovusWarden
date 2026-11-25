@@ -10,7 +10,7 @@ use crate::{
             two_factor::{VerificationTokenData, generate_recover_code},
         },
     },
-    auth::{ClientHeaders, Headers, two_factor},
+    auth::{ClientHeaders, DeviceIdentifierHeader, Headers, two_factor},
     crypto,
     db::{
         DbConn,
@@ -43,8 +43,14 @@ struct SendEmailLoginData {
 /// User is trying to login and wants to use email 2FA.
 /// Does not require Bearer token
 #[post("/two-factor/send-email-login", data = "<data>")] // JsonResult
-async fn send_email_login(data: Json<SendEmailLoginData>, client_headers: ClientHeaders, conn: DbConn) -> EmptyResult {
+async fn send_email_login(
+    data: Json<SendEmailLoginData>,
+    client_headers: ClientHeaders,
+    device_header: DeviceIdentifierHeader,
+    conn: DbConn,
+) -> EmptyResult {
     let data: SendEmailLoginData = data.into_inner();
+    let device_identifier = data.device_identifier.as_ref().or(device_header.0.as_ref());
 
     if !CONFIG._enable_email_2fa() {
         err!(crate::i18n::two_factor_email_disabled(&client_headers.locale))
@@ -103,7 +109,7 @@ async fn send_email_login(data: Json<SendEmailLoginData>, client_headers: Client
                     crate::i18n::two_factor_invalid_device_ip_or_code(&client_headers.locale)
                 )
             }
-        } else if let Some(device_identifier) = &data.device_identifier {
+        } else if let Some(device_identifier) = device_identifier {
             // iOS/Android SSO logins send the email and device id but no password hash,
             // so accept a device that has a pending 2FA login for this user
             if TwoFactorIncomplete::find_by_user_and_device(&user.uuid, device_identifier, &conn).await.is_none() {
@@ -123,7 +129,7 @@ async fn send_email_login(data: Json<SendEmailLoginData>, client_headers: Client
 
         user
     } else {
-        let Some(device_identifier) = &data.device_identifier else {
+        let Some(device_identifier) = device_identifier else {
             err!(crate::i18n::two_factor_no_device_identifier_submitted(&client_headers.locale))
         };
         // SSO login only sends device id, so we get the user by the most recently used device

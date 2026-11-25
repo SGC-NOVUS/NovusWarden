@@ -1,97 +1,115 @@
 /*
  * NovusWarden Web Vault - Modern Cyber Theme & Branding
- * Applied to Bitwarden Web Vault UI (angular layout_frontend)
+ * Adaptive System / Dark / Light theme support
  */
 
-/* 0. Global Theme Custom Properties - Force Cyber Dark Palette Everywhere */
+/* ==========================================================================
+   0. Theme Variables & Design System
+   ========================================================================== */
+
+/* Dark Theme (Default) */
 :root,
 html,
-html.theme_light,
 html.theme_dark,
+html[data-theme="dark"],
+body.theme_dark,
+body[data-theme="dark"] {
+    --page-bg: #010811;
+    --page-gradient: radial-gradient(ellipse at 50% 25%, #061329 0%, #020916 65%, #01050d 100%);
+    --card-bg: rgba(10, 18, 35, 0.88);
+    --card-border: rgba(56, 189, 248, 0.28);
+    --card-shadow: 0 20px 45px -10px rgba(0, 0, 0, 0.75), 0 0 25px rgba(14, 165, 233, 0.15);
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+    --input-bg: rgba(3, 7, 18, 0.85);
+    --input-border: #334155;
+    --input-focus-border: #38bdf8;
+    --input-focus-shadow: 0 0 0 3px rgba(56, 189, 248, 0.25);
+    --hero-badge-bg: #020817;
+    --hero-badge-border: rgba(56, 189, 248, 0.45);
+    --hero-badge-shadow: 0 0 25px rgba(14, 165, 233, 0.35);
+    --hero-icon: url("/images/novuswarden_storage_lock_black_crisp.webp");
+    --banner-img: url("/images/novuswarden_banner_black_trans.webp");
+    --sso-bg: rgba(14, 165, 233, 0.08);
+    --sso-border: rgba(56, 189, 248, 0.35);
+    --sso-color: #38bdf8;
+    --btn-secondary-bg: rgba(30, 41, 59, 0.6);
+    --btn-secondary-border: rgba(51, 65, 85, 0.8);
+    --btn-secondary-color: #cbd5e1;
+
+    --color-background: 2 6 17 !important;
+    --color-background-alt: 7 14 32 !important;
+    --color-text-main: 241 245 249 !important;
+}
+
+/* Light Theme */
+html.theme_light,
+html[data-theme="light"],
+body.theme_light,
+body[data-theme="light"] {
+    --page-bg: #f0f6fb;
+    --page-gradient: radial-gradient(ellipse at 50% 25%, #ffffff 0%, #f1f6fb 60%, #e2ecf5 100%);
+    --card-bg: rgba(255, 255, 255, 0.95);
+    --card-border: rgba(2, 132, 199, 0.28);
+    --card-shadow: 0 15px 35px -8px rgba(2, 132, 199, 0.12), 0 0 20px rgba(56, 189, 248, 0.08);
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-muted: #64748b;
+    --input-bg: #ffffff;
+    --input-border: #cbd5e1;
+    --input-focus-border: #0284c7;
+    --input-focus-shadow: 0 0 0 3px rgba(2, 132, 199, 0.2);
+    --hero-badge-bg: #ffffff;
+    --hero-badge-border: rgba(2, 132, 199, 0.45);
+    --hero-badge-shadow: 0 4px 20px rgba(2, 132, 199, 0.18);
+    --hero-icon: url("/images/novuswarden_storage_lock_white_crisp.webp");
+    --banner-img: url("/images/novuswarden_banner_white_trans.webp");
+    --sso-bg: rgba(2, 132, 199, 0.08);
+    --sso-border: rgba(2, 132, 199, 0.3);
+    --sso-color: #0284c7;
+    --btn-secondary-bg: #f1f5f9;
+    --btn-secondary-border: #cbd5e1;
+    --btn-secondary-color: #334155;
+
+    --color-background: 248 250 252 !important;
+    --color-background-alt: 241 245 249 !important;
+    --color-text-main: 15 23 42 !important;
+}
+
+/* ==========================================================================
+   1. Global Layout, Zero Scroll & Cyber Background
+   ========================================================================== */
+
+html,
 body,
 body.layout_frontend {
-    --color-bg-white: #060913 !important;
-    --color-bg-dark: #060913 !important;
-    --color-bg-primary: #060913 !important;
-    --color-bg-secondary: #0b0f19 !important;
-    --color-bg-tertiary: #0c1a30 !important;
-    --color-bg-quaternary: #111c38 !important;
-    --color-bg-inactive: #111c38 !important;
-
-    --color-background: 6 9 19 !important;
-    --color-background-alt: 12 26 48 !important;
-    --color-background-alt2: 17 28 56 !important;
-    --color-background-alt3: 20 35 70 !important;
-    --color-background-alt4: 12 26 48 !important;
-
-    --color-text-main: 241 245 249 !important;
-    --color-fg-primary: #f8fafc !important;
-    --color-fg-secondary: #94a3b8 !important;
-    --color-fg-muted: #64748b !important;
-    --color-border-primary: #1e293b !important;
-    --color-border-secondary: #334155 !important;
-}
-
-/* 1. Header & Landing Logos - NovusWarden Rebranding */
-header a > bit-svg svg,
-bit-landing-header a > bit-svg svg,
-bit-landing-header bit-svg svg,
-bit-landing-header svg {
-    display: none !important;
-}
-
-header a > bit-svg,
-bit-landing-header a > bit-svg,
-bit-landing-header bit-svg {
-    display: block !important;
-    width: 200px !important;
-    height: 42px !important;
-    position: relative !important;
-}
-
-header a > bit-svg::before,
-bit-landing-header a > bit-svg::before,
-bit-landing-header bit-svg::before {
-    content: "" !important;
-    display: block !important;
-    width: 200px !important;
-    height: 42px !important;
-    background-repeat: no-repeat !important;
-    background-position: left center !important;
-    background-size: contain !important;
-    background-image: url("images/logo-white.svg") !important;
-}
-
-/* Force NovusWarden logo on all new-logo-themed image tags */
-img.new-logo-themed,
-.theme_light img.new-logo-themed,
-.theme_dark img.new-logo-themed {
-    content: url("images/logo-white.svg") !important;
-    width: 190px !important;
-    height: auto !important;
-    max-height: 42px !important;
-    object-fit: contain !important;
-}
-
-/* 2. Global Frontend Layout & Background - Enforce Cyber Dark Aesthetic */
-html,
-html.theme_light,
-html.theme_dark,
-body.layout_frontend {
-    background-color: #060913 !important;
-    color: #f1f5f9 !important;
-}
-
-body.layout_frontend {
-    background: radial-gradient(circle at 50% 15%, #0c1a30 0%, #060913 100%) !important;
     min-height: 100vh !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+    overflow: hidden !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background-color: var(--page-bg) !important;
+    background-image: var(--page-gradient) !important;
+    color: var(--text-primary) !important;
+    transition: background-color 0.25s ease, color 0.25s ease !important;
 }
 
-/* Neutralize all light backgrounds & Tailwind utility classes */
+/* Allow scrolling only on very small screens (< 640px height) */
+@media (max-height: 640px) {
+    html,
+    body,
+    body.layout_frontend {
+        overflow-y: auto !important;
+    }
+}
+
+/* Neutralize background utility classes */
 .layout_frontend,
 .layout_frontend * {
-    --color-bg-primary: #060913 !important;
-    --color-bg-tertiary: #0c1a30 !important;
+    --tw-ring-shadow: none !important;
+    --tw-ring-color: transparent !important;
 }
 
 .layout_frontend .tw-bg-background,
@@ -116,25 +134,137 @@ body.layout_frontend {
     background-color: transparent !important;
 }
 
-/* Dim and colorize decorative background SVGs */
-.layout_frontend div.tw-relative.tw-grow > div > svg {
-    opacity: 0.04 !important;
-    filter: drop-shadow(0 0 12px #0284c7) !important;
+/* Completely hide distracting background illustration SVGs */
+.layout_frontend div.tw-relative.tw-grow > div > svg,
+.layout_frontend svg.tw-fill-illustration-bg-primary,
+.layout_frontend svg[viewBox="0 0 501 226"],
+.layout_frontend svg[viewBox="0 0 506 297"] {
+    display: none !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
 }
 
-/* Prevent hero icon clipping at top edge of viewport */
-bit-landing-hero {
-    margin-top: 36px !important;
-    padding-top: 16px !important;
-}
-
+bit-landing-layout,
+bit-landing-content,
 .layout_frontend bit-landing-content > div,
 .layout_frontend bit-landing-layout,
 .layout_frontend main {
-    padding-top: 30px !important;
+    padding: 0 !important;
+    margin: 0 auto !important;
 }
 
-/* 3. Hero Section & Cyber Shield Icon Replacement */
+/* ==========================================================================
+   2. Header & Branding Banner
+   ========================================================================== */
+
+bit-landing-header {
+    padding: 10px 24px !important;
+    display: block !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+.tw-fixed {
+    padding-top: 10px !important;
+    padding-left: 24px !important;
+}
+
+header a,
+bit-landing-header a {
+    display: inline-block !important;
+    text-decoration: none !important;
+    outline: none !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    width: 190px !important;
+    height: 38px !important;
+    background-repeat: no-repeat !important;
+    background-position: left center !important;
+    background-size: contain !important;
+    background-image: var(--banner-img) !important;
+    font-size: 0 !important;
+    line-height: 0 !important;
+    color: transparent !important;
+    text-indent: -9999px !important;
+    overflow: hidden !important;
+}
+
+/* Completely suppress all upstream Bitwarden SVGs inside header */
+header a bit-svg,
+header bit-svg,
+bit-landing-header a bit-svg,
+bit-landing-header bit-svg,
+header a bit-svg svg,
+header bit-svg svg,
+header svg,
+bit-landing-header a bit-svg svg,
+bit-landing-header bit-svg svg,
+bit-landing-header svg,
+bit-nav-logo svg,
+bit-nav-logo bit-svg,
+bit-nav-logo bit-svg svg,
+bit-side-nav bit-nav-logo svg,
+bit-side-nav bit-nav-logo bit-svg {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    width: 0 !important;
+    height: 0 !important;
+    overflow: hidden !important;
+}
+
+bit-nav-logo a,
+bit-side-nav bit-nav-logo a {
+    background-image: var(--banner-img) !important;
+    background-size: contain !important;
+    background-repeat: no-repeat !important;
+    background-position: left center !important;
+    min-height: 44px !important;
+    height: 44px !important;
+    width: 185px !important;
+    max-width: 100% !important;
+    margin: 8px 0 !important;
+    font-size: 0 !important;
+    text-indent: -9999px !important;
+    display: block !important;
+}
+
+bit-nav-logo a * {
+    display: none !important;
+}
+
+/* Force NovusWarden logo on image tags */
+img.logo,
+img.new-logo-themed,
+header img,
+bit-landing-header img,
+.tw-fixed img.new-logo-themed {
+    content: var(--banner-img) !important;
+    width: 190px !important;
+    max-width: 190px !important;
+    height: 38px !important;
+    max-height: 38px !important;
+    object-fit: contain !important;
+    display: block !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+/* ==========================================================================
+   3. Hero Section (Closed Secure Storage Center Emblem)
+   ========================================================================== */
+
+bit-landing-hero {
+    margin-top: 2px !important;
+    margin-bottom: 4px !important;
+    padding-top: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+}
+
 bit-landing-hero bit-svg,
 bit-landing-hero bit-svg svg,
 bit-landing-hero .tw-size-20 svg,
@@ -145,123 +275,174 @@ bit-landing-hero svg {
     opacity: 0 !important;
     width: 0 !important;
     height: 0 !important;
-    max-width: 0 !important;
-    max-height: 0 !important;
     overflow: hidden !important;
 }
 
+/* Center Hero: Closed Secure Storage Vault */
 bit-landing-hero div.tw-size-20,
-bit-landing-hero div.sm\:tw-size-24 {
+bit-landing-hero div.sm\:tw-size-24,
+bit-landing-hero .tw-size-20,
+bit-landing-hero .sm\:tw-size-24 {
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    width: 76px !important;
-    height: 76px !important;
-    margin: 12px auto 16px auto !important;
-    background: linear-gradient(135deg, rgba(14, 165, 233, 0.25), rgba(99, 102, 241, 0.25)) !important;
-    border: 1px solid rgba(56, 189, 248, 0.5) !important;
+    width: 78px !important;
+    height: 78px !important;
+    margin: 0 auto 8px auto !important;
+    background: var(--hero-badge-bg) !important;
+    border: 1px solid var(--hero-badge-border) !important;
     border-radius: 20px !important;
-    box-shadow: 0 0 30px rgba(14, 165, 233, 0.35), inset 0 0 15px rgba(56, 189, 248, 0.2) !important;
+    box-shadow: var(--hero-badge-shadow) !important;
     position: relative !important;
-    animation: novusPulseGlow 3s ease-in-out infinite alternate !important;
-}
-
-@keyframes novusPulseGlow {
-    0% {
-        box-shadow: 0 0 20px rgba(14, 165, 233, 0.25), inset 0 0 10px rgba(56, 189, 248, 0.1);
-        border-color: rgba(56, 189, 248, 0.35);
-    }
-    100% {
-        box-shadow: 0 0 40px rgba(14, 165, 233, 0.55), inset 0 0 20px rgba(56, 189, 248, 0.3);
-        border-color: rgba(56, 189, 248, 0.7);
-    }
+    overflow: hidden !important;
+    transition: all 0.25s ease !important;
 }
 
 bit-landing-hero div.tw-size-20::before,
-bit-landing-hero div.sm\:tw-size-24::before {
+bit-landing-hero div.sm\:tw-size-24::before,
+bit-landing-hero .tw-size-20::before,
+bit-landing-hero .sm\:tw-size-24::before {
     content: "" !important;
     display: block !important;
-    width: 42px !important;
-    height: 42px !important;
+    width: 100% !important;
+    height: 100% !important;
     background-repeat: no-repeat !important;
     background-position: center !important;
-    background-size: contain !important;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2338bdf8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z'/%3E%3Cpath d='m9 12 2 2 4-4' stroke='%2338bdf8' stroke-width='2'/%3E%3C/svg%3E") !important;
+    background-size: 94% !important;
+    background-image: var(--hero-icon) !important;
+    image-rendering: -webkit-optimize-contrast !important;
+    image-rendering: crisp-edges !important;
 }
 
 /* Hero Title ("Войти", "Создать аккаунт") */
 bit-landing-hero h1,
 bit-landing-hero h2 {
-    color: #f8fafc !important;
+    color: var(--text-primary) !important;
     font-weight: 700 !important;
-    font-size: 24px !important;
+    font-size: 20px !important;
     letter-spacing: -0.5px !important;
-    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5) !important;
+    margin: 0 !important;
 }
 
-/* 4. Login & Signup Card (Glassmorphism) */
-bit-landing-card,
+/* ==========================================================================
+   4. Login & Signup Card (Single Clean Cyber Card - No Double Card Artifact!)
+   ========================================================================== */
+
+/* Outer host wrapper - MUST NOT have borders, shadows, backgrounds or extra padding */
+bit-landing-card {
+    display: block !important;
+    background: transparent !important;
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 4px auto 0 auto !important;
+    max-width: 420px !important;
+    width: 100% !important;
+}
+
+/* The actual SINGLE cyber card */
 bit-landing-card bit-base-card,
-bit-landing-card > div {
-    background: rgba(15, 23, 42, 0.75) !important;
+bit-landing-card [bitbasecard] {
+    display: block !important;
+    background: var(--card-bg) !important;
     backdrop-filter: blur(20px) !important;
     -webkit-backdrop-filter: blur(20px) !important;
-    border: 1px solid rgba(56, 189, 248, 0.22) !important;
+    border: 1px solid var(--card-border) !important;
     border-radius: 16px !important;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7), 0 0 25px rgba(14, 165, 233, 0.08) !important;
-    padding: 32px !important;
-    color: #f1f5f9 !important;
+    box-shadow: var(--card-shadow) !important;
+    padding: 20px 26px !important;
+    color: var(--text-primary) !important;
+    box-sizing: border-box !important;
+    margin: 0 auto !important;
+    width: 100% !important;
+    transition: background 0.25s ease, border-color 0.25s ease, color 0.25s ease !important;
 }
 
-/* 5. Clean Single-Border Input Fields */
-/* Neutralize outer Tailwind wrapper rings */
-.layout_frontend [class*="tw-ring-"] {
-    --tw-ring-shadow: none !important;
-    --tw-ring-color: transparent !important;
+/* Form spacing inside card to ensure zero vertical scroll */
+.layout_frontend bit-landing-card form .tw-space-y-6 > * + *,
+.layout_frontend bit-landing-card form > div > * + * {
+    margin-top: 10px !important;
+}
+
+.layout_frontend bit-landing-card form {
+    margin: 0 !important;
+}
+
+.layout_frontend bit-landing-card bit-form-field {
+    margin-bottom: 8px !important;
+}
+
+/* Neutralize all inner card children so they NEVER create a nested inner card */
+bit-landing-card bit-base-card > div,
+bit-landing-card bit-base-card form,
+bit-landing-card bit-base-card .tw-bg-background,
+bit-landing-card bit-base-card .sm\:tw-bg-background,
+bit-landing-card bit-base-card .tw-border,
+bit-landing-card bit-base-card .sm\:tw-border,
+bit-landing-card bit-base-card .tw-shadow,
+bit-landing-card bit-base-card .sm\:tw-shadow,
+bit-landing-card bit-base-card .sm\:tw-p-8 {
+    background: transparent !important;
+    background-color: transparent !important;
+    border: none !important;
     box-shadow: none !important;
+    padding: 0 !important;
 }
 
-/* Outer field container: single clean cyber border */
-.layout_frontend [bitFieldContainer],
+/* ==========================================================================
+   5. Clean Single-Border Inputs
+   ========================================================================== */
+
+/* Completely neutralize all outer Tailwind wrappers and bit-form-field containers */
+.layout_frontend bit-form-field,
+.layout_frontend bit-form-field > div,
 .layout_frontend bit-form-field > div.tw-relative,
+.layout_frontend .tw-relative:has(> [bitFieldContainer]),
 .layout_frontend .tw-relative:has(> input[type="email"]),
 .layout_frontend .tw-relative:has(> input[type="password"]),
 .layout_frontend .tw-relative:has(> input[type="text"]) {
-    background-color: #0b0f19 !important;
-    border: 1px solid #334155 !important;
-    border-radius: 8px !important;
+    background: transparent !important;
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+}
+
+/* The single clean input field container */
+.layout_frontend [bitFieldContainer] {
+    background-color: var(--input-bg) !important;
+    border: 1px solid var(--input-border) !important;
+    border-radius: 10px !important;
     box-shadow: none !important;
     transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
     overflow: hidden !important;
 }
 
-/* Focus glow on container */
-.layout_frontend [bitFieldContainer]:focus-within,
-.layout_frontend [bitFieldContainer]:has(input:focus),
-.layout_frontend bit-form-field > div.tw-relative:focus-within,
-.layout_frontend .tw-relative:has(> input:focus) {
-    border-color: #38bdf8 !important;
-    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.25) !important;
+.layout_frontend [bitFieldContainer]:focus-within {
+    border-color: var(--input-focus-border) !important;
+    box-shadow: var(--input-focus-shadow) !important;
 }
 
-/* Inner input is transparent, borderless, and seamless */
+/* Inner input is completely borderless and seamless */
+.layout_frontend [bitFieldContainer] input,
 .layout_frontend input[type="email"],
 .layout_frontend input[type="password"],
 .layout_frontend input[type="text"],
-.layout_frontend input[bitinput],
-.layout_frontend [bitFieldContainer] input {
+.layout_frontend input[bitinput] {
     background: transparent !important;
     background-color: transparent !important;
     border: none !important;
     outline: none !important;
     box-shadow: none !important;
-    color: #f8fafc !important;
+    color: var(--text-primary) !important;
     border-radius: 0 !important;
-    padding: 10px 14px !important;
-    font-size: 14px !important;
+    padding: 9px 12px !important;
+    font-size: 13.5px !important;
     width: 100% !important;
     box-sizing: border-box !important;
-    height: 42px !important;
+    height: 40px !important;
 }
 
 .layout_frontend input[type="email"]:focus,
@@ -275,7 +456,22 @@ bit-landing-card > div {
     box-shadow: none !important;
 }
 
-/* Always show the primary email and continue button for password login */
+/* Labels */
+.layout_frontend label,
+.layout_frontend bit-label {
+    color: var(--text-secondary) !important;
+    font-weight: 600 !important;
+    font-size: 12px !important;
+    margin-bottom: 4px !important;
+    display: block !important;
+}
+
+/* Checkbox */
+.layout_frontend input[type="checkbox"] {
+    accent-color: #0284c7 !important;
+}
+
+/* Always ensure primary email & continue button visible */
 .layout_frontend .vw-email-continue,
 .layout_frontend input.vw-email-continue,
 .layout_frontend [data-testid="login-email-input"] {
@@ -292,47 +488,37 @@ bit-landing-card > div {
     opacity: 1 !important;
 }
 
-/* Always hide the duplicate SSO email input */
 .layout_frontend .vw-email-sso,
 .layout_frontend input.vw-email-sso {
     display: none !important;
-    visibility: hidden !important;
 }
 
-/* Hide passkey login button on web vault */
 .layout_frontend .vw-passkey-login {
     display: none !important;
 }
 
-/* Form labels */
-.layout_frontend label,
-.layout_frontend bit-label {
-    color: #cbd5e1 !important;
-    font-weight: 600 !important;
-    font-size: 13px !important;
-    margin-bottom: 6px !important;
-    display: block !important;
-}
+/* ==========================================================================
+   6. Buttons & Enterprise SSO
+   ========================================================================== */
 
-/* Checkbox styling */
-.layout_frontend input[type="checkbox"] {
-    accent-color: #0284c7 !important;
-}
-
-/* 6. Primary Button ("Продолжить" / "Войти") */
+/* Primary Button ("Продолжить") */
 .layout_frontend button[type="submit"],
 .layout_frontend [buttonType="primary"] {
     background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%) !important;
     color: #ffffff !important;
     border: none !important;
-    border-radius: 8px !important;
+    border-radius: 10px !important;
     font-weight: 600 !important;
-    font-size: 14px !important;
-    padding: 11px 20px !important;
-    height: 44px !important;
-    box-shadow: 0 4px 15px rgba(2, 132, 199, 0.35) !important;
+    font-size: 13.5px !important;
+    padding: 9px 16px !important;
+    height: 40px !important;
+    box-shadow: 0 4px 14px rgba(2, 132, 199, 0.35) !important;
     transition: all 0.2s ease !important;
     cursor: pointer !important;
+    width: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
 }
 
 .layout_frontend button[type="submit"]:hover,
@@ -342,74 +528,116 @@ bit-landing-card > div {
     transform: translateY(-1px) !important;
 }
 
-/* 7. Secondary Buttons & Enterprise SSO Button */
+/* Enterprise SSO Button */
+.layout_frontend .vw-sso-login,
+.layout_frontend button:has(bit-icon[name="bwi-enterprise"]),
+.layout_frontend button:has(i.bwi-enterprise) {
+    background: var(--sso-bg) !important;
+    border: 1px solid var(--sso-border) !important;
+    color: var(--sso-color) !important;
+    border-radius: 10px !important;
+    font-weight: 600 !important;
+    font-size: 13px !important;
+    height: 38px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    transition: all 0.2s ease !important;
+    width: 100% !important;
+    cursor: pointer !important;
+    margin-top: 8px !important;
+}
+
+.layout_frontend .vw-sso-login:hover,
+.layout_frontend button:has(bit-icon[name="bwi-enterprise"]):hover,
+.layout_frontend button:has(i.bwi-enterprise):hover {
+    filter: brightness(1.1) !important;
+    transform: translateY(-1px) !important;
+}
+
+/* Secondary Button ("Прочее") */
 .layout_frontend [buttonType="secondary"],
 .layout_frontend button[type="button"]:not([buttonType="primary"]):not([buttonType="side-nav"]):not([aria-label]) {
-    background: #1e293b !important;
-    border: 1px solid #334155 !important;
-    color: #e2e8f0 !important;
-    border-radius: 8px !important;
+    background: var(--btn-secondary-bg) !important;
+    border: 1px solid var(--btn-secondary-border) !important;
+    color: var(--btn-secondary-color) !important;
+    border-radius: 10px !important;
     font-weight: 500 !important;
-    padding: 10px 18px !important;
-    height: 42px !important;
+    font-size: 13px !important;
+    height: 38px !important;
     transition: all 0.2s ease !important;
+    width: 100% !important;
+    cursor: pointer !important;
 }
 
 .layout_frontend [buttonType="secondary"]:hover,
 .layout_frontend button[type="button"]:not([buttonType="primary"]):not([buttonType="side-nav"]):not([aria-label]):hover {
-    background: #334155 !important;
-    border-color: #475569 !important;
-    color: #ffffff !important;
+    filter: brightness(1.1) !important;
 }
 
-/* Prominent Enterprise SSO button */
-.layout_frontend .vw-sso-login,
-.layout_frontend button:has(> bit-icon[name="bwi-enterprise"]) {
-    background: linear-gradient(135deg, rgba(14, 165, 233, 0.15), rgba(99, 102, 241, 0.15)) !important;
-    border: 1px solid rgba(56, 189, 248, 0.45) !important;
-    color: #38bdf8 !important;
-    font-weight: 600 !important;
+/* Divider ("или") */
+.layout_frontend [bitDivider] {
+    color: var(--text-muted) !important;
+    font-size: 11.5px !important;
+    margin: 8px 0 !important;
 }
 
-.layout_frontend .vw-sso-login:hover,
-.layout_frontend button:has(> bit-icon[name="bwi-enterprise"]):hover {
-    background: linear-gradient(135deg, rgba(14, 165, 233, 0.25), rgba(99, 102, 241, 0.25)) !important;
-    border-color: #38bdf8 !important;
-    box-shadow: 0 0 15px rgba(56, 189, 248, 0.2) !important;
-}
-
-/* 8. Links ("Создать аккаунт", "Войти") & Footer Rebranding */
+/* Links */
 .layout_frontend a {
-    color: #38bdf8 !important;
+    color: #0284c7 !important;
     font-weight: 500 !important;
     text-decoration: none !important;
-    transition: color 0.15s ease !important;
+}
+
+html.theme_dark .layout_frontend a,
+html[data-theme="dark"] .layout_frontend a {
+    color: #38bdf8 !important;
 }
 
 .layout_frontend a:hover {
-    color: #7dd3fc !important;
     text-decoration: underline !important;
 }
 
-/* Rebrand footer title */
-.layout_frontend footer [bitTypography="body2"]:first-of-type {
-    font-size: 0 !important;
-}
-.layout_frontend footer [bitTypography="body2"]:first-of-type::after {
-    font-size: 13px !important;
-    font-weight: 600 !important;
-    color: #94a3b8 !important;
-    content: "NovusWarden Web 2026.11" !important;
+/* ==========================================================================
+   7. Localized Footer Rebranding
+   ========================================================================== */
+
+.layout_frontend footer.tw-my-12,
+.layout_frontend footer {
+    margin-top: 8px !important;
+    margin-bottom: 4px !important;
+    line-height: 1.35 !important;
 }
 
-/* Rebrand footer disclaimer */
+.layout_frontend footer [bitTypography="body2"] {
+    color: var(--text-secondary) !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    margin: 0 !important;
+}
+
 .layout_frontend #vw-disclaimer {
     font-size: 0 !important;
-    line-height: 1.5 !important;
+    line-height: 1.35 !important;
+    margin-top: 4px !important;
 }
+
+/* Default / English */
 .layout_frontend #vw-disclaimer::after {
     font-size: 11px !important;
-    color: #64748b !important;
+    color: var(--text-muted) !important;
     display: block !important;
-    content: "NovusWarden Community Edition • Разработано и поддерживается SGC-NOVUS" !important;
+    white-space: pre-line !important;
+    content: "Powered by SGC-NOVUS\A System Generations Core Novus" !important;
+}
+
+/* Russian */
+:is(html[lang="ru"], html[lang^="ru-"], html:not([lang])) .layout_frontend #vw-disclaimer::after {
+    content: "Работает на платформе SGC-NOVUS\A System Generations Core Novus" !important;
+}
+
+/* Ukrainian */
+:is(html[lang="uk"], html[lang^="uk-"]) .layout_frontend #vw-disclaimer::after {
+    content: "Працює на платформі SGC-NOVUS\A System Generations Core Novus" !important;
 }

@@ -32,7 +32,7 @@ pub use crate::api::{
     scim::routes as scim_routes,
     web::catchers as web_catchers,
     web::routes as web_routes,
-    web::{STATIC_FILES, invalidate_css_cache},
+    web::{STATIC_FILES, active_web_vault_folder, invalidate_css_cache},
 };
 use crate::{
     CONFIG,

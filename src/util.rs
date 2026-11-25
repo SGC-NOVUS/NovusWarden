@@ -115,7 +115,9 @@ impl Fairing for AppHeaders {
                     frame-src 'self' https://*.duosecurity.com https://*.duofederal.com; \
                     frame-ancestors 'self' \
                     chrome-extension://nngceckbapebfimnlniiiahkandclblb \
+                    chrome-extension://hccnnhgbibccigepcmlgppchkpfdophk \
                     chrome-extension://jbkfoedolllekgbhcbcoahefnbanhhlh \
+                    chrome-extension://ccnckbpmaceehanjmeomladnmlffdjgn \
                     moz-extension://* \
                     {allowed_iframe_ancestors}; \
                     img-src 'self' data: \
@@ -128,6 +130,7 @@ impl Fairing for AppHeaders {
                     https://app.addy.io/api/ \
                     https://api.fastmail.com/ \
                     https://api.forwardemail.net \
+                    https://quack.duckduckgo.com \
                     {allowed_connect_src};\
                     ",
                     icon_service_csp = CONFIG._icon_service_csp(),
@@ -188,9 +191,16 @@ impl Fairing for Cors {
     async fn on_response<'r>(&self, request: &'r Request<'_>, response: &mut Response<'r>) {
         let req_headers = request.headers();
 
+        if req_headers.contains("Origin") {
+            response.adjoin_header(Header::new("Vary", "Origin"));
+        }
+
         if let Some(origin) = Cors::get_allowed_origin(req_headers) {
             response.set_header(Header::new("Access-Control-Allow-Origin", origin));
+            response.set_header(Header::new("Access-Control-Allow-Credentials", "true"));
         }
+
+        response.set_header(Header::new("Access-Control-Expose-Headers", "Content-Disposition"));
 
         // Preflight request
         if request.method() == Method::Options {
@@ -616,10 +626,8 @@ struct WebVaultVersion {
 }
 
 pub fn get_active_web_release() -> String {
-    let version_files = [
-        format!("{}/vw-version.json", CONFIG.web_vault_folder()),
-        format!("{}/version.json", CONFIG.web_vault_folder()),
-    ];
+    let vault_folder = crate::api::active_web_vault_folder();
+    let version_files = [format!("{vault_folder}/vw-version.json"), format!("{vault_folder}/version.json")];
 
     for version_file in version_files {
         if let Ok(version_str) = std::fs::read_to_string(&version_file)

@@ -6,7 +6,7 @@ use std::{
 
 use chrono::{NaiveDateTime, Utc};
 use rmpv::Value;
-use rocket::{Route, futures::StreamExt};
+use rocket::{Route, futures::StreamExt, serde::json::Json};
 use rocket_ws::{Message, WebSocket};
 use tokio::sync::mpsc::Sender;
 
@@ -52,12 +52,59 @@ const WS_CLIENT_TIMEOUT: Duration = Duration::from_secs(30);
 static NOTIFICATIONS_DISABLED: LazyLock<bool> = LazyLock::new(|| !CONFIG.enable_websocket() && !CONFIG.push_enabled());
 
 pub fn routes() -> Vec<Route> {
+    let mut r = routes![notifications_alive, notifications_now];
     if CONFIG.enable_websocket() {
-        routes![websockets_hub, anonymous_websockets_hub]
+        r.append(&mut routes![
+            websockets_hub,
+            websockets_hub_negotiate,
+            anonymous_websockets_hub,
+            anonymous_websockets_hub_negotiate
+        ]);
     } else {
         info!("WebSocket are disabled, realtime sync functionality will not work!");
-        routes![]
     }
+    r
+}
+
+fn build_negotiate_response(negotiate_version: Option<i32>) -> Json<serde_json::Value> {
+    let conn_id = uuid::Uuid::new_v4().to_string();
+    let version = negotiate_version.unwrap_or(1);
+    let mut payload = serde_json::json!({
+        "negotiateVersion": version,
+        "connectionId": conn_id,
+        "availableTransports": [
+            {
+                "transport": "WebSockets",
+                "transferFormats": ["Text", "Binary"]
+            }
+        ]
+    });
+    if version >= 1 {
+        payload["connectionToken"] = serde_json::json!(uuid::Uuid::new_v4().to_string());
+    }
+    Json(payload)
+}
+
+#[get("/alive")]
+fn notifications_alive() -> Json<String> {
+    crate::api::core::now()
+}
+
+#[get("/now")]
+fn notifications_now() -> Json<String> {
+    crate::api::core::now()
+}
+
+#[post("/hub/negotiate?<negotiateVersion>")]
+#[allow(non_snake_case)]
+fn websockets_hub_negotiate(negotiateVersion: Option<i32>) -> Json<serde_json::Value> {
+    build_negotiate_response(negotiateVersion)
+}
+
+#[post("/anonymous-hub/negotiate?<negotiateVersion>")]
+#[allow(non_snake_case)]
+fn anonymous_websockets_hub_negotiate(negotiateVersion: Option<i32>) -> Json<serde_json::Value> {
+    build_negotiate_response(negotiateVersion)
 }
 
 #[derive(FromForm, Debug)]

@@ -209,6 +209,7 @@ COPY docker/brand_web_vault.sh /
 COPY docker/web-vault-overlay /web-vault-overlay
 
 COPY --from=vault /web-vault ./web-vault
+COPY --from=frontend-builder /app/frontend/dist/vault ./web-vault-vue
 COPY --from=build /app/target/final/novuswarden ./novuswarden
 RUN ln -s /novuswarden /vaultwarden
 

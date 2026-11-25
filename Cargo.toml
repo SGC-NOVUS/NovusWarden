@@ -2,7 +2,7 @@
 edition = "2024"
 rust-version = "1.97.1"
 license = "AGPL-3.0-only"
-repository = "https://github.com/SGC-NOVUS/novuswarden"
+repository = "https://github.com/SGC-NOVUS/NovusWarden"
 publish = false
 
 [workspace]
@@ -15,7 +15,8 @@ authors = [
     "SGC-NOVUS Core Team <support@sgc-novus.fun>",
     "Vaultwarden Contributors (see AUTHORS.md)",
 ]
-description = "High-performance Bitwarden-compatible core with native i18n, Vue 3 control plane, and unified object storage"
+description = "Enterprise Bitwarden-compatible vault core (Rust + Vue 3 + Vue-Email + unified object storage) by SGC-NOVUS"
+readme = "README.md"
 build = "build.rs"
 repository.workspace = true
 edition.workspace = true

@@ -629,6 +629,23 @@ impl<'r> FromRequest<'r> for Host {
     }
 }
 
+pub struct DeviceIdentifierHeader(pub Option<DeviceId>);
+
+#[rocket::async_trait]
+impl<'r> FromRequest<'r> for DeviceIdentifierHeader {
+    type Error = &'static str;
+
+    async fn from_request(request: &'r Request<'_>) -> Outcome<Self, Self::Error> {
+        let id = request
+            .headers()
+            .get_one("device-identifier")
+            .map(str::trim)
+            .filter(|v| !v.is_empty())
+            .map(|v| DeviceId::from(v.to_owned()));
+        Outcome::Success(DeviceIdentifierHeader(id))
+    }
+}
+
 pub struct ClientHeaders {
     pub device_type: i32,
     pub ip: ClientIp,
@@ -730,8 +747,11 @@ impl<'r> FromRequest<'r> for Headers {
             err_handler!("Device has no user associated")
         };
 
-        let locale =
-            crate::i18n::resolve_locale(None, request.headers().get_one("Accept-Language"), &CONFIG.default_locale());
+        let locale = crate::i18n::resolve_locale(
+            user.locale.as_deref(),
+            request.headers().get_one("Accept-Language"),
+            &CONFIG.default_locale(),
+        );
 
         if user.security_stamp != claims.sstamp {
             if let Some(stamp_exception) =

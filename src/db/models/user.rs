@@ -331,6 +331,7 @@ impl User {
             "providers": [],
             "providerOrganizations": [],
             "forcePasswordReset": false,
+            "verifyDevices": false,
             "avatarColor": self.avatar_color,
             "usesKeyConnector": false,
             "creationDate": format_date(&self.created_at),

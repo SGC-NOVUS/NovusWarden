@@ -239,13 +239,14 @@ fn config() -> Json<Value> {
             // When enabled, this setting signals to clients that onboarding interstitials
             // (post-login welcome dialogs, extension install prompts, setup extension redirects, and premium upsell modals) should be suppressed
             "suppressOnboardingInterstitials": CONFIG.client_suppress_onboarding(),
+            "enableEmailVerification": CONFIG.mail_enabled(),
         },
         "environment": {
           "vault": domain,
           "api": format!("{domain}/api"),
           "identity": format!("{domain}/identity"),
           "notifications": format!("{domain}/notifications"),
-          "sso": "",
+          "sso": if CONFIG.sso_enabled() { CONFIG.sso_authority() } else { String::new() },
           "cloudRegion": null,
           "fillAssistRules": CONFIG.fill_assist_rules_url(),
         },

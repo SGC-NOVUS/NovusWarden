@@ -11,6 +11,11 @@ services:
       - "8080:80"
     environment:
       # General configuration
+      # - DOMAIN=https://vault.example.com
+      # - ADMIN_TOKEN=<Argon2id PHC string from 'novuswarden hash'>
+      - WEB_VAULT_ENABLED=true
+      - WEB_VAULT_VUE=true
+      - DEFAULT_LOCALE=en
       - WEBSOCKET_ENABLED=true
       - SIGNUPS_ALLOWED=false
       - INVITATIONS_ALLOWED=true

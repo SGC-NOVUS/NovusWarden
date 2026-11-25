@@ -8,18 +8,28 @@ use crate::{
         core::log_user_event,
         core::two_factor::{VerificationTokenData, generate_recover_code},
     },
-    auth::{Headers, two_factor, two_factor::DuoData},
+    auth::{AdminHeaders, Headers, two_factor, two_factor::DuoData},
     crypto,
     db::{
         DbConn,
-        models::{EventType, TwoFactor, TwoFactorType, User, UserId},
+        models::{EventType, OrganizationId, TwoFactor, TwoFactorType, User, UserId},
     },
     error::MapResult,
     http_client::make_http_request,
 };
 
 pub fn routes() -> Vec<Route> {
-    routes![get_duo, activate_duo, activate_duo_put, disable_duo,]
+    routes![
+        get_duo,
+        activate_duo,
+        activate_duo_put,
+        disable_duo,
+        get_org_twofactor,
+        get_org_duo,
+        activate_org_duo_put,
+        activate_org_duo_post,
+        disable_org_duo,
+    ]
 }
 
 enum DuoStatus {
@@ -226,4 +236,190 @@ pub(crate) async fn get_duo_keys_email(email: &str, conn: &DbConn) -> ApiResult<
     .map_res(crate::i18n::two_factor_cant_fetch_duo_keys(&CONFIG.default_locale()))?;
 
     Ok((data.ik, data.sk, data.host))
+}
+
+fn org_duo_config_path(org_id: &OrganizationId) -> Option<std::path::PathBuf> {
+    let parsed = uuid::Uuid::parse_str(org_id).ok()?;
+    Some(std::path::PathBuf::from(CONFIG.data_folder()).join("org_duo").join(format!("{parsed}.json")))
+}
+
+fn read_org_duo_custom(org_id: &OrganizationId) -> Option<DuoData> {
+    let path = org_duo_config_path(org_id)?;
+    let raw = std::fs::read_to_string(path).ok()?;
+    serde_json::from_str::<DuoData>(&raw).ok()
+}
+
+fn get_org_duo_status(org_id: &OrganizationId) -> DuoStatus {
+    if let Some(custom) = read_org_duo_custom(org_id) {
+        DuoStatus::User(custom)
+    } else if let Some(global) = DuoData::global() {
+        DuoStatus::Global(global)
+    } else {
+        DuoStatus::Disabled(false)
+    }
+}
+
+fn write_org_duo_custom(org_id: &OrganizationId, data: &DuoData) -> EmptyResult {
+    let Some(path) = org_duo_config_path(org_id) else {
+        err!("Invalid organization id");
+    };
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).map_res("Failed to create org_duo directory")?;
+    }
+    let json = serde_json::to_string(data)?;
+    std::fs::write(path, json).map_res("Failed to save organization Duo configuration")
+}
+
+fn delete_org_duo_custom(org_id: &OrganizationId) -> EmptyResult {
+    if let Some(path) = org_duo_config_path(org_id)
+        && path.exists()
+    {
+        std::fs::remove_file(path).map_res("Failed to remove organization Duo configuration")?;
+    }
+    Ok(())
+}
+
+fn duo_details_json(enabled: bool, data: Option<&DuoData>) -> serde_json::Value {
+    if let Some(d) = data {
+        json!({
+            "enabled": enabled,
+            "host": d.host,
+            "clientSecret": d.sk,
+            "clientId": d.ik,
+        })
+    } else {
+        json!({
+            "enabled": enabled,
+            "host": null,
+            "clientSecret": null,
+            "clientId": null,
+        })
+    }
+}
+
+#[expect(clippy::needless_pass_by_value, reason = "Rocket request guards require owned values")]
+#[get("/organizations/<org_id>/two-factor")]
+fn get_org_twofactor(org_id: OrganizationId, headers: AdminHeaders) -> JsonResult {
+    if org_id != headers.org_id {
+        err!("Organization id's do not match");
+    }
+
+    let enabled = matches!(get_org_duo_status(&org_id), DuoStatus::Global(_) | DuoStatus::User(_));
+    let providers = if enabled {
+        vec![json!({
+            "enabled": true,
+            "type": TwoFactorType::OrganizationDuo as i32,
+            "object": "twoFactorProvider",
+        })]
+    } else {
+        Vec::new()
+    };
+
+    Ok(Json(json!({
+        "data": providers,
+        "object": "list",
+        "continuationToken": null,
+    })))
+}
+
+#[post("/organizations/<org_id>/two-factor/get-duo", data = "<data>")]
+async fn get_org_duo(
+    org_id: OrganizationId,
+    data: Json<PasswordOrOtpData>,
+    headers: AdminHeaders,
+    conn: DbConn,
+) -> JsonResult {
+    if org_id != headers.org_id {
+        err!("Organization id's do not match");
+    }
+    let data = data.into_inner();
+    data.validate(&headers.user, false, &conn).await?;
+
+    let (enabled, duo) = match get_org_duo_status(&org_id) {
+        DuoStatus::Global(_) => (true, Some(DuoData::secret())),
+        DuoStatus::User(d) => (true, Some(d.obscure())),
+        DuoStatus::Disabled(has_global) => (
+            false,
+            if has_global {
+                Some(DuoData::msg(DISABLED_MESSAGE_DEFAULT))
+            } else {
+                None
+            },
+        ),
+    };
+
+    Ok(Json(json!({
+        "duo": duo_details_json(enabled, duo.as_ref()),
+        "userVerificationToken": two_factor::duo_token(headers.user.uuid, duo, enabled),
+        "object": "twoFactorOrganizationDuo",
+    })))
+}
+
+#[put("/organizations/<org_id>/two-factor/duo", data = "<data>")]
+async fn activate_org_duo_put(
+    org_id: OrganizationId,
+    data: Json<EnableDuoData>,
+    headers: AdminHeaders,
+    conn: DbConn,
+) -> JsonResult {
+    activate_org_duo_post(org_id, data, headers, conn).await
+}
+
+#[post("/organizations/<org_id>/two-factor/duo", data = "<data>")]
+async fn activate_org_duo_post(
+    org_id: OrganizationId,
+    data: Json<EnableDuoData>,
+    headers: AdminHeaders,
+    conn: DbConn,
+) -> JsonResult {
+    if org_id != headers.org_id {
+        err!("Organization id's do not match");
+    }
+    let data = data.into_inner();
+    let expected = match get_org_duo_status(&org_id) {
+        DuoStatus::Global(_) => (true, Some(DuoData::secret())),
+        DuoStatus::User(d) => (true, Some(d.obscure())),
+        DuoStatus::Disabled(_) => (false, None),
+    };
+    two_factor::validate_duo(&data.user_verification_token, &headers.user.uuid, expected.1.as_ref(), expected.0)?;
+
+    let obscured = if check_duo_fields_custom(&data) {
+        let req_data: DuoData = data.into();
+        duo_api_request("GET", "/auth/v2/check", "", &req_data).await.map_res("Failed to validate Duo credentials")?;
+        write_org_duo_custom(&org_id, &req_data)?;
+        req_data.obscure()
+    } else if DuoData::global().is_some() {
+        delete_org_duo_custom(&org_id)?;
+        DuoData::secret()
+    } else {
+        err!("Duo global settings are not configured and custom fields are incomplete");
+    };
+
+    headers.log_event(EventType::OrganizationUpdated, &org_id, &org_id, &conn).await;
+
+    Ok(Json(json!({
+        "duo": duo_details_json(true, Some(&obscured)),
+        "object": "twoFactorOrganizationDuoUpdate",
+    })))
+}
+
+#[delete("/organizations/<org_id>/two-factor/duo", data = "<data>")]
+async fn disable_org_duo(
+    org_id: OrganizationId,
+    data: Json<VerificationTokenData>,
+    headers: AdminHeaders,
+    conn: DbConn,
+) -> EmptyResult {
+    if org_id != headers.org_id {
+        err!("Organization id's do not match");
+    }
+    let expected = match get_org_duo_status(&org_id) {
+        DuoStatus::Global(_) => (true, Some(DuoData::secret())),
+        DuoStatus::User(d) => (true, Some(d.obscure())),
+        DuoStatus::Disabled(_) => (false, None),
+    };
+    two_factor::validate_duo(&data.user_verification_token, &headers.user.uuid, expected.1.as_ref(), expected.0)?;
+    delete_org_duo_custom(&org_id)?;
+    headers.log_event(EventType::OrganizationUpdated, &org_id, &org_id, &conn).await;
+    Ok(())
 }

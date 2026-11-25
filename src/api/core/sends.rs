@@ -51,6 +51,7 @@ pub fn routes() -> Vec<rocket::Route> {
         put_send,
         delete_send,
         put_remove_password,
+        put_remove_auth,
         download_send,
         post_send_file_v2,
         post_send_file_v2_data
@@ -584,4 +585,9 @@ async fn put_remove_password(send_id: SendId, headers: Headers, conn: DbConn, nt
     .await;
 
     Ok(Json(send.to_json()))
+}
+
+#[put("/sends/<send_id>/remove-auth")]
+async fn put_remove_auth(send_id: SendId, headers: Headers, conn: DbConn, nt: Notify<'_>) -> JsonResult {
+    put_remove_password(send_id, headers, conn, nt).await
 }

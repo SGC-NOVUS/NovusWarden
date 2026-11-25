@@ -1,21 +1,65 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
-import { useRoute } from 'vue-router';
-import { api, authState } from './api/client.ts';
+import { ref, computed, onMounted } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { api, authState, adminUrl } from './api/client.ts';
+import { useI18n } from '@shared/i18n.ts';
 
 const route = useRoute();
-const logoUrl = ["/vw_static", "vaultwarden-icon.png"].join("/");
+const router = useRouter();
+const { t, locale, cycleLocale } = useI18n();
 
-const isLoginPage = computed(() => route.path === '/login' || authState.value.needsAuth);
+const isLoginPage = computed(() => route.path === '/login' || (authState.value.needsAuth && route.path !== '/docs'));
 
-const navItems = [
-  { name: 'Сводка', path: '/' },
-  { name: 'Пользователи', path: '/users' },
-  { name: 'Организации', path: '/organizations' },
-  { name: 'Тарифы и подписки', path: '/subscriptions' },
-  { name: 'Настройки сервера', path: '/settings' },
-  { name: 'Диагностика', path: '/diagnostics' },
-];
+// Theme switcher: 'system' | 'dark' | 'light'
+const themeMode = ref<'system' | 'dark' | 'light'>((localStorage.getItem('novus_theme') as any) || 'system');
+
+const isLight = computed(() => {
+  if (themeMode.value === 'light') return true;
+  if (themeMode.value === 'dark') return false;
+  return window.matchMedia && !window.matchMedia('(prefers-color-scheme: dark)').matches;
+});
+
+const bannerUrl = computed(() => adminUrl(`/vw_static/${isLight.value ? 'novuswarden_banner_white_trans.webp' : 'novuswarden_banner_black_trans.webp'}`));
+
+function applyTheme(mode: 'system' | 'dark' | 'light') {
+  const isDark = mode === 'dark' || (mode === 'system' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  if (isDark) {
+    document.documentElement.classList.add('dark');
+    document.documentElement.classList.remove('light');
+  } else {
+    document.documentElement.classList.remove('dark');
+    document.documentElement.classList.add('light');
+  }
+}
+
+function toggleTheme() {
+  const modes: ('system' | 'dark' | 'light')[] = ['system', 'dark', 'light'];
+  const next = modes[(modes.indexOf(themeMode.value) + 1) % modes.length];
+  themeMode.value = next;
+  localStorage.setItem('novus_theme', next);
+  applyTheme(next);
+}
+
+onMounted(() => {
+  applyTheme(themeMode.value);
+  if (window.matchMedia) {
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+      if (themeMode.value === 'system') {
+        applyTheme('system');
+      }
+    });
+  }
+});
+
+const navItems = computed(() => [
+  { name: t('nav.dashboard'), path: '/' },
+  { name: t('nav.users'), path: '/users' },
+  { name: t('nav.organizations'), path: '/organizations' },
+  { name: t('nav.subscriptions'), path: '/subscriptions' },
+  { name: t('nav.serverSettings'), path: '/settings' },
+  { name: t('nav.diagnostics'), path: '/diagnostics' },
+  { name: t('nav.docs'), path: '/docs' },
+]);
 
 const loggingOut = ref(false);
 
@@ -23,25 +67,77 @@ async function handleLogout() {
   loggingOut.value = true;
   await api.logout();
   loggingOut.value = false;
+  await router.push('/login');
 }
 </script>
 
 <template>
-  <div :style="isLoginPage ? 'height: 100vh; max-height: 100vh; overflow: hidden; display: flex; flex-direction: column; background-color: #0b0f19;' : 'min-height: 100vh; display: flex; flex-direction: column; background-color: #0b0f19;'">
+  <div
+    :style="{
+      height: isLoginPage ? '100vh' : undefined,
+      maxHeight: isLoginPage ? '100vh' : undefined,
+      overflow: isLoginPage ? 'hidden' : undefined,
+      minHeight: '100vh',
+      display: 'flex',
+      flexDirection: 'column',
+      backgroundColor: isLight ? '#f0f6fb' : '#010811',
+      backgroundImage: isLight
+        ? 'radial-gradient(ellipse at 50% 25%, #ffffff 0%, #f1f6fb 60%, #e2ecf5 100%)'
+        : 'radial-gradient(ellipse at 50% 25%, #061329 0%, #020916 65%, #01050d 100%)',
+      color: isLight ? '#0f172a' : '#f8fafc',
+      transition: 'background-color 0.25s ease, color 0.25s ease'
+    }"
+  >
     <!-- Top Bar Header (Matches prod Handlebars navbar exactly) -->
-    <header style="background-color: #111827; border-bottom: 1px solid #1f2937; padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; flex-shrink: 0;">
+    <header
+      :style="{
+        backgroundColor: isLight ? '#ffffff' : '#0a101d',
+        borderBottom: isLight ? '1px solid #e2e8f0' : '1px solid #1e293b',
+        boxShadow: isLight ? '0 1px 4px rgba(0,0,0,0.06)' : '0 4px 20px rgba(0,0,0,0.4)',
+        padding: '10px 24px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '12px',
+        flexShrink: 0
+      }"
+    >
       <div style="display: flex; align-items: center; gap: 14px;">
         <router-link to="/" style="display: flex; align-items: center; gap: 10px; text-decoration: none;">
           <img
-            :src="logoUrl"
-            alt="NovusWarden"
-            style="height: 28px; width: auto; object-fit: contain;"
+            :src="bannerUrl"
+            alt="NovusWarden Control Plane"
+            style="height: 34px; max-width: 190px; object-fit: contain; display: block;"
           />
-          <span style="font-size: 17px; font-weight: 700; color: #f9fafb; letter-spacing: -0.3px;">
-            NovusWarden Control Plane
+          <span
+            :style="{
+              fontSize: '11px',
+              fontWeight: 600,
+              letterSpacing: '0.8px',
+              padding: '2px 8px',
+              borderRadius: '4px',
+              textTransform: 'uppercase',
+              color: isLight ? '#0284c7' : '#38bdf8',
+              background: isLight ? 'rgba(2, 132, 199, 0.08)' : 'rgba(56, 189, 248, 0.1)',
+              border: isLight ? '1px solid rgba(2, 132, 199, 0.2)' : '1px solid rgba(56, 189, 248, 0.2)'
+            }"
+          >
+            Control Plane
           </span>
         </router-link>
-        <span v-if="!isLoginPage" style="background-color: #1e3a8a; color: #93c5fd; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 4px; font-family: monospace;">
+        <span
+          v-if="!isLoginPage"
+          :style="{
+            backgroundColor: isLight ? '#dbeafe' : '#1e3a8a',
+            color: isLight ? '#1e40af' : '#93c5fd',
+            fontSize: '10px',
+            fontWeight: 700,
+            padding: '2px 7px',
+            borderRadius: '4px',
+            fontFamily: 'monospace'
+          }"
+        >
           Vue 3 Modern
         </span>
       </div>
@@ -65,9 +161,15 @@ async function handleLogout() {
               fontWeight: 600,
               textDecoration: 'none',
               transition: 'all 0.15s ease',
-              backgroundColor: isActive ? '#2563eb' : 'transparent',
-              color: isActive ? '#ffffff' : '#9ca3af',
-              border: isActive ? '1px solid #3b82f6' : '1px solid transparent',
+              backgroundColor: isActive
+                ? (isLight ? '#0284c7' : '#2563eb')
+                : 'transparent',
+              color: isActive
+                ? '#ffffff'
+                : (isLight ? '#475569' : '#9ca3af'),
+              border: isActive
+                ? (isLight ? '1px solid #0284c7' : '1px solid #3b82f6')
+                : '1px solid transparent',
             }"
           >
             {{ item.name }}
@@ -78,28 +180,82 @@ async function handleLogout() {
       <!-- Right Header Actions (Matches prod navbar) -->
       <div style="display: flex; align-items: center; gap: 14px;">
         <a
-          href="/"
+          :href="adminUrl('/')"
           target="_blank"
-          style="color: #94a3b8; text-decoration: none; font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 4px; transition: color 0.15s ease;"
+          :style="{
+            color: isLight ? '#475569' : '#94a3b8',
+            textDecoration: 'none',
+            fontSize: '13px',
+            fontWeight: 500,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px',
+            transition: 'color 0.15s ease'
+          }"
           title="Открыть веб-хранилище паролей Bitwarden Web Vault"
         >
           Веб-хранилище
         </a>
 
-        <!-- Moon Icon (Theme switch placeholder, matches prod) -->
-        <div
-          style="display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 8px; color: #94a3b8; cursor: pointer; transition: background 0.15s;"
-          title="Тёмная тема (Dark mode)"
+        <!-- Language Switcher Pill -->
+        <button
+          type="button"
+          @click="cycleLocale"
+          :style="{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '5px',
+            padding: '5px 10px',
+            borderRadius: '999px',
+            background: isLight ? '#f1f5f9' : 'rgba(31, 41, 55, 0.8)',
+            border: isLight ? '1px solid #cbd5e1' : '1px solid #374151',
+            color: isLight ? '#334155' : '#cbd5e1',
+            cursor: 'pointer',
+            fontSize: '11.5px',
+            fontWeight: 700,
+          }"
+          :title="t('lang.label')"
         >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M18.4 17.8A9 8.6 0 0 1 13 2a10.5 10 0 1 0 9 14.4 9.4 9 0 0 1-3.6 1.4"/>
-          </svg>
-        </div>
+          🌐 {{ locale.toUpperCase() }}
+        </button>
+
+        <!-- Theme Switcher Pill (System by default, toggles System -> Dark -> Light) -->
+        <button
+          type="button"
+          @click="toggleTheme"
+          :style="{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '5px 12px',
+            borderRadius: '999px',
+            background: isLight ? '#f1f5f9' : 'rgba(31, 41, 55, 0.8)',
+            border: isLight ? '1px solid #cbd5e1' : '1px solid #374151',
+            color: isLight ? '#334155' : '#cbd5e1',
+            cursor: 'pointer',
+            fontSize: '11.5px',
+            fontWeight: 600,
+            transition: 'all 0.2s ease'
+          }"
+          :title="'Тема: ' + (themeMode === 'system' ? 'Системная (по умолчанию)' : themeMode === 'dark' ? 'Тёмная' : 'Светлая') + ' • Нажмите для переключения'"
+        >
+          <span>{{ themeMode === 'system' ? '🖥️' : themeMode === 'dark' ? '🌙' : '☀️' }}</span>
+          <span>{{ themeMode === 'system' ? 'Система' : themeMode === 'dark' ? 'Тёмная' : 'Светлая' }}</span>
+        </button>
 
         <template v-if="!isLoginPage">
           <a
-            href="/admin/legacy"
-            style="background-color: #1f2937; color: #9ca3af; text-decoration: none; border: 1px solid #374151; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600;"
+            :href="adminUrl('/admin/legacy')"
+            :style="{
+              backgroundColor: isLight ? '#f1f5f9' : '#1f2937',
+              color: isLight ? '#475569' : '#9ca3af',
+              textDecoration: 'none',
+              border: isLight ? '1px solid #cbd5e1' : '1px solid #374151',
+              padding: '6px 12px',
+              borderRadius: '6px',
+              fontSize: '12px',
+              fontWeight: 600
+            }"
             title="Перейти в классический интерфейс администратора (Handlebars)"
           >
             Классическая админка ↗
@@ -121,7 +277,17 @@ async function handleLogout() {
     </main>
 
     <!-- Footer -->
-    <footer :style="isLoginPage ? 'padding: 10px 24px; text-align: center; font-size: 11px; color: #6b7280; border-top: 1px solid #1f2937; flex-shrink: 0;' : 'padding: 16px 24px; text-align: center; font-size: 12px; color: #6b7280; border-top: 1px solid #1f2937;'">
+    <footer
+      :style="{
+        padding: isLoginPage ? '10px 24px' : '16px 24px',
+        textAlign: 'center',
+        fontSize: isLoginPage ? '11px' : '12px',
+        color: isLight ? '#64748b' : '#6b7280',
+        borderTop: isLight ? '1px solid #e2e8f0' : '1px solid #1f2937',
+        backgroundColor: isLight ? 'rgba(255, 255, 255, 0.7)' : 'rgba(10, 16, 29, 0.6)',
+        flexShrink: 0
+      }"
+    >
       NovusWarden Community Edition • Разработано и поддерживается <strong>SGC-NOVUS (System Generations Core Novus)</strong> • AGPL-3.0
     </footer>
   </div>
@@ -134,10 +300,10 @@ async function handleLogout() {
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #0b0f19;
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #1f2937;
+  background: rgba(100, 116, 139, 0.3);
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
@@ -145,6 +311,6 @@ async function handleLogout() {
 }
 * {
   scrollbar-width: thin;
-  scrollbar-color: #1f2937 #0b0f19;
+  scrollbar-color: rgba(100, 116, 139, 0.3) transparent;
 }
 </style>

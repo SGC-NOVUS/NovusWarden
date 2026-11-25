@@ -14,12 +14,10 @@
   "tpl.admin.base.theme.dark": "Dark",
   "tpl.admin.base.theme.auto": "Auto",
   "tpl.admin.base.logout": "Log Out",
-
   "tpl.admin.login.auth_key_needed": "Authentication key needed to continue",
   "tpl.admin.login.provide_below": "Please provide it below:",
   "tpl.admin.login.token_placeholder": "Enter admin token",
   "tpl.admin.login.enter": "Enter",
-
   "tpl.admin.settings.close": "Close",
   "tpl.admin.settings.admin_token_warning_1": "You are using a plain text ADMIN_TOKEN which is insecure.",
   "tpl.admin.settings.admin_token_warning_2": "Please generate a secure Argon2 PHC string by using novuswarden hash or argon2.",
@@ -45,7 +43,6 @@
   "tpl.admin.settings.backup_button": "Backup Database",
   "tpl.admin.settings.save": "Save",
   "tpl.admin.settings.reset_defaults": "Reset defaults",
-
   "tpl.admin.users.registered_users": "Registered Users",
   "tpl.admin.users.user": "User",
   "tpl.admin.users.sso_identifier": "SSO Identifier",
@@ -87,7 +84,6 @@
   "tpl.admin.users.role_manager": "Manager",
   "tpl.admin.users.role_admin": "Admin",
   "tpl.admin.users.role_owner": "Owner",
-
   "tpl.admin.orgs.organizations": "Organizations",
   "tpl.admin.orgs.organization": "Organization",
   "tpl.admin.orgs.users": "Users",
@@ -102,7 +98,6 @@
   "tpl.admin.orgs.events": "Events:",
   "tpl.admin.orgs.delete_org": "Delete Organization",
   "tpl.admin.orgs.reload": "Reload organizations",
-
   "tpl.admin.diag.title": "Diagnostics",
   "tpl.admin.diag.versions": "Versions",
   "tpl.admin.diag.checks": "Checks",
@@ -201,42 +196,34 @@
   "tpl.admin.diag.title_http_ok": "All headers and HTTP request responses seem to be ok.",
   "tpl.admin.diag.title_http_error": "Some headers or HTTP request responses return invalid data!",
   "tpl.admin.diag.title_invalid_flags": "Some feature flags are invalid or outdated!",
-
   "tpl.email.verify_email.subject": "Verify Your Email",
   "tpl.email.verify_email.body_intro": "Verify this email address for your account by clicking the link below.",
   "tpl.email.verify_email.cta": "Verify Email Address Now",
   "tpl.email.verify_email.body_ignore": "If you did not request to verify your account, you can safely ignore this email.",
-
   "tpl.email.register_verify.subject": "Verify Your Email",
   "tpl.email.register_verify.body_intro": "Verify this email address to finish creating your account by clicking the link below.",
   "tpl.email.register_verify.cta": "Verify Email Address Now",
   "tpl.email.register_verify.body_ignore": "If you did not request to verify your account, you can safely ignore this email.",
-
   "tpl.email.welcome.subject": "Welcome",
   "tpl.email.welcome.body_intro": "Thank you for creating an account at",
   "tpl.email.welcome.body_intro_suffix": "You may now log in with your new account.",
   "tpl.email.welcome.body_ignore": "If you did not request to create an account, you can safely ignore this email.",
-
   "tpl.email.welcome_must_verify.subject": "Welcome",
   "tpl.email.welcome_must_verify.body_intro": "Thank you for creating an account at",
   "tpl.email.welcome_must_verify.body_intro_suffix": "Before you can login with your new account, you must verify this email address by clicking the link below.",
   "tpl.email.welcome_must_verify.cta": "Verify Email Address Now",
   "tpl.email.welcome_must_verify.body_ignore": "If you did not request to create an account, you can safely ignore this email.",
-
   "tpl.email.twofactor.subject": "Novuswarden Login Verification Code",
   "tpl.email.twofactor.body_code": "Your two-step verification code is",
   "tpl.email.twofactor.body_use_code": "Use this code to complete logging in with Novuswarden.",
-
   "tpl.email.change_email.subject": "Your Email Change",
   "tpl.email.change_email.body_intro": "To finalize changing your email address enter the following code in web vault",
   "tpl.email.change_email.body_ignore": "If you did not try to change your email address, contact your administrator.",
-
   "tpl.email.change_email_existing.subject": "Your Email Change",
   "tpl.email.change_email_existing.body_intro": "A user",
   "tpl.email.change_email_existing.body_intro_mid": "recently tried to change their account to use this email address",
   "tpl.email.change_email_existing.body_intro_suffix": "An account already exists with this email",
   "tpl.email.change_email_existing.body_ignore": "If you did not try to change an email address, contact your administrator.",
-
   "tpl.email.change_email_invited.subject": "Your Email Change",
   "tpl.email.change_email_invited.body_intro": "A user",
   "tpl.email.change_email_invited.body_intro_mid": "recently tried to change their account to use this email address",
@@ -245,7 +232,6 @@
   "tpl.email.change_email_invited.cta": "Request account deletion",
   "tpl.email.change_email_invited.body_after": "Once that is done you can change the email address of your existing account to this address. Any invitation would have to be redone.",
   "tpl.email.change_email_invited.body_ignore": "If you did not try to change an email address, contact your administrator.",
-
   "tpl.email.pw_hint_none.subject_text": "Your master password hint",
   "tpl.email.pw_hint_none.subject_html": "Sorry, you have no password hint...",
   "tpl.email.pw_hint_none.body_intro": "You (or someone) recently requested your master password hint. Unfortunately, your account does not have a master password hint.",
@@ -254,7 +240,6 @@
   "tpl.email.pw_hint_none.body_recovery_html_link": "delete the account",
   "tpl.email.pw_hint_none.body_recovery_suffix": "so that you can register again and start over. All data associated with your account will be deleted.",
   "tpl.email.pw_hint_none.body_ignore": "If you did not request your master password hint you can safely ignore this email.",
-
   "tpl.email.pw_hint_some.subject": "Your master password hint",
   "tpl.email.pw_hint_some.body_intro": "You (or someone) recently requested your master password hint.",
   "tpl.email.pw_hint_some.body_hint": "Your hint is",
@@ -262,11 +247,9 @@
   "tpl.email.pw_hint_some.body_login_html": "Log in",
   "tpl.email.pw_hint_some.body_login_link": "Web Vault",
   "tpl.email.pw_hint_some.body_ignore": "If you did not request your master password hint you can safely ignore this email.",
-
   "tpl.email.protected_action.subject": "Your Novuswarden Verification Code",
   "tpl.email.protected_action.body_code": "Your email verification code is",
   "tpl.email.protected_action.body_use_code": "Use this code to complete the protected action in Novuswarden.",
-
   "tpl.email.admin_account_recovery.subject_prefix": "Admin account recovery from",
   "tpl.email.admin_account_recovery.subject_suffix": "organization",
   "tpl.email.admin_account_recovery.body_reset_password_prefix": "The master password for",
@@ -274,18 +257,15 @@
   "tpl.email.admin_account_recovery.body_reset_2fa": "Your two-step verification providers have been reset.",
   "tpl.email.admin_account_recovery.body_fallback_2fa": "Email two factor has been activated as a fallback.",
   "tpl.email.admin_account_recovery.body_ignore": "If you did not initiate this request, please reach out to your administrator immediately.",
-
   "tpl.email.delete_account.subject": "Delete Your Account",
   "tpl.email.delete_account.body_intro": "Click the link below to delete your account.",
   "tpl.email.delete_account.cta": "Delete Your Account",
   "tpl.email.delete_account.body_ignore": "If you did not request this email to delete your account, you can safely ignore this email.",
-
   "tpl.email.recover_twofactor.subject_prefix": "Two-Step Login Recovered From",
   "tpl.email.recover_twofactor.body_intro": "Two-step login on your account has been disabled by using the account's recovery code.",
   "tpl.email.recover_twofactor.label_date": "Date",
   "tpl.email.recover_twofactor.label_ip": "IP Address",
   "tpl.email.recover_twofactor.body_ignore": "If you did not perform this action, you should immediately take steps to secure your account.",
-
   "tpl.email.incomplete_2fa.subject_prefix": "Incomplete Two-Step Login From",
   "tpl.email.incomplete_2fa.body_intro_prefix": "Someone attempted to log into your account with the correct master password, but did not provide the correct token or action required to complete the two-step login process within",
   "tpl.email.incomplete_2fa.body_intro_suffix": "minutes of the initial login attempt.",
@@ -294,7 +274,6 @@
   "tpl.email.incomplete_2fa.label_device_name": "Device Name",
   "tpl.email.incomplete_2fa.label_device_type": "Device Type",
   "tpl.email.incomplete_2fa.body_warning": "If this was not you or someone you authorized, then you should change your master password as soon as possible, as it is likely to be compromised.",
-
   "tpl.email.new_device.subject_prefix": "New Device Logged In From",
   "tpl.email.new_device.body_intro": "Your account was just logged into from a new device.",
   "tpl.email.new_device.label_date": "Date",
@@ -305,7 +284,6 @@
   "tpl.email.new_device.body_deauth_html_prefix": "You can deauthorize all devices that have access to your account from the",
   "tpl.email.new_device.body_deauth_html_link": "web vault",
   "tpl.email.new_device.body_deauth_suffix": "under Settings > My Account > Deauthorize Sessions.",
-
   "tpl.email.invite_accepted.subject_prefix": "Invitation to",
   "tpl.email.invite_accepted.subject_suffix": "accepted",
   "tpl.email.invite_accepted.body_intro_prefix": "This email is to notify you that",
@@ -315,45 +293,38 @@
   "tpl.email.invite_accepted.body_login_html_prefix": "Please",
   "tpl.email.invite_accepted.body_login_html_link": "log in",
   "tpl.email.invite_accepted.body_ignore": "If you do not wish to confirm this user, you can also remove them from the organization on the same page.",
-
   "tpl.email.invite_confirmed.subject_prefix": "Invitation to",
   "tpl.email.invite_confirmed.subject_suffix": "confirmed",
   "tpl.email.invite_confirmed.body_intro_prefix": "This email is to notify you that you have been confirmed as a user of",
   "tpl.email.invite_confirmed.body_collections_prefix": "Any collections and logins being shared with you by this organization will now appear in your Novuswarden vault at",
   "tpl.email.invite_confirmed.body_collections_html": "Any collections and logins being shared with you by this organization will now appear in your Novuswarden vault.",
   "tpl.email.invite_confirmed.body_login_link": "Log in",
-
   "tpl.email.send_2fa_removed.subject_prefix": "Your access to",
   "tpl.email.send_2fa_removed.subject_suffix": "has been revoked.",
   "tpl.email.send_2fa_removed.body_intro_prefix": "Your user account has been removed from the",
   "tpl.email.send_2fa_removed.body_intro_suffix": "organization because you do not have two-step login configured.",
   "tpl.email.send_2fa_removed.body_setup": "Before you can re-join this organization you need to set up two-step login on your user account.",
   "tpl.email.send_2fa_removed.body_enable": "You can enable two-step login in your account settings.",
-
   "tpl.email.send_single_org_removed.subject_prefix": "Your access to",
   "tpl.email.send_single_org_removed.subject_suffix": "has been revoked",
   "tpl.email.send_single_org_removed.body_intro_prefix": "Your access to the",
   "tpl.email.send_single_org_removed.body_intro_mid": "organization has been revoked because you are a part of another organization. The",
   "tpl.email.send_single_org_removed.body_intro_suffix": "organization has enabled a policy that prevents users from being a part of multiple organizations. Before your access can be restored you need to leave all other organizations or join with a different account.",
-
   "tpl.email.smtp_test.subject": "Novuswarden SMTP Test",
   "tpl.email.smtp_test.body_intro": "This is a test email to verify the SMTP configuration for",
   "tpl.email.smtp_test.body_intro_html": "This is a test email to verify the SMTP configuration for",
   "tpl.email.smtp_test.body_ok": "When you can read this email it is probably configured correctly.",
-
   "tpl.email.sso_change_email.subject": "Your Email Changed",
   "tpl.email.sso_change_email.body_intro": "Your email was changed in your SSO Provider. Please update your email in",
   "tpl.email.sso_change_email.body_settings": "Account Settings",
   "tpl.email.sso_change_email.body_settings_prefix": "",
   "tpl.email.sso_change_email.body_settings_link": "Account Settings",
-
   "tpl.email.send_org_invite.subject_prefix": "Join",
   "tpl.email.send_org_invite.body_intro_prefix": "You have been invited to join the",
   "tpl.email.send_org_invite.body_intro_suffix": "organization.",
   "tpl.email.send_org_invite.body_cta": "Click here to join",
   "tpl.email.send_org_invite.body_cta_html": "Join Organization Now",
   "tpl.email.send_org_invite.body_ignore": "If you do not wish to join this organization, you can safely ignore this email.",
-
   "tpl.email.ea_invite.subject_prefix": "Emergency access for",
   "tpl.email.ea_invite.body_intro_prefix": "You have been invited to become an emergency contact for",
   "tpl.email.ea_invite.body_intro_suffix": "To accept this invite, click the following link:",
@@ -361,7 +332,6 @@
   "tpl.email.ea_invite.body_cta_html": "Become emergency contact",
   "tpl.email.ea_invite.body_ignore_prefix": "If you do not wish to become an emergency contact for",
   "tpl.email.ea_invite.body_ignore_suffix": "you can safely ignore this email.",
-
   "tpl.email.ea_invite_accepted.subject_prefix": "Emergency access contact",
   "tpl.email.ea_invite_accepted.subject_suffix": "accepted",
   "tpl.email.ea_invite_accepted.body_intro_prefix": "This email is to notify you that",
@@ -371,14 +341,12 @@
   "tpl.email.ea_invite_accepted.body_confirm_html_link": "web vault",
   "tpl.email.ea_invite_accepted.body_confirm_suffix": "go to settings and confirm the user.",
   "tpl.email.ea_invite_accepted.body_ignore": "If you do not wish to confirm this user, you can also remove them on the same page.",
-
   "tpl.email.ea_invite_confirmed.subject_prefix": "Emergency access contact for",
   "tpl.email.ea_invite_confirmed.subject_suffix": "confirmed",
   "tpl.email.ea_invite_confirmed.body_intro_prefix": "This email is to notify you that you have been confirmed as an emergency access contact for",
   "tpl.email.ea_invite_confirmed.body_access_prefix": "You can now initiate emergency access requests from the web vault",
   "tpl.email.ea_invite_confirmed.body_access_html_prefix": "You can now initiate emergency access requests from the",
   "tpl.email.ea_invite_confirmed.body_access_html_link": "web vault",
-
   "tpl.email.ea_recovery_initiated.subject_prefix": "Emergency access request by",
   "tpl.email.ea_recovery_initiated.subject_suffix": "initiated",
   "tpl.email.ea_recovery_initiated.body_intro_mid": "has initiated an emergency access request to",
@@ -387,17 +355,14 @@
   "tpl.email.ea_recovery_initiated.body_intro_suffix": "and manually approve or reject this request.",
   "tpl.email.ea_recovery_initiated.body_wait_prefix": "If you do nothing, the request will automatically be approved after",
   "tpl.email.ea_recovery_initiated.body_wait_suffix": "day(s).",
-
   "tpl.email.ea_recovery_approved.subject_prefix": "Emergency access request for",
   "tpl.email.ea_recovery_approved.subject_suffix": "approved",
   "tpl.email.ea_recovery_approved.body_intro_mid": "has approved your emergency access request. You may now login on the web vault",
   "tpl.email.ea_recovery_approved.body_intro_link": "web vault",
   "tpl.email.ea_recovery_approved.body_intro_suffix": "and access their account.",
-
   "tpl.email.ea_recovery_rejected.subject_prefix": "Emergency access request to",
   "tpl.email.ea_recovery_rejected.subject_suffix": "rejected",
   "tpl.email.ea_recovery_rejected.body_intro": "has rejected your emergency access request.",
-
   "tpl.email.ea_recovery_reminder.subject_prefix": "Emergency access request by",
   "tpl.email.ea_recovery_reminder.subject_suffix": "is pending",
   "tpl.email.ea_recovery_reminder.body_intro_mid": "has a pending emergency access request to",
@@ -406,11 +371,31 @@
   "tpl.email.ea_recovery_reminder.body_intro_suffix": "and manually approve or reject this request.",
   "tpl.email.ea_recovery_reminder.body_wait_prefix": "If you do nothing, the request will automatically be approved after",
   "tpl.email.ea_recovery_reminder.body_wait_suffix": "day(s).",
-
   "tpl.email.ea_recovery_timed_out.subject_prefix": "Emergency access request by",
   "tpl.email.ea_recovery_timed_out.subject_suffix": "granted",
   "tpl.email.ea_recovery_timed_out.body_intro_mid": "has been granted emergency access to",
   "tpl.email.ea_recovery_timed_out.body_intro_suffix_prefix": "your account. You may login on the web vault",
   "tpl.email.ea_recovery_timed_out.body_intro_link": "web vault",
-  "tpl.email.ea_recovery_timed_out.body_intro_suffix": "and manually revoke this request."
+  "tpl.email.ea_recovery_timed_out.body_intro_suffix": "and manually revoke this request.",
+  "tpl.email.common.footer_tagline": "NovusWarden Control Plane • Enterprise Security by SGC-NOVUS",
+  "tpl.email.common.footer_disclaimer": "This is an automated security transmission. If you did not request this action, please review your account settings immediately.",
+  "tpl.email.admin_login_alert.subject": "[NovusWarden] Admin Control Plane Login",
+  "tpl.email.admin_login_alert.heading": "Successful Admin Panel Login",
+  "tpl.email.admin_login_alert.body_intro": "A sign-in to the NovusWarden Control Plane was recorded.",
+  "tpl.email.admin_login_alert.label_ip": "IP Address",
+  "tpl.email.admin_login_alert.label_location": "Location",
+  "tpl.email.admin_login_alert.label_ua": "User-Agent",
+  "tpl.email.admin_login_alert.label_datetime": "Date & Time (UTC)",
+  "tpl.email.admin_login_alert.label_host": "Host",
+  "tpl.email.admin_lockout_alert.subject": "[CRITICAL ALERT] NovusWarden Admin Panel Locked!",
+  "tpl.email.admin_lockout_alert.heading": "Admin Control Plane Locked",
+  "tpl.email.admin_lockout_alert.body_intro_prefix": "The system detected",
+  "tpl.email.admin_lockout_alert.body_intro_strong": "2 invalid admin token attempts",
+  "tpl.email.admin_lockout_alert.body_intro_suffix": "Access to /admin has been temporarily locked.",
+  "tpl.email.admin_lockout_alert.label_ip": "Source IP Address",
+  "tpl.email.admin_lockout_alert.label_location": "Location",
+  "tpl.email.admin_lockout_alert.label_ua": "User-Agent",
+  "tpl.email.admin_lockout_alert.label_datetime": "Recorded At",
+  "tpl.email.admin_lockout_alert.label_host": "Host",
+  "tpl.email.admin_lockout_alert.cta": "Unlock Admin Control Plane"
 }

@@ -90,6 +90,13 @@ cargo run --features sqlite
 - For production use, run behind a reverse proxy and enable HTTPS.
 - Store data on persistent volumes and create regular backups.
 
+## Architecture & Documentation
+
+- Complete handbook (Users, Organizations, Admins, Security): [docs/DOCUMENTATION.md](./docs/DOCUMENTATION.md)
+- Repository layout & localization pipeline: [docs/PROJECT_STRUCTURE.md](./docs/PROJECT_STRUCTURE.md)
+- Audit & implementation roadmap: [docs/AUDIT_AND_ROADMAP.md](./docs/AUDIT_AND_ROADMAP.md)
+- Localization workflow: [docs/i18n.md](./docs/i18n.md)
+
 ## Support
 
 - Discussions: https://github.com/SGC-NOVUS/NovusWarden/discussions

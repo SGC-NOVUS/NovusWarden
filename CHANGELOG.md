@@ -23,10 +23,15 @@ This is the initial independent release of **NovusWarden**, a high-performance, 
   * Direct management views for Users, Organizations, Settings, and Diagnostics.
   * Safe session revocation, credential management, and quick navigation toggle between Classic Admin and Vue 3 Control Plane.
   * Zero-runtime overhead: client assets are bundled by Vite and embedded directly into the Rust executable via `include_dir`.
+* **Vue 3 Web Vault & Organizations Console (`web_vault_vue = true`):**
+  * Full Zero-Knowledge Web Vault SPA (`frontend/vault/`) written in Vue 3 + Pinia + Tailwind CSS with Bitwarden v2026+ client protocol parity.
+  * Complete Organizations Management Console (`/organizations`): creation, members invitation/RSA-OAEP confirmation/role control, collections, groups, enterprise policies, audit events, export, and Org Duo 2FA.
+  * Registration enforces strong **Argon2id** (`64 MiB`, `3` iterations, `4` parallelism) key derivation with browser language detection and explicit user locale selection.
+  * Light & Dark theme support across every Vault, Auth, Documentation, and Control Plane screen.
+  * Built-in Documentation & Security Transparency Center accessible before sign-in (`/docs`) and inside Vault / Admin Control Plane.
 * **Vue-Email Pre-Compilation Pipeline:**
-  * Modern, responsive email templates written in Vue 3 (`@vue-email/components`, `@vue-email/compiler`).
-  * Automated build-time precompiler (`frontend/emails/compile-emails.mjs`) generating standalone, inlined HTML Handlebars templates.
-  * Zero Node.js runtime footprint in production; email dispatch is handled natively by the Rust backend.
+  * Responsive email templates written in Vue 3 (`@vue-email/components`, `@vue-email/compiler`, `EmailLayout.vue`) with Light & Dark mail client adaptation (`prefers-color-scheme: dark` + `[data-ogsc]`).
+  * Synchronized 33 HTML (`*.html.hbs`) + 33 plain-text (`*.hbs`) templates rendered natively by Rust with full per-user and browser-detected localization (`en` / `ru` / `uk`).
 * **Turnkey Backup & Database Migration Hub:**
   * Added `/admin/users/export` endpoint for one-click downloading of comprehensive JSON vault backups (users, organizations, security settings).
   * Added SQLite server-side snapshot triggering (`VACUUM INTO`).
@@ -45,8 +50,8 @@ This is the initial independent release of **NovusWarden**, a high-performance, 
 * **Cryptographic KDF Boundary Protection:**
   * Enforced strict upper bounds on Argon2id (max 64 iterations) and PBKDF2 (max 2,000,000 rounds) parameters to prevent CPU and memory exhaustion attacks.
 * **i18n Quality Gates:**
-  * Curated, verified translation catalogs for `en`, `ru`, and `uk` locales covering all 386 template keys and 118 admin UI keys.
-  * CI validation guards for template and admin key completeness.
+  * Curated, verified translation catalogs across all `15/15` dictionary files for `en`, `ru`, and `uk` locales (`401` template keys, `161` admin setting names, `144` admin descriptions, and `118` admin UI keys), plus reactive `75`-key frontend i18n with `Accept-Language` quality negotiation.
+  * Automated validation tests rendering all `33` email templates across `en`, `ru`, and `uk` in Rust.
 * **Modern CI/CD Automation:**
   * GitHub Actions workflows powered by Node.js 26 LTS and latest stable Rust toolchain.
   * Multi-arch container builds (`linux/amd64`, `linux/arm64`) publishing directly to GitHub Packages (GHCR).

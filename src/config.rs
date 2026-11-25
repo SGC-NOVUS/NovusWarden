@@ -600,6 +600,8 @@ make_config! {
         domain_path:            String, false,  auto,   |c| extract_url_path(&c.domain);
         /// Enable web vault
         web_vault_enabled:      bool,   false,  def,    true;
+        /// Use Vue 3 Web Vault |> Serves the modern Vue 3 Web Vault (web-vault-vue/) when available instead of legacy web-vault/
+        web_vault_vue:          bool,   true,   def,    true;
 
         /// Allow Sends |> Controls whether users are allowed to create Bitwarden Sends.
         /// This setting applies globally to all users. To control this on a per-org basis instead, use the "Disable Send" org policy.

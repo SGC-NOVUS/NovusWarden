@@ -1,10 +1,12 @@
 # Credits & Upstream Attribution
 
-NovusWarden stands on the shoulders of the open-source community.
+NovusWarden builds upon the foundational open-source **Vaultwarden** codebase and **Bitwarden** zero-knowledge cryptographic protocol, extended, hardened, and modernized by **SGC-NOVUS (System Generations Core Novus)**.
 We extend our deepest gratitude to Daniel García and the 200+ Vaultwarden contributors
 whose dedication made a lightweight, self-hosted Bitwarden server possible.
 
-Maintained by **SGC-NOVUS Core Team** (<support@sgc-novus.fun>).
+- **Maintained by:** **SGC-NOVUS Core Team** (<support@sgc-novus.fun>) · <https://github.com/SGC-NOVUS/NovusWarden>
+- **Frontend & Email Ecosystem:** Vue 3, Pinia, Vite, Tailwind CSS, `hash-wasm`, `vue-email`
+- **Core Rust & Storage:** Rocket, Diesel ORM, Argon2id, Apache OpenDAL, Handlebars
 
 | Contributor | Email / Profile | Commits |
 |:------------|:----------------|--------:|

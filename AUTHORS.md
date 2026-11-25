@@ -3,12 +3,13 @@
 ## Maintainers
 - **SGC-NOVUS (System Generations Core Novus)**
 - **Contact:** <support@sgc-novus.fun>
-- **Project URL:** <https://github.com/SGC-NOVUS/novuswarden>
+- **Project URL:** <https://github.com/SGC-NOVUS/NovusWarden>
 
 ## Upstream Project & Copyright Notice
-- Original Upstream Project: [Vaultwarden](https://github.com/dani-garcia/vaultwarden)
+- **License**: GNU Affero General Public License v3.0 (AGPL-3.0) — see [LICENSE.txt](./LICENSE.txt)
+- Original Upstream Project: [Vaultwarden](https://github.com/dani-garcia/vaultwarden) & Bitwarden Client/Server Protocol
 - Original Creator: Daniel García <dani-garcia@users.noreply.github.com>
-- License: GNU Affero General Public License v3.0 (AGPL-3.0)
+- Extended, modernized, and maintained by **SGC-NOVUS (System Generations Core Novus)**
 
 In accordance with Section 4 and 5 of the GNU Affero General Public License (AGPL-3.0),
 we gratefully acknowledge all developers and community members whose commits and code

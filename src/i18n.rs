@@ -47,13 +47,39 @@ pub fn locale_candidates(default_locale: &str) -> Vec<String> {
 }
 
 pub fn preferred_from_accept_language(raw: &str) -> Option<String> {
-    let first = raw.split(',').next()?.trim();
-    let locale = first.split(';').next()?.trim();
-    if locale.is_empty() || locale == "*" {
-        None
-    } else {
-        Some(normalize_locale(locale))
+    let mut parsed: Vec<(f32, usize, String)> = Vec::new();
+    for (idx, item) in raw.split(',').enumerate() {
+        let mut parts = item.split(';');
+        let tag = parts.next()?.trim();
+        if tag.is_empty() || tag == "*" {
+            continue;
+        }
+        let mut q = 1.0_f32;
+        for param in parts {
+            let param = param.trim();
+            if let Some(val) = param.strip_prefix("q=").or_else(|| param.strip_prefix("Q="))
+                && let Ok(parsed_q) = val.trim().parse::<f32>()
+            {
+                q = parsed_q.clamp(0.0, 1.0);
+            }
+        }
+        if q <= 0.0 {
+            continue;
+        }
+        parsed.push((q, idx, normalize_locale(tag)));
     }
+
+    parsed.sort_by(|a, b| b.0.total_cmp(&a.0).then_with(|| a.1.cmp(&b.1)));
+
+    let catalog = &*LOCALE_CATALOG;
+    for (_, _, candidate_locale) in &parsed {
+        let base = candidate_locale.split('-').next().unwrap_or(candidate_locale.as_str());
+        if catalog.contains_key(candidate_locale) || catalog.contains_key(base) {
+            return Some(candidate_locale.clone());
+        }
+    }
+
+    parsed.into_iter().next().map(|(_, _, locale)| locale)
 }
 
 pub fn resolve_locale(user_locale: Option<&str>, accept_language: Option<&str>, default_locale: &str) -> String {
@@ -3137,6 +3163,8 @@ mod tests {
     #[test]
     fn parse_accept_language_first_entry() {
         assert_eq!(preferred_from_accept_language("uk-UA,uk;q=0.9,en;q=0.8"), Some("uk-ua".to_owned()));
+        assert_eq!(preferred_from_accept_language("fr-FR,uk-UA;q=0.9,en;q=0.8"), Some("uk-ua".to_owned()));
+        assert_eq!(preferred_from_accept_language("de-DE;q=0.4,ru-RU;q=0.9"), Some("ru-ru".to_owned()));
     }
 
     #[test]

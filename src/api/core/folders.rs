@@ -12,7 +12,17 @@ use crate::{
 };
 
 pub fn routes() -> Vec<rocket::Route> {
-    routes![get_folders, get_folder, post_folders, post_folder, put_folder, delete_folder_post, delete_folder,]
+    routes![
+        get_folders,
+        get_folder,
+        post_folders,
+        post_folder,
+        put_folder,
+        delete_folder_post,
+        delete_folder,
+        delete_all_folders,
+        delete_all_folders_alias,
+    ]
 }
 
 #[get("/folders")]
@@ -105,4 +115,18 @@ async fn delete_folder(folder_id: FolderId, headers: Headers, conn: DbConn, nt: 
 
     nt.send_folder_update(UpdateType::SyncFolderDelete, &folder, &headers.device, &conn).await;
     Ok(())
+}
+
+#[delete("/folders/all")]
+async fn delete_all_folders(headers: Headers, conn: DbConn, nt: Notify<'_>) -> EmptyResult {
+    for folder in Folder::find_by_user(&headers.user.uuid, &conn).await {
+        folder.delete(&conn).await?;
+        nt.send_folder_update(UpdateType::SyncFolderDelete, &folder, &headers.device, &conn).await;
+    }
+    Ok(())
+}
+
+#[delete("/folders")]
+async fn delete_all_folders_alias(headers: Headers, conn: DbConn, nt: Notify<'_>) -> EmptyResult {
+    delete_all_folders(headers, conn, nt).await
 }

@@ -16,15 +16,22 @@
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true,
-    "baseUrl": ".",
     "paths": {
-      "@/*": ["./admin/src/*"]
+      "@/*": ["./admin/src/*"],
+      "@admin/*": ["./admin/src/*"],
+      "@vault/*": ["./vault/src/*"],
+      "@shared/*": ["./shared/*"]
     }
   },
   "include": [
     "admin/src/**/*.ts",
     "admin/src/**/*.d.ts",
     "admin/src/**/*.tsx",
-    "admin/src/**/*.vue"
+    "admin/src/**/*.vue",
+    "vault/src/**/*.ts",
+    "vault/src/**/*.d.ts",
+    "vault/src/**/*.tsx",
+    "vault/src/**/*.vue",
+    "shared/**/*.ts"
   ]
 }

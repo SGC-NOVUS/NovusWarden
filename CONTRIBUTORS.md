@@ -1,7 +1,7 @@
 # NovusWarden Contributors & Upstream Attribution
 
-NovusWarden is maintained by **SGC-NOVUS (System Generations Core Novus)**.
-This project builds upon the foundational work created by the Vaultwarden open-source community.
+NovusWarden is developed and maintained by **SGC-NOVUS (System Generations Core Novus)** (<https://github.com/SGC-NOVUS/NovusWarden>).
+This project builds upon upstream **Vaultwarden** and **Bitwarden** protocol compatibility, augmented with architectural, Vue 3 UI, cryptographic, and localization enhancements by SGC-NOVUS.
 
 In accordance with Section 4 and 5 of the GNU Affero General Public License (AGPL-3.0),
 we gratefully acknowledge all developers and community members whose commits and code

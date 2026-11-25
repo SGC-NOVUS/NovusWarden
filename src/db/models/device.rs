@@ -69,6 +69,7 @@ impl Device {
             "type": self.atype,
             "identifier": self.uuid,
             "creationDate": format_date(&self.created_at),
+            "lastActivityDate": format_date(&self.updated_at),
             "isTrusted": false,
             "object":"device"
         })
@@ -123,6 +124,7 @@ impl DeviceWithAuthRequest {
             "type": self.device.atype,
             "identifier": self.device.uuid,
             "creationDate": format_date(&self.device.created_at),
+            "lastActivityDate": format_date(&self.device.updated_at),
             "devicePendingAuthRequest": auth_request,
             "isTrusted": false,
             "encryptedPublicKey": null,

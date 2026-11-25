@@ -64,6 +64,7 @@ pub fn routes() -> Vec<rocket::Route> {
         post_api_key,
         rotate_api_key,
         get_known_device,
+        get_known_device_legacy,
         get_all_devices,
         get_device,
         post_device_token,
@@ -77,6 +78,10 @@ pub fn routes() -> Vec<rocket::Route> {
         get_auth_request_response,
         get_auth_requests,
         get_auth_requests_pending,
+        post_auth_admin_request,
+        resend_new_device_otp,
+        put_verify_devices,
+        post_verify_devices,
     ]
 }
 
@@ -122,6 +127,8 @@ pub struct RegisterData {
     accept_emergency_access_invite_token: Option<String>,
     #[serde(alias = "token")]
     org_invite_token: Option<String>,
+    culture: Option<String>,
+    locale: Option<String>,
 }
 
 impl RegisterData {
@@ -270,6 +277,14 @@ async fn is_email_2fa_required(member_id: Option<MembershipId>, conn: &DbConn) -
 pub async fn register(data: Json<RegisterData>, conn: DbConn, locale: &str) -> JsonResult {
     let data: RegisterData = data.into_inner();
     let email = data.email.to_lowercase();
+    let preferred_locale = data
+        .culture
+        .as_deref()
+        .or(data.locale.as_deref())
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(crate::i18n::normalize_locale);
+    let locale = preferred_locale.as_deref().unwrap_or(locale);
 
     let mut name = None;
     let mut pending_emergency_access = None;
@@ -1549,6 +1564,17 @@ async fn get_known_device(device: KnownDevice, conn: DbConn) -> JsonResult {
     Ok(Json(json!(result)))
 }
 
+#[get("/devices/knowndevice/<email>/<identifier>")]
+async fn get_known_device_legacy(email: &str, identifier: DeviceId, ip: ClientIp, conn: DbConn) -> JsonResult {
+    crate::ratelimit::check_limit_unauthenticated(&ip.ip)?;
+    let result = if let Some(user) = User::find_by_mail(email, &conn).await {
+        Device::find_by_uuid_and_user(&identifier, &user.uuid, &conn).await.is_some()
+    } else {
+        false
+    };
+    Ok(Json(json!(result)))
+}
+
 struct KnownDevice {
     email: String,
     uuid: DeviceId,
@@ -1691,28 +1717,79 @@ fn get_tasks(_client_headers: ClientHeaders) -> JsonResult {
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
+struct UnauthenticatedSecretVerificationData {
+    email: String,
+    #[serde(flatten)]
+    secret: PasswordOrOtpData,
+}
+
+#[post("/accounts/resend-new-device-otp", data = "<data>")]
+async fn resend_new_device_otp(
+    data: Json<UnauthenticatedSecretVerificationData>,
+    client_headers: ClientHeaders,
+    device_header: crate::auth::DeviceIdentifierHeader,
+    conn: DbConn,
+) -> EmptyResult {
+    crate::ratelimit::check_limit_unauthenticated(&client_headers.ip.ip)?;
+    if let Some(device_id) = device_header.0.as_ref()
+        && device_id.to_string().len() > 50
+    {
+        err!("Invalid device identifier.");
+    }
+
+    let data = data.into_inner();
+    let Some(user) = User::find_by_mail(&data.email, &conn).await else {
+        return Ok(());
+    };
+    if data.secret.validate(&user, false, &conn).await.is_err() {
+        return Ok(());
+    }
+
+    // Device verification OTP is not required on self-hosted instances unless enabled; return 200 to prevent enumeration.
+    Ok(())
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct SetVerifyDevicesData {
+    verify_devices: bool,
+    #[serde(flatten)]
+    secret: PasswordOrOtpData,
+}
+
+#[put("/accounts/verify-devices", data = "<data>")]
+async fn put_verify_devices(data: Json<SetVerifyDevicesData>, headers: Headers, conn: DbConn) -> EmptyResult {
+    let data = data.into_inner();
+    data.secret.validate(&headers.user, false, &conn).await?;
+    let _ = data.verify_devices;
+    Ok(())
+}
+
+#[post("/accounts/verify-devices", data = "<data>")]
+async fn post_verify_devices(data: Json<SetVerifyDevicesData>, headers: Headers, conn: DbConn) -> EmptyResult {
+    put_verify_devices(data, headers, conn).await
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct AuthRequestRequest {
     access_code: String,
     device_identifier: DeviceId,
     email: String,
     public_key: String,
-    // Not used for now
-    // #[serde(alias = "type")]
-    // _type: i32,
+    #[serde(rename = "type")]
+    req_type: Option<i32>,
 }
 
-#[post("/auth-requests", data = "<data>")]
-async fn post_auth_request(
-    data: Json<AuthRequestRequest>,
+async fn create_auth_request_inner(
+    data: AuthRequestRequest,
     client_headers: ClientHeaders,
-    conn: DbConn,
+    conn: &DbConn,
     nt: Notify<'_>,
 ) -> JsonResult {
     crate::ratelimit::check_limit_unauthenticated(&client_headers.ip.ip)?;
 
-    let data = data.into_inner();
-
-    let Some(user) = User::find_by_mail(&data.email, &conn).await else {
+    let Some(user) = User::find_by_mail(&data.email, conn).await else {
         err!(
             crate::i18n::accounts_auth_request_not_found(&client_headers.locale),
             crate::i18n::org_user_not_found(&client_headers.locale)
@@ -1720,7 +1797,7 @@ async fn post_auth_request(
     };
 
     // Validate device uuid and type
-    let device = match Device::find_by_uuid_and_user(&data.device_identifier, &user.uuid, &conn).await {
+    let device = match Device::find_by_uuid_and_user(&data.device_identifier, &user.uuid, conn).await {
         Some(device) if device.atype == client_headers.device_type => device,
         _ => err!(
             crate::i18n::accounts_auth_request_not_found(&client_headers.locale),
@@ -1736,32 +1813,65 @@ async fn post_auth_request(
         data.access_code,
         data.public_key,
     );
-    auth_request.save(&conn).await?;
+    auth_request.save(conn).await?;
 
-    nt.send_auth_request(&user.uuid, &auth_request.uuid, &device, &conn).await;
+    nt.send_auth_request(&user.uuid, &auth_request.uuid, &device, conn).await;
 
     log_user_event(
         EventType::UserRequestedDeviceApproval,
         &user.uuid,
         client_headers.device_type,
         &client_headers.ip.ip,
-        &conn,
+        conn,
     )
     .await;
 
-    Ok(Json(json!({
-        "id": auth_request.uuid,
-        "publicKey": auth_request.public_key,
-        "requestDeviceType": DeviceType::from_i32(auth_request.device_type).to_string(),
-        "requestIpAddress": auth_request.request_ip,
-        "key": null,
-        "masterPasswordHash": null,
-        "creationDate": format_date(&auth_request.creation_date),
-        "responseDate": null,
-        "requestApproved": false,
+    Ok(Json(auth_request_to_json(&auth_request)))
+}
+
+#[post("/auth-requests", data = "<data>")]
+async fn post_auth_request(
+    data: Json<AuthRequestRequest>,
+    client_headers: ClientHeaders,
+    conn: DbConn,
+    nt: Notify<'_>,
+) -> JsonResult {
+    create_auth_request_inner(data.into_inner(), client_headers, &conn, nt).await
+}
+
+#[post("/auth-requests/admin-request", data = "<data>")]
+async fn post_auth_admin_request(
+    data: Json<AuthRequestRequest>,
+    client_headers: ClientHeaders,
+    conn: DbConn,
+    nt: Notify<'_>,
+) -> JsonResult {
+    let data = data.into_inner();
+    // AuthRequestType.AdminApproval = 2
+    if data.req_type != Some(2) {
+        err!("Invalid AuthRequestType. Expected AdminApproval.");
+    }
+    create_auth_request_inner(data, client_headers, &conn, nt).await
+}
+
+fn auth_request_to_json(request: &AuthRequest) -> Value {
+    let response_date_utc = request.response_date.map(|response_date| format_date(&response_date));
+    json!({
+        "id": request.uuid,
+        "publicKey": request.public_key,
+        "requestDeviceIdentifier": request.request_device_identifier,
+        "requestDeviceType": DeviceType::from_i32(request.device_type).to_string(),
+        "requestDeviceTypeValue": request.device_type,
+        "requestIpAddress": request.request_ip,
+        "requestCountryName": Value::Null,
+        "key": request.enc_key,
+        "masterPasswordHash": request.master_password_hash,
+        "creationDate": format_date(&request.creation_date),
+        "responseDate": response_date_utc,
+        "requestApproved": request.approved.unwrap_or(false),
         "origin": CONFIG.domain_origin(),
         "object": "auth-request"
-    })))
+    })
 }
 
 #[get("/auth-requests/<auth_request_id>")]
@@ -1774,21 +1884,7 @@ async fn get_auth_request(auth_request_id: AuthRequestId, headers: Headers, conn
         )
     };
 
-    let response_date_utc = auth_request.response_date.map(|response_date| format_date(&response_date));
-
-    Ok(Json(json!({
-        "id": &auth_request_id,
-        "publicKey": auth_request.public_key,
-        "requestDeviceType": DeviceType::from_i32(auth_request.device_type).to_string(),
-        "requestIpAddress": auth_request.request_ip,
-        "key": auth_request.enc_key,
-        "masterPasswordHash": auth_request.master_password_hash,
-        "creationDate": format_date(&auth_request.creation_date),
-        "responseDate": response_date_utc,
-        "requestApproved": auth_request.approved,
-        "origin": CONFIG.domain_origin(),
-        "object":"auth-request"
-    })))
+    Ok(Json(auth_request_to_json(&auth_request)))
 }
 
 #[derive(Debug, Deserialize)]
@@ -1830,9 +1926,19 @@ async fn put_auth_request(
     }
 
     let response_date = Utc::now().naive_utc();
-    let response_date_utc = format_date(&response_date);
 
     if data.request_approved {
+        let is_latest = AuthRequest::find_by_user_and_requested_device(
+            &headers.user.uuid,
+            &auth_request.request_device_identifier,
+            &conn,
+        )
+        .await
+        .is_some_and(|latest| latest.uuid == auth_request.uuid);
+        if !is_latest {
+            err!(crate::i18n::accounts_auth_request_duplicate_device(&headers.locale));
+        }
+
         auth_request.approved = Some(data.request_approved);
         auth_request.enc_key = Some(data.key);
         auth_request.master_password_hash = data.master_password_hash;
@@ -1864,19 +1970,9 @@ async fn put_auth_request(
         .await;
     }
 
-    Ok(Json(json!({
-        "id": &auth_request_id,
-        "publicKey": auth_request.public_key,
-        "requestDeviceType": DeviceType::from_i32(auth_request.device_type).to_string(),
-        "requestIpAddress": auth_request.request_ip,
-        "key": auth_request.enc_key,
-        "masterPasswordHash": auth_request.master_password_hash,
-        "creationDate": format_date(&auth_request.creation_date),
-        "responseDate": response_date_utc,
-        "requestApproved": auth_request.approved,
-        "origin": CONFIG.domain_origin(),
-        "object":"auth-request"
-    })))
+    let mut json = auth_request_to_json(&auth_request);
+    json["responseDate"] = json!(format_date(&response_date));
+    Ok(Json(json))
 }
 
 #[get("/auth-requests/<auth_request_id>/response?<code>")]
@@ -1905,28 +2001,18 @@ async fn get_auth_request_response(
         )
     }
 
-    let response_date_utc = auth_request.response_date.map(|response_date| format_date(&response_date));
-
-    Ok(Json(json!({
-        "id": &auth_request_id,
-        "publicKey": auth_request.public_key,
-        "requestDeviceType": DeviceType::from_i32(auth_request.device_type).to_string(),
-        "requestIpAddress": auth_request.request_ip,
-        "key": auth_request.enc_key,
-        "masterPasswordHash": auth_request.master_password_hash,
-        "creationDate": format_date(&auth_request.creation_date),
-        "responseDate": response_date_utc,
-        "requestApproved": auth_request.approved,
-        "origin": CONFIG.domain_origin(),
-        "object":"auth-request"
-    })))
+    Ok(Json(auth_request_to_json(&auth_request)))
 }
 
-// Now unused but not yet removed
-// cf https://github.com/bitwarden/clients/blob/9b2fbdba1c028bf3394064609630d2ec224baefa/libs/common/src/services/api.service.ts#L245
 #[get("/auth-requests")]
 async fn get_auth_requests(headers: Headers, conn: DbConn) -> JsonResult {
-    get_auth_requests_pending(headers, conn).await
+    let auth_requests = AuthRequest::find_by_user(&headers.user.uuid, &conn).await;
+
+    Ok(Json(json!({
+        "data": auth_requests.iter().map(auth_request_to_json).collect::<Vec<Value>>(),
+        "continuationToken": null,
+        "object": "list"
+    })))
 }
 
 #[get("/auth-requests/pending")]
@@ -1937,23 +2023,8 @@ async fn get_auth_requests_pending(headers: Headers, conn: DbConn) -> JsonResult
         "data": auth_requests
             .iter()
             .filter(|request| request.approved.is_none())
-            .map(|request| {
-            let response_date_utc = request.response_date.map(|response_date| format_date(&response_date));
-
-            json!({
-                "id": request.uuid,
-                "publicKey": request.public_key,
-                "requestDeviceType": DeviceType::from_i32(request.device_type).to_string(),
-                "requestIpAddress": request.request_ip,
-                "key": request.enc_key,
-                "masterPasswordHash": request.master_password_hash,
-                "creationDate": format_date(&request.creation_date),
-                "responseDate": response_date_utc,
-                "requestApproved": request.approved,
-                "origin": CONFIG.domain_origin(),
-                "object":"auth-request"
-            })
-        }).collect::<Vec<Value>>(),
+            .map(auth_request_to_json)
+            .collect::<Vec<Value>>(),
         "continuationToken": null,
         "object": "list"
     })))
@@ -1979,6 +2050,7 @@ mod tests {
             r#"{
                 "email": "user@example.com",
                 "emailVerificationToken": "token",
+                "culture": "uk-UA",
                 "userAsymmetricKeys": {"publicKey": "pub", "encryptedPrivateKey": "priv"},
                 "masterPasswordAuthentication": {
                     "kdf": {"kdfType": 0, "iterations": 600000},
@@ -2000,6 +2072,7 @@ mod tests {
         assert_eq!(data.kdf().kdf_iterations, 600_000);
         assert!(data.keys.is_some());
         assert_eq!(data.email_verification_token.as_deref(), Some("token"));
+        assert_eq!(data.culture.as_deref(), Some("uk-UA"));
     }
 
     #[test]

@@ -20,6 +20,25 @@ const licenseDays = ref<number>(365);
 const licenseNotes = ref<string>('');
 const savingLicense = ref(false);
 
+// User details modal
+const showDetailsModal = ref(false);
+const detailsLoading = ref(false);
+const userDetails = ref<Record<string, any> | null>(null);
+
+async function openUserDetailsModal(user: UserSummary) {
+  showDetailsModal.value = true;
+  detailsLoading.value = true;
+  userDetails.value = null;
+  try {
+    userDetails.value = await api.getUser(user.id);
+  } catch (err: any) {
+    message.value = { text: err.message || 'Ошибка загрузки деталей пользователя', error: true };
+    showDetailsModal.value = false;
+  } finally {
+    detailsLoading.value = false;
+  }
+}
+
 // Role change modal
 const selectedUser = ref<UserSummary | null>(null);
 const selectedOrg = ref<{ id: string; name: string; type: number } | null>(null);
@@ -47,6 +66,9 @@ const filteredUsers = computed(() => {
     if (statusFilter.value === 'disabled' && u.userEnabled) return false;
     if (statusFilter.value === 'invited' && u.status !== 1) return false;
     if (statusFilter.value === '2fa' && !u.twoFactorEnabled) return false;
+    if (statusFilter.value === 'verified' && !u.emailVerified) return false;
+    if (statusFilter.value === 'unverified' && u.emailVerified) return false;
+    if (statusFilter.value === 'sso' && !u.ssoIdentifier) return false;
 
     // Search query
     if (!q) return true;
@@ -56,6 +78,28 @@ const filteredUsers = computed(() => {
       (u.ssoIdentifier && u.ssoIdentifier.toLowerCase().includes(q))
     );
   });
+});
+
+const sortBy = ref<'createdAt' | 'email' | 'ciphers'>('createdAt');
+const currentPage = ref(1);
+const pageSize = 25;
+
+const sortedUsers = computed(() => {
+  const list = [...filteredUsers.value];
+  if (sortBy.value === 'email') {
+    return list.sort((a, b) => a.email.localeCompare(b.email));
+  }
+  if (sortBy.value === 'ciphers') {
+    return list.sort((a, b) => b.ciphersCount - a.ciphersCount);
+  }
+  return list;
+});
+
+const totalPages = computed(() => Math.max(1, Math.ceil(sortedUsers.value.length / pageSize)));
+const paginatedUsers = computed(() => {
+  const safePage = Math.min(currentPage.value, totalPages.value);
+  const start = (safePage - 1) * pageSize;
+  return sortedUsers.value.slice(start, start + pageSize);
 });
 
 async function handleInvite() {
@@ -76,7 +120,7 @@ async function handleInvite() {
 
 function openLicenseModal(user: UserSummary) {
   licenseTargetUser.value = user;
-  licensePlan.value = user.subscriptionPlan || 'pro';
+  licensePlan.value = (user.subscriptionPlan || 'free').toLowerCase();
   licenseDays.value = 365;
   licenseNotes.value = '';
   showLicenseModal.value = true;
@@ -86,12 +130,10 @@ async function handleSaveLicense() {
   if (!licenseTargetUser.value) return;
   savingLicense.value = true;
   try {
-    const expiresAt = licenseDays.value === -1
-      ? null
-      : new Date(Date.now() + licenseDays.value * 86400000).toISOString();
+    const expiresDays = licenseDays.value === -1 ? null : licenseDays.value;
     await api.setUserLicense(licenseTargetUser.value.id, {
       plan: licensePlan.value,
-      expiresAt,
+      expiresDays,
       notes: licenseNotes.value || undefined,
     });
     message.value = { text: `Тарифный план для пользователя ${licenseTargetUser.value.email} успешно обновлён на ${licensePlan.value.toUpperCase()}!` };
@@ -116,7 +158,7 @@ function getPlanBadge(plan?: string) {
     case 'pro':
       return { label: '⚡ Novus Pro', bg: '#0369a1', color: '#bae6fd', border: '#0284c7' };
     default:
-      return { label: 'Free', bg: '#1f2937', color: '#94a3b8', border: '#374151' };
+      return { label: 'Free', bg: 'var(--admin-surface-bg, #1f2937)', color: 'var(--admin-text-secondary, #94a3b8)', border: 'var(--admin-input-border, #374151)' };
   }
 }
 
@@ -193,7 +235,13 @@ async function handleDeleteSSO(uuid: string, email: string) {
 }
 
 async function handleDelete(uuid: string, email: string) {
-  if (!confirm(`ВНИМАНИЕ: Вы действительно хотите безвозвратно удалить пользователя ${email}? Все зашифрованные данные пользователя будут стёрты.`)) return;
+  const typed = prompt(
+    `ВНИМАНИЕ: Все зашифрованные данные пользователя ${email} будут безвозвратно удалены!\n\nДля подтверждения введите email пользователя:`
+  );
+  if (typed !== email) {
+    if (typed !== null) alert('Email не совпал. Удаление отменено.');
+    return;
+  }
   try {
     await api.deleteUser(uuid);
     message.value = { text: `Пользователь ${email} безвозвратно удалён.` };
@@ -206,7 +254,7 @@ async function handleDelete(uuid: string, email: string) {
 function openRoleModal(user: UserSummary, org: { id: string; name: string; type: number }) {
   selectedUser.value = user;
   selectedOrg.value = org;
-  selectedRole.value = org.type;
+  selectedRole.value = org.type === 4 ? 3 : org.type;
   showRoleModal.value = true;
 }
 
@@ -230,7 +278,9 @@ function getRoleLabel(type: number): string {
     case 0: return 'Владелец';
     case 1: return 'Администратор';
     case 2: return 'Пользователь';
-    case 3: return 'Менеджер';
+    case 3:
+    case 4:
+      return 'Менеджер';
     default: return 'Участник';
   }
 }
@@ -238,14 +288,26 @@ function getRoleLabel(type: number): string {
 function getRoleBadgeStyle(type: number) {
   switch (type) {
     case 0: return { backgroundColor: '#701a75', color: '#f5d0fe', border: '1px solid #a21caf' };
-    case 1: return { backgroundColor: '#1e3a8a', color: '#93c5fd', border: '1px solid #2563eb' };
-    case 3: return { backgroundColor: '#14532d', color: '#86efac', border: '1px solid #16a34a' };
-    default: return { backgroundColor: '#1f2937', color: '#cbd5e1', border: '1px solid #374151' };
+    case 1: return { backgroundColor: 'rgba(37, 99, 235, 0.22)', color: '#0284c7', border: '1px solid #2563eb' };
+    case 3:
+    case 4:
+      return { backgroundColor: '#14532d', color: '#86efac', border: '1px solid #16a34a' };
+    default: return { backgroundColor: 'var(--admin-surface-bg, #1f2937)', color: 'var(--admin-text-subtle, #cbd5e1)', border: '1px solid #374151' };
   }
 }
 
-function handleExportUsers() {
-  window.open('/admin/users/export', '_blank');
+async function handleExportUsers() {
+  try {
+    const blob = await api.exportUsers();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `novuswarden_users_${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch (err: any) {
+    message.value = { text: err.message, error: true };
+  }
 }
 
 onMounted(loadUsers);
@@ -256,10 +318,10 @@ onMounted(loadUsers);
     <!-- Header -->
     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; flex-wrap: wrap; gap: 16px;">
       <div>
-        <h1 style="font-size: 24px; font-weight: 700; color: #f9fafb; margin: 0 0 6px 0;">
+        <h1 style="font-size: 24px; font-weight: 700; color: var(--admin-text-main, #f9fafb); margin: 0 0 6px 0;">
           Пользователи хранилища
         </h1>
-        <p style="font-size: 14px; color: #9ca3af; margin: 0;">
+        <p style="font-size: 14px; color: var(--admin-text-secondary, #9ca3af); margin: 0;">
           Управление учётными записями, двухфакторной аутентификацией, ролями в организациях и сессиями.
         </p>
       </div>
@@ -269,19 +331,19 @@ onMounted(loadUsers);
         <button
           @click="handleForceResync"
           :disabled="resyncing"
-          style="background-color: #1f2937; color: #fbbf24; border: 1px solid #b45309; padding: 8px 14px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;"
+          style="background-color: var(--admin-surface-bg, #1f2937); color: #fbbf24; border: 1px solid #b45309; padding: 8px 14px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;"
         >
           🔄 {{ resyncing ? 'Синхронизация...' : 'Синхронизировать клиентов' }}
         </button>
         <button
           @click="handleExportUsers"
-          style="background-color: #1f2937; color: #34d399; border: 1px solid #374151; padding: 8px 14px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;"
+          style="background-color: var(--admin-surface-bg, #1f2937); color: #34d399; border: 1px solid var(--admin-input-border, #374151); padding: 8px 14px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;"
         >
           📥 Экспорт JSON
         </button>
         <button
           @click="loadUsers"
-          style="background-color: #1f2937; color: #e5e7eb; border: 1px solid #374151; padding: 8px 14px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;"
+          style="background-color: var(--admin-surface-bg, #1f2937); color: var(--admin-text-main, #e5e7eb); border: 1px solid var(--admin-input-border, #374151); padding: 8px 14px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;"
         >
           Обновить
         </button>
@@ -306,7 +368,7 @@ onMounted(loadUsers);
     </div>
 
     <!-- Top Bar: Invite User & Filters -->
-    <div style="background-color: #111827; border: 1px solid #1f2937; border-radius: 8px; padding: 18px; margin-bottom: 24px; display: grid; gap: 16px;">
+    <div style="background-color: var(--admin-card-bg, #111827); border: 1px solid var(--admin-card-border, #1f2937); border-radius: 8px; padding: 18px; margin-bottom: 24px; display: grid; gap: 16px;">
       <!-- Invite user form -->
       <form @submit.prevent="handleInvite" style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
         <input
@@ -314,11 +376,11 @@ onMounted(loadUsers);
           type="email"
           placeholder="colleague@domain.com (введите email для приглашения)"
           required
-          style="flex: 1; min-width: 240px; background-color: #0b0f19; border: 1px solid #374151; color: white; padding: 10px 14px; border-radius: 6px; font-size: 13px; outline: none;"
+          style="flex: 1; min-width: 240px; background-color: var(--admin-input-bg, #0b0f19); border: 1px solid var(--admin-input-border, #374151); color: var(--admin-text-main, #f9fafb); padding: 10px 14px; border-radius: 6px; font-size: 13px; outline: none;"
         />
         <select
           v-model="invitePlan"
-          style="background-color: #0b0f19; border: 1px solid #374151; color: #93c5fd; padding: 10px 12px; border-radius: 6px; font-size: 13px; font-weight: 600; outline: none; cursor: pointer;"
+          style="background-color: var(--admin-input-bg, #0b0f19); border: 1px solid var(--admin-input-border, #374151); color: #93c5fd; padding: 10px 12px; border-radius: 6px; font-size: 13px; font-weight: 600; outline: none; cursor: pointer;"
           title="Выберите тарифный план для приглашаемого пользователя"
         >
           <option value="free">Тариф: Free</option>
@@ -329,7 +391,7 @@ onMounted(loadUsers);
         <button
           type="submit"
           :disabled="inviting"
-          style="background-color: #2563eb; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;"
+          style="background-color: #2563eb; color: #ffffff; border: none; padding: 10px 20px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;"
         >
           {{ inviting ? 'Отправка...' : 'Пригласить пользователя' }}
         </button>
@@ -337,24 +399,38 @@ onMounted(loadUsers);
 
       <!-- Search and filter pills -->
       <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
-        <input
-          v-model="search"
-          type="text"
-          placeholder="Поиск пользователей по имени, email или SSO..."
-          style="min-width: 280px; max-width: 400px; background-color: #0b0f19; border: 1px solid #374151; color: white; padding: 8px 12px; border-radius: 6px; font-size: 13px; outline: none;"
-        />
+        <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+          <input
+            v-model="search"
+            @input="currentPage = 1"
+            type="text"
+            placeholder="Поиск пользователей по имени, email или SSO..."
+            style="min-width: 260px; max-width: 360px; background-color: var(--admin-input-bg, #0b0f19); border: 1px solid var(--admin-input-border, #374151); color: var(--admin-text-main, #f9fafb); padding: 8px 12px; border-radius: 6px; font-size: 13px; outline: none;"
+          />
+          <select
+            v-model="sortBy"
+            style="background-color: var(--admin-input-bg, #0b0f19); border: 1px solid var(--admin-input-border, #374151); color: var(--admin-text-subtle, #cbd5e1); padding: 8px 10px; border-radius: 6px; font-size: 12px; outline: none;"
+          >
+            <option value="createdAt">Сортировка: По дате</option>
+            <option value="email">Сортировка: Email (A-Z)</option>
+            <option value="ciphers">Сортировка: Кол-во записей</option>
+          </select>
+        </div>
 
-        <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+        <div style="display: flex; gap: 6px; flex-wrap: wrap; align-items: center;">
           <button
             v-for="pill in [
               { id: 'all', label: `Все (${users.length})` },
               { id: 'active', label: 'Активные' },
+              { id: 'verified', label: 'Email ✓' },
+              { id: 'unverified', label: 'Не подтверждён' },
               { id: 'disabled', label: 'Отключенные' },
               { id: 'invited', label: 'Приглашённые' },
               { id: '2fa', label: 'С 2FA' },
+              { id: 'sso', label: 'SSO' },
             ]"
             :key="pill.id"
-            @click="statusFilter = pill.id"
+            @click="statusFilter = pill.id; currentPage = 1"
             :style="{
               padding: '6px 12px',
               borderRadius: '6px',
@@ -362,8 +438,8 @@ onMounted(loadUsers);
               fontWeight: 600,
               cursor: 'pointer',
               border: statusFilter === pill.id ? '1px solid #3b82f6' : '1px solid #374151',
-              backgroundColor: statusFilter === pill.id ? '#1e3a8a' : '#1f2937',
-              color: statusFilter === pill.id ? '#93c5fd' : '#9ca3af',
+              backgroundColor: statusFilter === pill.id ? 'rgba(37, 99, 235, 0.22)' : 'var(--admin-surface-bg, #1f2937)',
+              color: statusFilter === pill.id ? '#0284c7' : 'var(--admin-text-secondary, #9ca3af)',
             }"
           >
             {{ pill.label }}
@@ -373,10 +449,10 @@ onMounted(loadUsers);
     </div>
 
     <!-- Users Table -->
-    <div style="background-color: #111827; border: 1px solid #1f2937; border-radius: 8px; overflow-x: auto;">
+    <div style="background-color: var(--admin-card-bg, #111827); border: 1px solid var(--admin-card-border, #1f2937); border-radius: 8px; overflow-x: auto;">
       <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 13px;">
         <thead>
-          <tr style="border-bottom: 1px solid #1f2937; color: #9ca3af; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; background-color: #161e2e;">
+          <tr style="border-bottom: 1px solid var(--admin-card-border, #1f2937); color: var(--admin-text-secondary, #9ca3af); text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; background-color: var(--admin-table-head, #161e2e);">
             <th style="padding: 14px 18px;">Пользователь</th>
             <th style="padding: 14px 18px;">Статус / 2FA</th>
             <th style="padding: 14px 18px;">SSO</th>
@@ -389,7 +465,7 @@ onMounted(loadUsers);
         </thead>
         <tbody>
           <tr v-if="loading">
-            <td colspan="8" style="padding: 36px; text-align: center; color: #9ca3af;">
+            <td colspan="8" style="padding: 36px; text-align: center; color: var(--admin-text-secondary, #9ca3af);">
               Загрузка учётных записей пользователей из базы данных...
             </td>
           </tr>
@@ -399,9 +475,9 @@ onMounted(loadUsers);
             </td>
           </tr>
           <tr
-            v-for="user in filteredUsers"
+            v-for="user in paginatedUsers"
             :key="user.id"
-            style="border-bottom: 1px solid #1f2937; transition: background-color 0.15s ease;"
+            style="border-bottom: 1px solid var(--admin-card-border, #1f2937); transition: background-color 0.15s ease;"
           >
             <!-- User Info Column -->
             <td style="padding: 14px 18px;">
@@ -410,10 +486,10 @@ onMounted(loadUsers);
                   {{ (user.name || user.email || 'U').charAt(0).toUpperCase() }}
                 </div>
                 <div>
-                  <div style="font-weight: 600; color: #f9fafb;">
+                  <div style="font-weight: 600; color: var(--admin-text-main, #f9fafb);">
                     {{ user.name || user.email }}
                   </div>
-                  <div style="font-size: 12px; color: #9ca3af;">
+                  <div style="font-size: 12px; color: var(--admin-text-secondary, #9ca3af);">
                     {{ user.email }}
                   </div>
                 </div>
@@ -450,6 +526,19 @@ onMounted(loadUsers);
                 </span>
 
                 <span
+                  v-if="user.emailVerified"
+                  style="font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 4px; background-color: #0c4a6e; color: #7dd3fc;"
+                >
+                  ✉️ Подтверждён
+                </span>
+                <span
+                  v-else
+                  style="font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 4px; background-color: #374151; color: var(--admin-text-secondary, #9ca3af);"
+                >
+                  ✉️ Не подтверждён
+                </span>
+
+                <span
                   :style="{
                     fontSize: '10px',
                     fontWeight: 600,
@@ -468,7 +557,7 @@ onMounted(loadUsers);
             </td>
 
             <!-- SSO Column -->
-            <td style="padding: 14px 18px; font-size: 12px; color: #cbd5e1;">
+            <td style="padding: 14px 18px; font-size: 12px; color: var(--admin-text-subtle, #cbd5e1);">
               <div v-if="user.ssoIdentifier" style="font-family: monospace; font-size: 11px; color: #38bdf8;">
                 {{ user.ssoIdentifier }}
               </div>
@@ -476,12 +565,12 @@ onMounted(loadUsers);
             </td>
 
             <!-- Ciphers Column -->
-            <td style="padding: 14px 18px; color: #cbd5e1; font-weight: 600;">
+            <td style="padding: 14px 18px; color: var(--admin-text-subtle, #cbd5e1); font-weight: 600;">
               {{ user.ciphersCount }}
             </td>
 
             <!-- Attachments Column -->
-            <td style="padding: 14px 18px; color: #9ca3af; font-size: 12px;">
+            <td style="padding: 14px 18px; color: var(--admin-text-secondary, #9ca3af); font-size: 12px;">
               {{ user.attachmentsCount }}
               <span v-if="user.attachmentsCount > 0" style="color: #64748b;">
                 ({{ user.attachmentsSize }})
@@ -512,14 +601,21 @@ onMounted(loadUsers);
             </td>
 
             <!-- Dates Column -->
-            <td style="padding: 14px 18px; font-size: 12px; color: #9ca3af;">
-              <div>Создан: <span style="color: #cbd5e1;">{{ user.createdAt }}</span></div>
-              <div v-if="user.lastActive" style="margin-top: 2px;">Активен: <span style="color: #cbd5e1;">{{ user.lastActive }}</span></div>
+            <td style="padding: 14px 18px; font-size: 12px; color: var(--admin-text-secondary, #9ca3af);">
+              <div>Создан: <span style="color: var(--admin-text-subtle, #cbd5e1);">{{ user.createdAt }}</span></div>
+              <div v-if="user.lastActive" style="margin-top: 2px;">Активен: <span style="color: var(--admin-text-subtle, #cbd5e1);">{{ user.lastActive }}</span></div>
             </td>
 
             <!-- Actions Column -->
             <td style="padding: 14px 18px; text-align: right;">
               <div style="display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap;">
+                <button
+                  @click="openUserDetailsModal(user)"
+                  title="Подробная информация из базы"
+                  style="background: var(--admin-surface-bg, #1f2937); color: #93c5fd; border: 1px solid #1d4ed8; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; cursor: pointer;"
+                >
+                  🔍 Детали
+                </button>
                 <button
                   @click="openLicenseModal(user)"
                   title="Назначить лицензию / изменить тарифный план"
@@ -530,7 +626,7 @@ onMounted(loadUsers);
                 <button
                   @click="handleDeauth(user.id)"
                   title="Отозвать все активные сессии"
-                  style="background: #1f2937; color: #e5e7eb; border: 1px solid #374151; padding: 4px 8px; border-radius: 4px; font-size: 11px; cursor: pointer;"
+                  style="background: var(--admin-surface-bg, #1f2937); color: var(--admin-text-main, #e5e7eb); border: 1px solid var(--admin-input-border, #374151); padding: 4px 8px; border-radius: 4px; font-size: 11px; cursor: pointer;"
                 >
                   Сброс сессий
                 </button>
@@ -538,14 +634,14 @@ onMounted(loadUsers);
                   v-if="user.twoFactorEnabled"
                   @click="handleRemove2FA(user.id)"
                   title="Сбросить 2FA"
-                  style="background: #1f2937; color: #fbbf24; border: 1px solid #374151; padding: 4px 8px; border-radius: 4px; font-size: 11px; cursor: pointer;"
+                  style="background: var(--admin-surface-bg, #1f2937); color: #fbbf24; border: 1px solid var(--admin-input-border, #374151); padding: 4px 8px; border-radius: 4px; font-size: 11px; cursor: pointer;"
                 >
                   Сброс 2FA
                 </button>
                 <button
                   @click="handleToggleUser(user)"
                   :title="user.userEnabled ? 'Отключить учётную запись' : 'Активировать учётную запись'"
-                  style="background: #1f2937; color: #38bdf8; border: 1px solid #374151; padding: 4px 8px; border-radius: 4px; font-size: 11px; cursor: pointer;"
+                  style="background: var(--admin-surface-bg, #1f2937); color: #38bdf8; border: 1px solid var(--admin-input-border, #374151); padding: 4px 8px; border-radius: 4px; font-size: 11px; cursor: pointer;"
                 >
                   {{ user.userEnabled ? 'Отключить' : 'Включить' }}
                 </button>
@@ -553,7 +649,7 @@ onMounted(loadUsers);
                   v-if="user.status === 1"
                   @click="handleResendInvite(user.id, user.email)"
                   title="Отправить приглашение повторно"
-                  style="background: #1f2937; color: #34d399; border: 1px solid #374151; padding: 4px 8px; border-radius: 4px; font-size: 11px; cursor: pointer;"
+                  style="background: var(--admin-surface-bg, #1f2937); color: #34d399; border: 1px solid var(--admin-input-border, #374151); padding: 4px 8px; border-radius: 4px; font-size: 11px; cursor: pointer;"
                 >
                   Повторить инвайт
                 </button>
@@ -561,7 +657,7 @@ onMounted(loadUsers);
                   v-if="user.ssoIdentifier"
                   @click="handleDeleteSSO(user.id, user.email)"
                   title="Удалить SSO связь"
-                  style="background: #1f2937; color: #f59e0b; border: 1px solid #374151; padding: 4px 8px; border-radius: 4px; font-size: 11px; cursor: pointer;"
+                  style="background: var(--admin-surface-bg, #1f2937); color: #f59e0b; border: 1px solid var(--admin-input-border, #374151); padding: 4px 8px; border-radius: 4px; font-size: 11px; cursor: pointer;"
                 >
                   Удалить SSO
                 </button>
@@ -577,6 +673,28 @@ onMounted(loadUsers);
           </tr>
         </tbody>
       </table>
+      <div
+        v-if="totalPages > 1"
+        style="display: flex; justify-content: space-between; align-items: center; padding: 12px 18px; border-top: 1px solid var(--admin-card-border, #1f2937); font-size: 12px; color: var(--admin-text-secondary, #9ca3af);"
+      >
+        <span>Страница {{ currentPage }} из {{ totalPages }} (всего: {{ sortedUsers.length }})</span>
+        <div style="display: flex; gap: 8px;">
+          <button
+            @click="currentPage = Math.max(1, currentPage - 1)"
+            :disabled="currentPage <= 1"
+            style="background: var(--admin-surface-bg, #1f2937); color: var(--admin-text-main, #e5e7eb); border: 1px solid var(--admin-input-border, #374151); padding: 4px 10px; border-radius: 4px; cursor: pointer;"
+          >
+            ← Назад
+          </button>
+          <button
+            @click="currentPage = Math.min(totalPages, currentPage + 1)"
+            :disabled="currentPage >= totalPages"
+            style="background: var(--admin-surface-bg, #1f2937); color: var(--admin-text-main, #e5e7eb); border: 1px solid var(--admin-input-border, #374151); padding: 4px 10px; border-radius: 4px; cursor: pointer;"
+          >
+            Вперёд →
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- Role Edit Modal -->
@@ -584,13 +702,13 @@ onMounted(loadUsers);
       v-if="showRoleModal"
       style="position: fixed; inset: 0; background-color: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 100;"
     >
-      <div style="background-color: #111827; border: 1px solid #1f2937; border-radius: 8px; width: 100%; max-width: 440px; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
-        <h3 style="font-size: 18px; font-weight: 700; color: #f9fafb; margin: 0 0 12px 0;">
+      <div style="background-color: var(--admin-card-bg, #111827); border: 1px solid var(--admin-card-border, #1f2937); border-radius: 8px; width: 100%; max-width: 440px; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
+        <h3 style="font-size: 18px; font-weight: 700; color: var(--admin-text-main, #f9fafb); margin: 0 0 12px 0;">
           Роль в организации
         </h3>
-        <p style="font-size: 13px; color: #9ca3af; margin: 0 0 16px 0;">
-          Организация: <strong style="color: white;">{{ selectedOrg?.name }}</strong><br />
-          Пользователь: <strong style="color: white;">{{ selectedUser?.email }}</strong>
+        <p style="font-size: 13px; color: var(--admin-text-secondary, #9ca3af); margin: 0 0 16px 0;">
+          Организация: <strong style="color: var(--admin-text-main, #f9fafb);">{{ selectedOrg?.name }}</strong><br />
+          Пользователь: <strong style="color: var(--admin-text-main, #f9fafb);">{{ selectedUser?.email }}</strong>
         </p>
 
         <div style="display: grid; gap: 10px; margin-bottom: 20px;">
@@ -606,7 +724,7 @@ onMounted(loadUsers);
               padding: '10px 14px',
               borderRadius: '6px',
               border: selectedRole === role.type ? '1px solid #3b82f6' : '1px solid #374151',
-              backgroundColor: selectedRole === role.type ? '#1e3a8a' : '#1f2937',
+              backgroundColor: selectedRole === role.type ? 'rgba(37, 99, 235, 0.22)' : 'var(--admin-surface-bg, #1f2937)',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'flex-start',
@@ -615,8 +733,8 @@ onMounted(loadUsers);
           >
             <input type="radio" :value="role.type" v-model="selectedRole" style="margin-top: 3px;" />
             <div>
-              <div style="font-size: 13px; font-weight: 600; color: #f9fafb;">{{ role.label }}</div>
-              <div style="font-size: 11px; color: #9ca3af;">{{ role.desc }}</div>
+              <div style="font-size: 13px; font-weight: 600; color: var(--admin-text-main, #f9fafb);">{{ role.label }}</div>
+              <div style="font-size: 11px; color: var(--admin-text-secondary, #9ca3af);">{{ role.desc }}</div>
             </div>
           </label>
         </div>
@@ -625,7 +743,7 @@ onMounted(loadUsers);
           <button
             type="button"
             @click="showRoleModal = false"
-            style="background-color: #1f2937; color: #e5e7eb; border: 1px solid #374151; padding: 8px 16px; border-radius: 6px; font-size: 13px; cursor: pointer;"
+            style="background-color: var(--admin-surface-bg, #1f2937); color: var(--admin-text-main, #e5e7eb); border: 1px solid var(--admin-input-border, #374151); padding: 8px 16px; border-radius: 6px; font-size: 13px; cursor: pointer;"
           >
             Отмена
           </button>
@@ -633,7 +751,7 @@ onMounted(loadUsers);
             type="button"
             @click="saveUserRole"
             :disabled="updatingRole"
-            style="background-color: #2563eb; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;"
+            style="background-color: #2563eb; color: #ffffff; border: none; padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;"
           >
             {{ updatingRole ? 'Сохранение...' : 'Сохранить роль' }}
           </button>
@@ -646,31 +764,31 @@ onMounted(loadUsers);
       v-if="showLicenseModal"
       style="position: fixed; inset: 0; background-color: rgba(0,0,0,0.75); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 100;"
     >
-      <div style="background-color: #111827; border: 1px solid rgba(124, 58, 237, 0.4); border-radius: 12px; width: 100%; max-width: 480px; padding: 24px; box-shadow: 0 20px 40px rgba(0,0,0,0.6), 0 0 30px rgba(124, 58, 237, 0.15);">
+      <div style="background-color: var(--admin-card-bg, #111827); border: 1px solid rgba(124, 58, 237, 0.4); border-radius: 12px; width: 100%; max-width: 480px; padding: 24px; box-shadow: 0 20px 40px rgba(0,0,0,0.6), 0 0 30px rgba(124, 58, 237, 0.15);">
         <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
           <div style="width: 36px; height: 36px; border-radius: 8px; background: linear-gradient(135deg, #7c3aed, #4f46e5); display: flex; align-items: center; justify-content: center; font-size: 18px;">
             👑
           </div>
           <div>
-            <h3 style="font-size: 18px; font-weight: 700; color: #f9fafb; margin: 0;">
+            <h3 style="font-size: 18px; font-weight: 700; color: var(--admin-text-main, #f9fafb); margin: 0;">
               Назначение тарифа и лицензии
             </h3>
-            <p style="font-size: 12px; color: #9ca3af; margin: 0;">
+            <p style="font-size: 12px; color: var(--admin-text-secondary, #9ca3af); margin: 0;">
               Управление правами доступа и лимитами пользователя
             </p>
           </div>
         </div>
 
-        <div style="background-color: #1f2937; border-radius: 8px; padding: 12px; margin-bottom: 16px; font-size: 13px;">
-          <div style="color: #9ca3af; margin-bottom: 2px;">Пользователь:</div>
-          <div style="font-weight: 600; color: #f9fafb; word-break: break-all;">
+        <div style="background-color: var(--admin-surface-bg, #1f2937); border-radius: 8px; padding: 12px; margin-bottom: 16px; font-size: 13px;">
+          <div style="color: var(--admin-text-secondary, #9ca3af); margin-bottom: 2px;">Пользователь:</div>
+          <div style="font-weight: 600; color: var(--admin-text-main, #f9fafb); word-break: break-all;">
             {{ licenseTargetUser?.name ? `${licenseTargetUser.name} (${licenseTargetUser.email})` : licenseTargetUser?.email }}
           </div>
         </div>
 
         <!-- Plan Selection -->
         <div style="margin-bottom: 16px;">
-          <label style="display: block; font-size: 12px; font-weight: 600; color: #cbd5e1; margin-bottom: 8px;">
+          <label style="display: block; font-size: 12px; font-weight: 600; color: var(--admin-text-subtle, #cbd5e1); margin-bottom: 8px;">
             Выберите тарифный план:
           </label>
           <div style="display: grid; gap: 8px;">
@@ -686,7 +804,7 @@ onMounted(loadUsers);
                 padding: '10px 14px',
                 borderRadius: '8px',
                 border: licensePlan === plan.id ? '1px solid #8b5cf6' : '1px solid #374151',
-                backgroundColor: licensePlan === plan.id ? '#2e1065' : '#1f2937',
+                backgroundColor: licensePlan === plan.id ? 'rgba(124, 58, 237, 0.2)' : 'var(--admin-surface-bg, #1f2937)',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'flex-start',
@@ -696,8 +814,8 @@ onMounted(loadUsers);
             >
               <input type="radio" :value="plan.id" v-model="licensePlan" style="margin-top: 3px;" />
               <div>
-                <div style="font-size: 13px; font-weight: 600; color: #f9fafb;">{{ plan.name }}</div>
-                <div style="font-size: 11px; color: #9ca3af; margin-top: 2px;">{{ plan.desc }}</div>
+                <div style="font-size: 13px; font-weight: 600; color: var(--admin-text-main, #f9fafb);">{{ plan.name }}</div>
+                <div style="font-size: 11px; color: var(--admin-text-secondary, #9ca3af); margin-top: 2px;">{{ plan.desc }}</div>
               </div>
             </label>
           </div>
@@ -705,12 +823,12 @@ onMounted(loadUsers);
 
         <!-- Duration Selection -->
         <div style="margin-bottom: 16px;">
-          <label style="display: block; font-size: 12px; font-weight: 600; color: #cbd5e1; margin-bottom: 6px;">
+          <label style="display: block; font-size: 12px; font-weight: 600; color: var(--admin-text-subtle, #cbd5e1); margin-bottom: 6px;">
             Срок действия лицензии:
           </label>
           <select
             v-model="licenseDays"
-            style="width: 100%; box-sizing: border-box; background-color: #1f2937; border: 1px solid #374151; color: white; padding: 10px 12px; border-radius: 6px; font-size: 13px; outline: none;"
+            style="width: 100%; box-sizing: border-box; background-color: var(--admin-surface-bg, #1f2937); border: 1px solid var(--admin-input-border, #374151); color: var(--admin-text-main, #f9fafb); padding: 10px 12px; border-radius: 6px; font-size: 13px; outline: none;"
           >
             <option :value="30">1 месяц (30 дней)</option>
             <option :value="90">3 месяца (90 дней)</option>
@@ -723,14 +841,14 @@ onMounted(loadUsers);
 
         <!-- Notes -->
         <div style="margin-bottom: 20px;">
-          <label style="display: block; font-size: 12px; font-weight: 600; color: #cbd5e1; margin-bottom: 6px;">
+          <label style="display: block; font-size: 12px; font-weight: 600; color: var(--admin-text-subtle, #cbd5e1); margin-bottom: 6px;">
             Примечание / Основание (опционально):
           </label>
           <input
             v-model="licenseNotes"
             type="text"
             placeholder="Например: Выдано администратором / Инвойс #1042"
-            style="width: 100%; box-sizing: border-box; background-color: #1f2937; border: 1px solid #374151; color: white; padding: 10px 12px; border-radius: 6px; font-size: 13px; outline: none;"
+            style="width: 100%; box-sizing: border-box; background-color: var(--admin-surface-bg, #1f2937); border: 1px solid var(--admin-input-border, #374151); color: var(--admin-text-main, #f9fafb); padding: 10px 12px; border-radius: 6px; font-size: 13px; outline: none;"
           />
         </div>
 
@@ -739,7 +857,7 @@ onMounted(loadUsers);
           <button
             type="button"
             @click="showLicenseModal = false"
-            style="background-color: #1f2937; color: #e5e7eb; border: 1px solid #374151; padding: 10px 18px; border-radius: 6px; font-size: 13px; cursor: pointer;"
+            style="background-color: var(--admin-surface-bg, #1f2937); color: var(--admin-text-main, #e5e7eb); border: 1px solid var(--admin-input-border, #374151); padding: 10px 18px; border-radius: 6px; font-size: 13px; cursor: pointer;"
           >
             Отмена
           </button>
@@ -747,10 +865,62 @@ onMounted(loadUsers);
             type="button"
             @click="handleSaveLicense"
             :disabled="savingLicense"
-            style="background: linear-gradient(135deg, #7c3aed, #4f46e5); color: white; border: none; padding: 10px 20px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;"
+            style="background: linear-gradient(135deg, #7c3aed, #4f46e5); color: var(--admin-text-main, #f9fafb); border: none; padding: 10px 20px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;"
           >
             {{ savingLicense ? 'Сохранение...' : 'Сохранить лицензию' }}
           </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- User Details Modal -->
+    <div
+      v-if="showDetailsModal"
+      style="position: fixed; inset: 0; background-color: rgba(0,0,0,0.75); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 16px;"
+    >
+      <div style="background-color: var(--admin-card-bg, #111827); border: 1px solid #3b82f6; border-radius: 12px; width: 100%; max-width: 620px; max-height: 85vh; overflow-y: auto; padding: 24px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <h3 style="font-size: 18px; font-weight: 700; color: var(--admin-text-main, #f9fafb); margin: 0;">
+            Профиль пользователя (GET /admin/users/:id)
+          </h3>
+          <button
+            type="button"
+            @click="showDetailsModal = false"
+            style="background: var(--admin-surface-bg, #1f2937); color: var(--admin-text-subtle, #cbd5e1); border: 1px solid var(--admin-input-border, #374151); padding: 4px 10px; border-radius: 6px; cursor: pointer;"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div v-if="detailsLoading" style="padding: 24px; text-align: center; color: var(--admin-text-secondary, #9ca3af);">
+          Загрузка данных пользователя...
+        </div>
+
+        <div v-else-if="userDetails" style="display: grid; gap: 12px; font-size: 13px;">
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px;">
+            <div style="background: var(--admin-surface-alt, #0b0f19); padding: 10px 12px; border-radius: 6px; border: 1px solid var(--admin-card-border, #1f2937);">
+              <div style="font-size: 11px; color: var(--admin-text-secondary, #9ca3af);">Email</div>
+              <div style="color: var(--admin-text-main, #f9fafb); font-weight: 600;">{{ userDetails.email }}</div>
+            </div>
+            <div style="background: var(--admin-surface-alt, #0b0f19); padding: 10px 12px; border-radius: 6px; border: 1px solid var(--admin-card-border, #1f2937);">
+              <div style="font-size: 11px; color: var(--admin-text-secondary, #9ca3af);">UUID</div>
+              <div style="color: #93c5fd; font-family: monospace; font-size: 11px; word-break: break-all;">{{ userDetails.id }}</div>
+            </div>
+            <div style="background: var(--admin-surface-alt, #0b0f19); padding: 10px 12px; border-radius: 6px; border: 1px solid var(--admin-card-border, #1f2937);">
+              <div style="font-size: 11px; color: var(--admin-text-secondary, #9ca3af);">KDF (Тип / Итерации)</div>
+              <div style="color: var(--admin-text-subtle, #cbd5e1);">{{ userDetails.clientKdfType === 1 ? 'Argon2id' : 'PBKDF2' }} / {{ userDetails.clientKdfIterations }}</div>
+            </div>
+            <div style="background: var(--admin-surface-alt, #0b0f19); padding: 10px 12px; border-radius: 6px; border: 1px solid var(--admin-card-border, #1f2937);">
+              <div style="font-size: 11px; color: var(--admin-text-secondary, #9ca3af);">Статус / 2FA / Email Verified</div>
+              <div style="color: var(--admin-text-subtle, #cbd5e1);">
+                {{ userDetails.userEnabled ? 'Активен' : 'Отключён' }} •
+                {{ userDetails.twoFactorEnabled ? '2FA ✓' : 'Без 2FA' }} •
+                {{ userDetails.emailVerified ? 'Подтверждён' : 'Не подтверждён' }}
+              </div>
+            </div>
+          </div>
+
+          <pre style="background: var(--admin-surface-alt, #0b0f19); color: var(--admin-text-secondary, #94a3b8); padding: 12px; border-radius: 6px; border: 1px solid var(--admin-card-border, #1f2937); font-size: 11px; overflow-x: auto; max-height: 260px;"><code>{{ JSON.stringify(userDetails, null, 2) }}</code></pre>
         </div>
       </div>
     </div>

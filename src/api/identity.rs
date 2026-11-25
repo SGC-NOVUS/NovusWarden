@@ -367,7 +367,7 @@ async fn sso_login(data: ConnectData, user_id: &mut Option<UserId>, conn: &DbCon
     // We passed 2FA get auth tokens
     let auth_tokens = sso::redeem(&device, &user, data.client_id, sso_user, sso_auth, user_infos, conn).await?;
 
-    authenticated_response(&user, &mut device, auth_tokens, twofactor_token, conn, ip).await
+    authenticated_response(&user, &mut device, auth_tokens, twofactor_token, conn, ip, None).await
 }
 
 async fn password_login(
@@ -508,9 +508,17 @@ async fn password_login(
         )
     }
 
+    // Backfill user locale from browser Accept-Language if the account predates locale persistence.
+    if user.locale.is_none() {
+        user.locale = Some(crate::i18n::normalize_locale(locale));
+        if let Err(e) = user.save(conn).await {
+            error!("Error saving backfilled user locale: {e:#?}");
+        }
+    }
+
     let auth_tokens = auth::AuthTokens::new(&device, &user, AuthMethod::Password, data.client_id);
 
-    authenticated_response(&user, &mut device, auth_tokens, twofactor_token, conn, ip).await
+    authenticated_response(&user, &mut device, auth_tokens, twofactor_token, conn, ip, Some(locale)).await
 }
 
 async fn authenticated_response(
@@ -520,17 +528,13 @@ async fn authenticated_response(
     twofactor_token: Option<String>,
     conn: &DbConn,
     ip: &ClientIp,
+    request_locale: Option<&str>,
 ) -> JsonResult {
     if CONFIG.mail_enabled() && device.is_new() {
         let now = Utc::now().naive_utc();
-        if let Err(e) = mail::send_new_device_logged_in_for_locale(
-            &user.email,
-            &ip.ip.to_string(),
-            &now,
-            device,
-            user.locale.as_deref(),
-        )
-        .await
+        let mail_locale = user.locale.as_deref().or(request_locale);
+        if let Err(e) =
+            mail::send_new_device_logged_in_for_locale(&user.email, &ip.ip.to_string(), &now, device, mail_locale).await
         {
             error!("Error sending new device email: {e:#?}");
 
@@ -1099,6 +1103,8 @@ async fn prelogin_password(data: Json<PreloginData>, ip: ClientIp, conn: DbConn)
 struct RegisterVerificationData {
     email: String,
     name: Option<String>,
+    culture: Option<String>,
+    locale: Option<String>,
     // receiveMarketingEmails: bool,
 }
 
@@ -1133,12 +1139,19 @@ async fn register_verification_email(
     crate::ratelimit::check_limit_unauthenticated(&ip.ip)?;
 
     let data = data.into_inner();
+    let effective_locale = data
+        .culture
+        .as_deref()
+        .or(data.locale.as_deref())
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map_or_else(|| locale.locale.clone(), crate::i18n::normalize_locale);
 
     // the registration can only continue if signup is allowed or there exists an invitation
     if !(CONFIG.is_signup_allowed(&data.email)
         || (!CONFIG.mail_enabled() && Invitation::find_by_mail(&data.email, &conn).await.is_some()))
     {
-        err!(crate::i18n::accounts_registration_not_allowed_or_exists(&locale.locale))
+        err!(crate::i18n::accounts_registration_not_allowed_or_exists(&effective_locale))
     }
 
     let should_send_mail = CONFIG.mail_enabled() && CONFIG.signups_verify();
@@ -1157,7 +1170,7 @@ async fn register_verification_email(
             let sleep_ms: u64 = rng.random_range(900..=1100);
             tokio::time::sleep(tokio::time::Duration::from_millis(sleep_ms)).await;
         } else {
-            mail::send_register_verify_email_for_locale(&data.email, &token, Some(&locale.locale)).await?;
+            mail::send_register_verify_email_for_locale(&data.email, &token, Some(&effective_locale)).await?;
         }
 
         Ok(RegisterVerificationResponse::NoContent(()))

@@ -3,108 +3,164 @@ import vue from '@vitejs/plugin-vue';
 import { resolve } from 'path';
 import fs from 'fs';
 
-const backendTarget = process.env.VITE_BACKEND_URL || 'https://vault.sgc-novus.xyz';
-const webVaultDir = resolve(__dirname, '../web-vault/web-vault');
+const backendTarget = process.env.VITE_BACKEND_URL || 'http://127.0.0.1:8088';
 const overlayDir = resolve(__dirname, '../docker/web-vault-overlay');
+const staticDir = resolve(__dirname, '../src/static');
 
-export default defineConfig({
-  root: resolve(__dirname, 'admin'),
-  base: '/admin/ui/',
+export default defineConfig(({ mode }) => {
+  const isAdminBuild = mode === 'admin';
+  const isVaultBuild = mode === 'vault';
+
+  const outDir = isAdminBuild
+    ? resolve(__dirname, '../src/static/admin_ui')
+    : isVaultBuild
+    ? resolve(__dirname, 'dist/vault')
+    : resolve(__dirname, 'dist');
+
+  const rollupInput = isAdminBuild
+    ? { admin: resolve(__dirname, 'admin/index.html') }
+    : isVaultBuild
+    ? { vault: resolve(__dirname, 'vault/index.html') }
+    : {
+        vault: resolve(__dirname, 'vault/index.html'),
+        admin: resolve(__dirname, 'admin/index.html'),
+      };
+
+  return {
+  root: resolve(__dirname),
+  base: isAdminBuild ? '/admin/ui/' : '/',
   plugins: [
     vue(),
     {
-      name: 'web-vault-and-redirects',
+      name: 'novus-flatten-html-entry',
+      generateBundle(_, bundle) {
+        if (!isAdminBuild && !isVaultBuild) return;
+        const targetHtml = isAdminBuild ? 'admin/index.html' : 'vault/index.html';
+        if (bundle[targetHtml]) {
+          bundle[targetHtml].fileName = 'index.html';
+        }
+      },
+    },
+    {
+      name: 'novus-multi-spa-router',
       configureServer(server) {
-        server.middlewares.use((req, res, next) => {
-          // If user visits /login, redirect to /#/login (User Web Vault login)
-          if (req.url === '/login' || req.url === '/login/') {
+        server.middlewares.use(async (req, res, next) => {
+          const rawUrl = req.url || '/';
+          const cleanUrl = rawUrl.split('?')[0];
+
+          // 1. Direct redirects
+          if (cleanUrl === '/login' || cleanUrl === '/login/') {
             res.writeHead(302, { Location: '/#/login' });
             res.end();
             return;
           }
-
-          // If user visits /admin in browser (GET /admin or /admin/), redirect to /admin/ui/
-          if (req.method === 'GET' && (req.url === '/admin' || req.url === '/admin/')) {
+          if (cleanUrl === '/signup' || cleanUrl === '/signup/') {
+            res.writeHead(302, { Location: '/#/signup' });
+            res.end();
+            return;
+          }
+          if (cleanUrl === '/vault' || cleanUrl === '/vault/') {
+            res.writeHead(302, { Location: '/#/vault' });
+            res.end();
+            return;
+          }
+          if ((req.method === 'GET' || req.method === 'HEAD') && (cleanUrl === '/admin' || cleanUrl === '/admin/')) {
             res.writeHead(302, { Location: '/admin/ui/' });
             res.end();
             return;
           }
 
-          // Serve live novus-brand.css so edits are reflected immediately
-          if (req.url?.startsWith('/novus-brand.css')) {
-            const cssPath = resolve(overlayDir, 'novus-brand.css');
-            if (fs.existsSync(cssPath)) {
-              res.setHeader('Content-Type', 'text/css');
-              res.end(fs.readFileSync(cssPath));
+          // 2. Serve static assets from src/static (/vw_static/* or /images/*)
+          if (cleanUrl.startsWith('/vw_static/') || cleanUrl.startsWith('/images/')) {
+            let relativePath = cleanUrl.startsWith('/vw_static/')
+              ? cleanUrl.slice('/vw_static/'.length)
+              : cleanUrl.slice('/images/'.length);
+
+            let diskPath = resolve(staticDir, 'images', relativePath);
+            if (!fs.existsSync(diskPath) || !fs.statSync(diskPath).isFile()) {
+              diskPath = resolve(staticDir, relativePath);
+            }
+            if (!fs.existsSync(diskPath) || !fs.statSync(diskPath).isFile()) {
+              diskPath = resolve(overlayDir, 'images', relativePath);
+            }
+            if (!fs.existsSync(diskPath) || !fs.statSync(diskPath).isFile()) {
+              diskPath = resolve(overlayDir, relativePath);
+            }
+
+            if (fs.existsSync(diskPath) && fs.statSync(diskPath).isFile()) {
+              const ext = diskPath.split('.').pop()?.toLowerCase();
+              const mimeMap: Record<string, string> = {
+                png: 'image/png',
+                jpg: 'image/jpeg',
+                jpeg: 'image/jpeg',
+                webp: 'image/webp',
+                svg: 'image/svg+xml',
+                ico: 'image/x-icon',
+                css: 'text/css',
+                js: 'application/javascript',
+              };
+              res.setHeader('Content-Type', mimeMap[ext || ''] || 'application/octet-stream');
+              res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+              res.end(fs.readFileSync(diskPath));
               return;
             }
           }
 
-          // Proxy /css/vaultwarden.css directly to backendTarget, ensuring continue button is never hidden
-          if (req.url?.startsWith('/css/vaultwarden.css')) {
-            fetch(`${backendTarget}/css/vaultwarden.css`)
-              .then(async (remoteRes) => {
-                if (remoteRes.ok) {
-                  let cssText = await remoteRes.text();
-                  cssText = cssText
-                    .replace(/\.vw-continue-login,?/g, '')
-                    .replace(/\.vw-email-continue,?/g, '');
-                  res.setHeader('Content-Type', 'text/css');
-                  res.end(cssText);
-                } else {
-                  res.setHeader('Content-Type', 'text/css');
-                  res.end('/* vaultwarden.css empty fallback */');
-                }
-              })
-              .catch(() => {
-                res.setHeader('Content-Type', 'text/css');
-                res.end('/* vaultwarden.css error fallback */');
-              });
-            return;
-          }
-
-          // If request is for /admin/ui or internal Vite modules, let Vite handle it
-          if (
-            req.url?.startsWith('/admin/ui') ||
-            req.url?.startsWith('/@') ||
-            req.url?.startsWith('/src') ||
-            req.url?.startsWith('/node_modules')
-          ) {
-            return next();
-          }
-
-          // If request is for /admin, let proxy handle it
-          if (
-            req.url?.startsWith('/admin') ||
-            req.url?.startsWith('/api') ||
-            req.url?.startsWith('/identity') ||
-            req.url?.startsWith('/vw_static') ||
-            req.url?.startsWith('/css/vaultwarden.css')
-          ) {
-            return next();
-          }
-
-          // Otherwise, serve from local web-vault or overlay!
-          const cleanUrl = req.url?.split('?')[0] || '/';
-          if (cleanUrl === '/' || !cleanUrl.includes('.')) {
-            // Serve web-vault index.html
-            const indexPath = resolve(webVaultDir, 'index.html');
-            if (fs.existsSync(indexPath)) {
-              let html = fs.readFileSync(indexPath, 'utf-8');
-              if (!html.includes('novus-brand.css')) {
-                html = html.replace('</head>', '<link rel="stylesheet" href="/novus-brand.css?v=' + Date.now() + '"></head>');
-              }
+          // 3. Admin Control Plane UI SPA
+          if (cleanUrl === '/admin/ui' || cleanUrl === '/admin/ui/') {
+            const adminHtmlPath = resolve(__dirname, 'admin/index.html');
+            if (fs.existsSync(adminHtmlPath)) {
+              let html = fs.readFileSync(adminHtmlPath, 'utf-8');
+              html = await server.transformIndexHtml('/admin/ui/', html);
               res.setHeader('Content-Type', 'text/html; charset=utf-8');
+              res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
               res.end(html);
               return;
             }
           }
 
-          // Serve static files: first check overlayDir, then webVaultDir
-          const overlayPath = resolve(overlayDir, '.' + cleanUrl);
-          const diskPath = fs.existsSync(overlayPath) && fs.statSync(overlayPath).isFile()
-            ? overlayPath
-            : resolve(webVaultDir, '.' + cleanUrl);
+          // 4. Vite Internal / Dev Modules -> let Vite handle
+          if (
+            cleanUrl.startsWith('/@') ||
+            cleanUrl.startsWith('/node_modules') ||
+            cleanUrl.startsWith('/vault/') ||
+            cleanUrl.startsWith('/admin/src') ||
+            cleanUrl.startsWith('/shared/')
+          ) {
+            return next();
+          }
+
+          // 5. Backend Proxied routes -> let Proxy handle
+          if (
+            cleanUrl.startsWith('/admin') ||
+            cleanUrl.startsWith('/api') ||
+            cleanUrl.startsWith('/identity') ||
+            cleanUrl.startsWith('/notifications/hub')
+          ) {
+            return next();
+          }
+
+          // 6. User Web Vault Vue 3 SPA (Root, /#/login, /#/vault, etc.)
+          const acceptHeader = req.headers['accept'] || '';
+          const isHtmlRequest =
+            cleanUrl === '/' ||
+            !cleanUrl.includes('.') ||
+            acceptHeader.includes('text/html');
+
+          if (isHtmlRequest) {
+            const vaultHtmlPath = resolve(__dirname, 'vault/index.html');
+            if (fs.existsSync(vaultHtmlPath)) {
+              let html = fs.readFileSync(vaultHtmlPath, 'utf-8');
+              html = await server.transformIndexHtml('/', html);
+              res.setHeader('Content-Type', 'text/html; charset=utf-8');
+              res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+              res.end(html);
+              return;
+            }
+          }
+
+          // 7. Fallback to branded static overlay assets if any
+          const diskPath = resolve(overlayDir, '.' + cleanUrl);
 
           if (fs.existsSync(diskPath) && fs.statSync(diskPath).isFile()) {
             const ext = cleanUrl.split('.').pop()?.toLowerCase();
@@ -115,6 +171,8 @@ export default defineConfig({
               json: 'application/json',
               png: 'image/png',
               jpg: 'image/jpeg',
+              jpeg: 'image/jpeg',
+              webp: 'image/webp',
               svg: 'image/svg+xml',
               ico: 'image/x-icon',
               woff: 'font/woff',
@@ -122,6 +180,7 @@ export default defineConfig({
               wasm: 'application/wasm',
             };
             res.setHeader('Content-Type', mimeTypes[ext || ''] || 'application/octet-stream');
+            res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
             res.end(fs.readFileSync(diskPath));
             return;
           }
@@ -133,18 +192,21 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
-      '@': resolve(__dirname, 'admin/src'),
+      '@admin': resolve(__dirname, 'admin/src'),
+      '@vault': resolve(__dirname, 'vault/src'),
+      '@shared': resolve(__dirname, 'shared'),
     },
   },
   build: {
-    outDir: resolve(__dirname, '../src/static/admin_ui'),
-    emptyOutDir: true,
     target: 'es2022',
+    outDir,
+    emptyOutDir: true,
     rollupOptions: {
+      input: rollupInput,
       output: {
-        entryFileNames: 'assets/[name].js',
+        entryFileNames: 'assets/[name]-[hash].js',
         chunkFileNames: 'assets/[name]-[hash].js',
-        assetFileNames: 'assets/[name].[ext]',
+        assetFileNames: 'assets/[name]-[hash].[ext]',
       },
     },
   },
@@ -152,36 +214,40 @@ export default defineConfig({
     port: 3000,
     host: '0.0.0.0',
     proxy: {
-      '/admin/ui': {
-        // Handled by Vite directly
-        bypass: (req) => {
-          if (req.url?.startsWith('/admin/ui')) {
-            return req.url;
-          }
-        },
-      },
       '/admin': {
         target: backendTarget,
         changeOrigin: true,
         secure: false,
         cookieDomainRewrite: 'localhost',
+        bypass: (req) => {
+          if (
+            req.url?.startsWith('/admin/ui') ||
+            req.url?.startsWith('/admin/src') ||
+            req.url?.startsWith('/admin/index.html')
+          ) {
+            return req.url;
+          }
+        },
         configure: (proxy) => {
           proxy.on('proxyRes', (proxyRes) => {
             const sc = proxyRes.headers['set-cookie'];
             if (sc) {
-              proxyRes.headers['set-cookie'] = sc.map(c =>
-                c.replace(/;\s*Secure/gi, '')
-                 .replace(/;\s*SameSite=Strict/gi, '; SameSite=Lax')
-                 .replace(/Domain=[^;]+/gi, 'Domain=localhost')
+              proxyRes.headers['set-cookie'] = sc.map((c) =>
+                c
+                  .replace(/;\s*Secure/gi, '')
+                  .replace(/;\s*SameSite=Strict/gi, '; SameSite=Lax')
+                  .replace(/Domain=[^;]+/gi, 'Domain=localhost')
+                  .replace(/Path=[^;]+/gi, 'Path=/')
               );
             }
           });
         },
       },
-      '/vw_static': {
+      '/notifications/hub': {
         target: backendTarget,
         changeOrigin: true,
         secure: false,
+        ws: true,
       },
       '/api': {
         target: backendTarget,
@@ -197,6 +263,5 @@ export default defineConfig({
       },
     },
   },
+  };
 });
-
-

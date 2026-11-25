@@ -47,6 +47,8 @@ pub fn routes() -> Vec<Route> {
         bulk_delete_organization_collections,
         post_bulk_collections,
         get_org_details,
+        get_org_login_details,
+        get_org_assigned_details,
         get_org_domain_sso_verified,
         get_members,
         send_invite,
@@ -879,6 +881,20 @@ struct OrgIdData {
     organization_id: OrganizationId,
 }
 
+async fn serialize_org_ciphers(
+    ciphers: Vec<Cipher>,
+    host: &str,
+    user_id: &UserId,
+    conn: &DbConn,
+) -> Result<Vec<Value>, crate::Error> {
+    let cipher_sync_data = CipherSyncData::new(user_id, CipherSyncType::Organization, conn).await;
+    let mut ciphers_json = Vec::with_capacity(ciphers.len());
+    for c in ciphers {
+        ciphers_json.push(c.to_json(host, user_id, Some(&cipher_sync_data), CipherSyncType::Organization, conn).await?);
+    }
+    Ok(ciphers_json)
+}
+
 #[get("/ciphers/organization-details?<data..>")]
 async fn get_org_details(data: OrgIdData, headers: ManagerHeadersLoose, conn: DbConn) -> JsonResult {
     if data.organization_id != headers.membership.org_uuid {
@@ -896,6 +912,45 @@ async fn get_org_details(data: OrgIdData, headers: ManagerHeadersLoose, conn: Db
     })))
 }
 
+#[get("/ciphers/organization-details/logins?<data..>")]
+async fn get_org_login_details(data: OrgIdData, headers: ManagerHeadersLoose, conn: DbConn) -> JsonResult {
+    if data.organization_id != headers.membership.org_uuid || !headers.membership.has_full_access() {
+        err_code!("Resource not found.", "User does not have full access", Status::NotFound.code);
+    }
+
+    let login_ciphers: Vec<Cipher> =
+        Cipher::find_by_org(&data.organization_id, &conn).await.into_iter().filter(|c| c.atype == 1).collect();
+
+    Ok(Json(json!({
+        "data": serialize_org_ciphers(login_ciphers, &headers.host, &headers.user.uuid, &conn).await?,
+        "object": "list",
+        "continuationToken": null,
+    })))
+}
+
+#[get("/ciphers/organization-details/assigned?<data..>")]
+async fn get_org_assigned_details(data: OrgIdData, headers: OrgMemberHeaders, conn: DbConn) -> JsonResult {
+    if data.organization_id != headers.membership.org_uuid {
+        err_code!("Resource not found.", "Organization id's do not match", Status::NotFound.code);
+    }
+
+    let ciphers = if headers.membership.has_full_access() {
+        Cipher::find_by_org(&data.organization_id, &conn).await
+    } else {
+        Cipher::find_by_user_visible(&headers.user.uuid, &conn)
+            .await
+            .into_iter()
+            .filter(|c| c.organization_uuid.as_ref() == Some(&data.organization_id))
+            .collect()
+    };
+
+    Ok(Json(json!({
+        "data": serialize_org_ciphers(ciphers, &headers.host, &headers.user.uuid, &conn).await?,
+        "object": "list",
+        "continuationToken": null,
+    })))
+}
+
 async fn get_org_details_impl(
     org_id: &OrganizationId,
     host: &str,
@@ -903,13 +958,7 @@ async fn get_org_details_impl(
     conn: &DbConn,
 ) -> Result<Value, crate::Error> {
     let ciphers = Cipher::find_by_org(org_id, conn).await;
-    let cipher_sync_data = CipherSyncData::new(user_id, CipherSyncType::Organization, conn).await;
-
-    let mut ciphers_json = Vec::with_capacity(ciphers.len());
-    for c in ciphers {
-        ciphers_json.push(c.to_json(host, user_id, Some(&cipher_sync_data), CipherSyncType::Organization, conn).await?);
-    }
-    Ok(json!(ciphers_json))
+    Ok(json!(serialize_org_ciphers(ciphers, host, user_id, conn).await?))
 }
 
 // Returning a Domain/Organization here allow to prefill it and prevent prompting the user

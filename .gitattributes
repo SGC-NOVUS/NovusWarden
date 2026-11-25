@@ -1,2 +1,3 @@
-# Ignore vendored scripts in GitHub stats
+# Ignore vendored and prebuilt static UI bundles in language stats
 src/static/scripts/* linguist-vendored
+src/static/admin_ui/** linguist-vendored

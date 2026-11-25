@@ -48,6 +48,7 @@ pub fn routes() -> Vec<Route> {
         get_cipher,
         get_cipher_admin,
         get_cipher_details,
+        get_cipher_full_details,
         post_ciphers,
         put_cipher_admin,
         post_ciphers_admin,
@@ -126,15 +127,20 @@ async fn sync(data: SyncData, headers: Headers, client_version: Option<ClientVer
     // Get all ciphers which are visible by the user
     let mut ciphers = Cipher::find_by_user_visible(&headers.user.uuid, &conn).await;
 
-    // Filter out SSH keys if the client version is less than 2024.12.0
-    let show_ssh_keys = if let Some(client_version) = client_version {
-        let ver_match = semver::VersionReq::parse(">=2024.12.0").unwrap();
-        ver_match.matches(&client_version.0)
+    // Filter out SSH keys if the client version is less than 2024.12.0,
+    // and new item types (BankAccount=6, DriversLicense=7, Passport=8) if less than 2026.2.0
+    let (show_ssh_keys, show_new_types) = if let Some(ref cv) = client_version {
+        let ssh_req = semver::VersionReq::parse(">=2024.12.0").unwrap();
+        let new_req = semver::VersionReq::parse(">=2026.2.0").unwrap();
+        (ssh_req.matches(&cv.0), new_req.matches(&cv.0))
     } else {
-        false
+        (false, false)
     };
     if !show_ssh_keys {
         ciphers.retain(|c| c.atype != 5);
+    }
+    if !show_new_types {
+        ciphers.retain(|c| !matches!(c.atype, 6..=8));
     }
 
     let cipher_sync_data = CipherSyncData::new(&headers.user.uuid, CipherSyncType::User, &conn).await;
@@ -255,6 +261,11 @@ async fn get_cipher_details(cipher_id: CipherId, headers: Headers, conn: DbConn)
     get_cipher(cipher_id, headers, conn).await
 }
 
+#[get("/ciphers/<cipher_id>/full-details")]
+async fn get_cipher_full_details(cipher_id: CipherId, headers: Headers, conn: DbConn) -> JsonResult {
+    get_cipher(cipher_id, headers, conn).await
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CipherData {
@@ -288,7 +299,8 @@ pub struct CipherData {
     pub notes: Option<String>,
     fields: Option<Value>,
 
-    // Only one of these should exist, depending on type
+    // Only one of these should exist, depending on type (or opaque SDK `data` string)
+    data: Option<String>,
     login: Option<Value>,
     secure_note: Option<Value>,
     card: Option<Value>,
@@ -556,16 +568,18 @@ pub async fn update_cipher_from_data(
         _ => err!(crate::i18n::cipher_invalid_type(&headers.locale)),
     };
 
-    let type_data = if let Some(mut data) = type_data_opt {
+    let type_data_str = if let Some(mut type_val) = type_data_opt {
         // Remove the 'Response' key from the base object.
-        if let Some(data_obj) = data.as_object_mut() {
+        if let Some(data_obj) = type_val.as_object_mut() {
             data_obj.remove("response");
         }
         // Remove the 'Response' key from every Uri.
-        if data["uris"].is_array() {
-            data["uris"] = clean_cipher_data(data["uris"].clone());
+        if type_val["uris"].is_array() {
+            type_val["uris"] = clean_cipher_data(type_val["uris"].clone());
         }
-        data
+        type_val.to_string()
+    } else if let Some(raw_data) = data.data {
+        raw_data
     } else {
         err!(crate::i18n::cipher_data_missing(&headers.locale))
     };
@@ -574,7 +588,7 @@ pub async fn update_cipher_from_data(
     cipher.name = data.name;
     cipher.notes = data.notes;
     cipher.fields = data.fields.map(|f| clean_cipher_data(f).to_string());
-    cipher.data = type_data.to_string();
+    cipher.data = type_data_str;
     cipher.password_history = data.password_history.map(|f| f.to_string());
     cipher.reprompt = data.reprompt.filter(|r| *r == RepromptType::None as i32 || *r == RepromptType::Password as i32);
 
