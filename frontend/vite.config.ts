@@ -33,11 +33,15 @@ export default defineConfig(({ mode }) => {
     vue(),
     {
       name: 'novus-flatten-html-entry',
-      generateBundle(_, bundle) {
+      closeBundle() {
         if (!isAdminBuild && !isVaultBuild) return;
-        const targetHtml = isAdminBuild ? 'admin/index.html' : 'vault/index.html';
-        if (bundle[targetHtml]) {
-          bundle[targetHtml].fileName = 'index.html';
+        const subDirName = isAdminBuild ? 'admin' : 'vault';
+        const nestedDir = resolve(outDir, subDirName);
+        const nestedHtml = resolve(nestedDir, 'index.html');
+        const rootHtml = resolve(outDir, 'index.html');
+        if (fs.existsSync(nestedHtml)) {
+          fs.renameSync(nestedHtml, rootHtml);
+          fs.rmSync(nestedDir, { recursive: true, force: true });
         }
       },
     },
