@@ -118,7 +118,7 @@ async fn put_telegram_preferences(
     )?;
 
     // Optionally enable standard Email 2FA channel automatically so Bitwarden extensions & mobile apps
-    // can trigger 6-digit OTPs delivered directly into Telegram without requiring an email round-trip.
+    // can trigger 6-digit OTP codes delivered directly into Telegram without requiring an email round-trip.
     if payload.auto_enable_email_2fa && payload.otp_enabled {
         let existing = TwoFactor::find_by_user_and_type(&headers.user.uuid, TwoFactorType::Email, &conn).await;
         if existing.is_none() {

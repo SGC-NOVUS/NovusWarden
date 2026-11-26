@@ -974,7 +974,7 @@ make_config! {
         telegram_bot_token:         Pass,   true,   option;
         /// Admin Chat ID |> Optional Telegram Chat ID for instant Admin Control Plane login and brute-force lockout alerts
         telegram_admin_chat_id:     String, true,   option;
-        /// Enable Telegram 2FA & Login Approval |> Allow users with linked Telegram chats to receive 6-digit 2FA OTPs and 1-click Web Vault login approvals
+        /// Enable Telegram 2FA & Login Approval |> Allow users with linked Telegram chats to receive 6-digit 2FA OTP codes and 1-click Web Vault login approvals
         telegram_2fa_enabled:       bool,   true,   def,      true;
         /// Enable Telegram Security Alerts |> Send instant new-device login, incomplete 2FA, and device login request alerts to linked Telegram chats
         telegram_alerts_enabled:    bool,   true,   def,      true;
