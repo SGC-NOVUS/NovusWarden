@@ -120,6 +120,10 @@ fn sanitize_data(data: &mut serde_json::Value) {
     }
 }
 
+fn resolve_mail_locale(locale_override: Option<&str>) -> String {
+    locale_override.map_or_else(|| i18n::normalize_locale(&CONFIG.default_locale()), i18n::normalize_locale)
+}
+
 #[allow(dead_code)]
 fn get_text(template_name: &'static str, data: serde_json::Value) -> Result<(String, String, String), Error> {
     get_text_for_locale(template_name, data, None)
@@ -133,8 +137,7 @@ fn get_text_for_locale(
     let mut data = data;
     sanitize_data(&mut data);
 
-    let resolved_locale =
-        locale_override.map_or_else(|| i18n::normalize_locale(&CONFIG.default_locale()), i18n::normalize_locale);
+    let resolved_locale = resolve_mail_locale(locale_override);
 
     if let serde_json::Value::Object(map) = &mut data {
         map.entry("lang".to_owned()).or_insert_with(|| serde_json::Value::String(resolved_locale));
@@ -726,7 +729,7 @@ pub async fn send_new_device_logged_in_for_locale(
     device: &Device,
     locale: Option<&str>,
 ) -> EmptyResult {
-    let fmt = "%A, %B %_d, %Y at %r %Z";
+    let resolved_locale = resolve_mail_locale(locale);
     let (subject, body_html, body_text) = get_text_for_locale(
         "email/new_device_logged_in",
         json!({
@@ -735,7 +738,7 @@ pub async fn send_new_device_logged_in_for_locale(
             "ip": ip,
             "device_name": upcase_first(&device.name),
             "device_type": DeviceType::from_i32(device.atype).to_string(),
-            "datetime": crate::util::format_naive_datetime_local(dt, fmt),
+            "datetime": crate::util::format_datetime_for_locale(dt, &resolved_locale),
         }),
         locale,
     )?;
@@ -754,14 +757,14 @@ pub async fn send_recover_twofactor_for_locale(
     dt: &NaiveDateTime,
     locale: Option<&str>,
 ) -> EmptyResult {
-    let fmt = "%A, %B %_d, %Y at %r %Z";
+    let resolved_locale = resolve_mail_locale(locale);
     let (subject, body_html, body_text) = get_text_for_locale(
         "email/recover_twofactor",
         json!({
             "url": CONFIG.domain(),
             "img_src": CONFIG._smtp_img_src(),
             "ip": ip,
-            "datetime": crate::util::format_naive_datetime_local(dt, fmt),
+            "datetime": crate::util::format_datetime_for_locale(dt, &resolved_locale),
         }),
         locale,
     )?;
@@ -788,7 +791,7 @@ pub async fn send_incomplete_2fa_login_for_locale(
     device_type: &str,
     locale: Option<&str>,
 ) -> EmptyResult {
-    let fmt = "%A, %B %_d, %Y at %r %Z";
+    let resolved_locale = resolve_mail_locale(locale);
     let (subject, body_html, body_text) = get_text_for_locale(
         "email/incomplete_2fa_login",
         json!({
@@ -797,7 +800,7 @@ pub async fn send_incomplete_2fa_login_for_locale(
             "ip": ip,
             "device_name": upcase_first(device_name),
             "device_type": device_type,
-            "datetime": crate::util::format_naive_datetime_local(dt, fmt),
+            "datetime": crate::util::format_datetime_for_locale(dt, &resolved_locale),
             "time_limit": CONFIG.incomplete_2fa_time_limit(),
         }),
         locale,

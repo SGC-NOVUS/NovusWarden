@@ -3,7 +3,7 @@
 //
 use std::{collections::HashMap, env, fmt, io::Cursor, path::Path, str::FromStr};
 
-use chrono::{DateTime, Local, NaiveDateTime, TimeZone};
+use chrono::{DateTime, Datelike, Local, NaiveDateTime, TimeZone};
 use num_traits::ToPrimitive;
 use tokio::{
     runtime::Handle,
@@ -566,6 +566,107 @@ pub fn format_naive_datetime_local(dt: &NaiveDateTime, fmt: &str) -> String {
     format_datetime_local(&Local.from_utc_datetime(dt), fmt)
 }
 
+/// Formats a UTC `NaiveDateTime` in a human-readable, locale-aware form for email notifications.
+pub fn format_datetime_for_locale(dt: &NaiveDateTime, locale: &str) -> String {
+    let local_dt = Local.from_utc_datetime(dt);
+    let tz_label_raw = format_datetime_local(&local_dt, "%Z");
+    let tz_label = match tz_label_raw.trim() {
+        "+00:00" | "+0000" | "GMT" | "UTC" | "" => "UTC".to_owned(),
+        other if other.starts_with('+') || other.starts_with('-') => format!("UTC{other}"),
+        other => other.to_owned(),
+    };
+
+    let (weekday_idx, month_idx, day, year, hour24, minute, second) = if let Ok(tz_env) = env::var("TZ")
+        && let Ok(tz) = tz_env.parse::<chrono_tz::Tz>()
+    {
+        let zoned = local_dt.with_timezone(&tz);
+        (
+            zoned.weekday().num_days_from_monday() as usize,
+            usize::try_from(zoned.month0()).unwrap_or(0),
+            zoned.day(),
+            zoned.year(),
+            zoned.format("%H").to_string(),
+            zoned.format("%M").to_string(),
+            zoned.format("%S").to_string(),
+        )
+    } else {
+        (
+            local_dt.weekday().num_days_from_monday() as usize,
+            usize::try_from(local_dt.month0()).unwrap_or(0),
+            local_dt.day(),
+            local_dt.year(),
+            local_dt.format("%H").to_string(),
+            local_dt.format("%M").to_string(),
+            local_dt.format("%S").to_string(),
+        )
+    };
+
+    let normalized = crate::i18n::normalize_locale(locale);
+    let base_lang = normalized.split('-').next().unwrap_or("en");
+    match base_lang {
+        "ru" => {
+            const DAYS: [&str; 7] = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"];
+            const MONTHS: [&str; 12] = [
+                "января",
+                "февраля",
+                "марта",
+                "апреля",
+                "мая",
+                "июня",
+                "июля",
+                "августа",
+                "сентября",
+                "октября",
+                "ноября",
+                "декабря",
+            ];
+            let w = DAYS.get(weekday_idx).copied().unwrap_or("");
+            let m = MONTHS.get(month_idx).copied().unwrap_or("");
+            format!("{w}, {day} {m} {year} г., {hour24}:{minute}:{second} ({tz_label})")
+        }
+        "uk" => {
+            const DAYS: [&str; 7] = ["Понеділок", "Вівторок", "Середа", "Четвер", "П'ятниця", "Субота", "Неділя"];
+            const MONTHS: [&str; 12] = [
+                "січня",
+                "лютого",
+                "березня",
+                "квітня",
+                "травня",
+                "червня",
+                "липня",
+                "серпня",
+                "вересня",
+                "жовтня",
+                "листопада",
+                "грудня",
+            ];
+            let w = DAYS.get(weekday_idx).copied().unwrap_or("");
+            let m = MONTHS.get(month_idx).copied().unwrap_or("");
+            format!("{w}, {day} {m} {year} р., {hour24}:{minute}:{second} ({tz_label})")
+        }
+        _ => {
+            const DAYS: [&str; 7] = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+            const MONTHS: [&str; 12] = [
+                "January",
+                "February",
+                "March",
+                "April",
+                "May",
+                "June",
+                "July",
+                "August",
+                "September",
+                "October",
+                "November",
+                "December",
+            ];
+            let w = DAYS.get(weekday_idx).copied().unwrap_or("");
+            let m = MONTHS.get(month_idx).copied().unwrap_or("");
+            format!("{w}, {m} {day}, {year}, {hour24}:{minute}:{second} ({tz_label})")
+        }
+    }
+}
+
 /// Formats a `DateTime<Local>` as required for HTTP
 ///
 /// https://httpwg.org/specs/rfc7231.html#http.date
@@ -1033,5 +1134,19 @@ mod tests {
                 });
             }
         });
+    }
+}
+
+#[cfg(test)]
+mod datetime_tests {
+    #[test]
+    fn test_format_datetime_for_locale() {
+        let dt = chrono::NaiveDate::from_ymd_opt(2026, 11, 26).unwrap().and_hms_opt(1, 55, 40).unwrap();
+        let ru = super::format_datetime_for_locale(&dt, "ru");
+        let uk = super::format_datetime_for_locale(&dt, "uk-UA");
+        let en = super::format_datetime_for_locale(&dt, "en");
+        assert!(ru.contains("Четверг") && ru.contains("ноября") && ru.contains("2026"), "ru={ru}");
+        assert!(uk.contains("Четвер") && uk.contains("листопада") && uk.contains("2026"), "uk={uk}");
+        assert!(en.contains("Thursday") && en.contains("November") && en.contains("2026"), "en={en}");
     }
 }

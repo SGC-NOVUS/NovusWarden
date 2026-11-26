@@ -358,15 +358,16 @@ fn post_admin_login(
                 let ip_str = meta.ip.clone();
                 let loc_str = meta.location.clone();
                 let ua_str = meta.user_agent;
-                let now_utc = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC").to_string();
                 let alert_locale = locale.locale.clone();
+                let formatted_dt =
+                    crate::util::format_datetime_for_locale(&chrono::Utc::now().naive_utc(), &alert_locale);
                 tokio::spawn(async move {
                     if let Err(e) = mail::send_admin_login_alert_for_locale(
                         &admin_email,
                         &ip_str,
                         &loc_str,
                         &ua_str,
-                        &now_utc,
+                        &formatted_dt,
                         Some(&alert_locale),
                     )
                     .await
@@ -440,15 +441,16 @@ fn post_admin_login(
                     let ip_str = meta.ip.clone();
                     let loc_str = meta.location.clone();
                     let ua_str = meta.user_agent;
-                    let now_utc = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC").to_string();
                     let alert_locale = locale.locale.clone();
+                    let formatted_dt =
+                        crate::util::format_datetime_for_locale(&chrono::Utc::now().naive_utc(), &alert_locale);
                     tokio::spawn(async move {
                         if let Err(e) = mail::send_admin_lockout_alert_for_locale(
                             &admin_email,
                             &ip_str,
                             &loc_str,
                             &ua_str,
-                            &now_utc,
+                            &formatted_dt,
                             &unlock_url,
                             Some(&alert_locale),
                         )

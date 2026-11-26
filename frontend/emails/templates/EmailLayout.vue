@@ -66,7 +66,9 @@ defineProps({
         }"
       >
         <ESection style="text-align: center; margin-bottom: 24px">
-          <EImg :src="`${imgSrc}logo-gray.png`" width="190" height="47" alt="NovusWarden" style="margin: 0 auto; display: block" />
+          <div style="display: inline-block; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 6px 14px">
+            <EImg :src="`${imgSrc}logo-gray.png`" width="190" height="47" alt="NovusWarden" style="margin: 0 auto; display: block; border-radius: 6px" />
+          </div>
         </ESection>
 
         <EHeading

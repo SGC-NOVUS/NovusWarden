@@ -358,7 +358,7 @@ pub async fn static_files_dev(filename: PathBuf) -> Option<NamedFile> {
     let file = filename.to_str().unwrap_or_default();
     let ext = filename.extension().unwrap_or_default();
 
-    let path = if ext == "png" || ext == "svg" {
+    let path = if ext == "png" || ext == "svg" || ext == "webp" {
         tokio::fs::canonicalize(Path::new(file!()).parent().unwrap().join("../static/images/").join(file)).await
     } else {
         tokio::fs::canonicalize(Path::new(file!()).parent().unwrap().join("../static/scripts/").join(file)).await
@@ -446,9 +446,19 @@ pub static STATIC_FILES: LazyLock<HashMap<&'static str, StaticFile>> = LazyLock:
             &include_bytes!("../static/images/novuswarden_storage_open_black.webp")[..],
         ),
         (
+            "novuswarden_storage_open_black_crisp.webp",
+            ContentType::WEBP,
+            &include_bytes!("../static/images/novuswarden_storage_open_black_crisp.webp")[..],
+        ),
+        (
             "novuswarden_storage_open_white.webp",
             ContentType::WEBP,
             &include_bytes!("../static/images/novuswarden_storage_open_white.webp")[..],
+        ),
+        (
+            "novuswarden_storage_open_white_crisp.webp",
+            ContentType::WEBP,
+            &include_bytes!("../static/images/novuswarden_storage_open_white_crisp.webp")[..],
         ),
         ("favicon.ico", ContentType::Icon, &include_bytes!("../static/images/favicon.ico")[..]),
         ("favicon-32x32.png", ContentType::PNG, &include_bytes!("../static/images/favicon-32x32.png")[..]),
