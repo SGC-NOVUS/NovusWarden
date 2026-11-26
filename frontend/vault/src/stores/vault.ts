@@ -409,7 +409,7 @@ export const useVaultStore = defineStore('vault', () => {
           item.sshKey = {
             privateKey: raw.sshKey.privateKey ? await safeDecrypt(raw.sshKey.privateKey, cipherKey) : '',
             publicKey: raw.sshKey.publicKey ? await safeDecrypt(raw.sshKey.publicKey, cipherKey) : '',
-            keyFingerprint: raw.sshKey.keyFingerprint || '',
+            keyFingerprint: raw.sshKey.keyFingerprint ? await safeDecrypt(raw.sshKey.keyFingerprint, cipherKey) : '',
           };
         } else if (raw.type === 6 && raw.bankAccount) {
           item.bankAccount = await decryptObjectFields<DecryptedBankAccount>(raw.bankAccount, cipherKey, [
@@ -657,7 +657,9 @@ export const useVaultStore = defineStore('vault', () => {
       rawPayload.sshKey = {
         privateKey: item.sshKey.privateKey ? (await encrypt(item.sshKey.privateKey, encKey)).toString() : null,
         publicKey: item.sshKey.publicKey ? (await encrypt(item.sshKey.publicKey, encKey)).toString() : null,
-        keyFingerprint: item.sshKey.keyFingerprint || null,
+        keyFingerprint: item.sshKey.keyFingerprint
+          ? (await encrypt(item.sshKey.keyFingerprint, encKey)).toString()
+          : null,
       };
     } else if (item.type === 6 && item.bankAccount) {
       const encOpt = async (val?: string | null) => (val ? (await encrypt(val, encKey)).toString() : null);

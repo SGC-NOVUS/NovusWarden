@@ -9,6 +9,11 @@ import { generatePassword } from '../crypto/generator.ts';
 import { generateRsaSshKey } from '../crypto/ssh.ts';
 import { notificationsClient } from '../services/notifications.ts';
 import { useI18n } from '@shared/i18n.ts';
+import ToolModalShell from '../components/ToolModalShell.vue';
+import SettingsView from './SettingsView.vue';
+import GeneratorView from './GeneratorView.vue';
+import SentinelView from './SentinelView.vue';
+import SendView from './SendView.vue';
 import {
   Key,
   Shield,
@@ -611,9 +616,23 @@ function handleLogout() {
   router.push('/login');
 }
 
-function goToSettings(tab = 'account') {
+// Tool Workspace Modals (Settings, Generator, Sentinel Audit, Novus Send)
+type ToolModalName = 'settings' | 'generator' | 'sentinel' | 'send';
+type SettingsTabName = 'account' | 'security' | 'tools' | 'appearance';
+const activeToolModal = ref<ToolModalName | null>(null);
+const settingsInitialTab = ref<SettingsTabName>('account');
+
+function openToolModal(tool: ToolModalName, tab: SettingsTabName = 'account') {
   showProfileMenu.value = false;
-  router.push('/settings');
+  showNewItemMenu.value = false;
+  if (tool === 'settings') {
+    settingsInitialTab.value = tab;
+  }
+  activeToolModal.value = tool;
+}
+
+function goToSettings(tab: SettingsTabName = 'account') {
+  openToolModal('settings', tab);
 }
 </script>
 
@@ -818,25 +837,46 @@ function goToSettings(tab = 'account') {
             <span class="flex-1 text-left">{{ t('vault.organizations') }}</span>
           </router-link>
 
-          <router-link to="/send" class="nav-item">
-            <Send class="w-4 h-4 text-sky-400" />
+          <button
+            type="button"
+            class="nav-item"
+            :class="{ active: activeToolModal === 'send' }"
+            @click="openToolModal('send')"
+          >
+            <Send class="w-4 h-4 text-teal-400" />
             <span class="flex-1 text-left">Novus Send</span>
-          </router-link>
+            <span v-if="vaultStore.sends.length > 0" class="badge">{{ vaultStore.sends.length }}</span>
+          </button>
 
-          <router-link to="/generator" class="nav-item">
+          <button
+            type="button"
+            class="nav-item"
+            :class="{ active: activeToolModal === 'generator' }"
+            @click="openToolModal('generator')"
+          >
             <Wand2 class="w-4 h-4 text-indigo-400" />
             <span class="flex-1 text-left">Генератор паролей</span>
-          </router-link>
+          </button>
 
-          <router-link to="/sentinel" class="nav-item">
-            <Sparkles class="w-4 h-4 text-emerald-400" />
+          <button
+            type="button"
+            class="nav-item"
+            :class="{ active: activeToolModal === 'sentinel' }"
+            @click="openToolModal('sentinel')"
+          >
+            <Sparkles class="w-4 h-4 text-amber-400" />
             <span class="flex-1 text-left">Novus Sentinel (Аудит)</span>
-          </router-link>
+          </button>
 
-          <router-link to="/settings" class="nav-item">
-            <Settings class="w-4 h-4 text-slate-400" />
+          <button
+            type="button"
+            class="nav-item"
+            :class="{ active: activeToolModal === 'settings' }"
+            @click="openToolModal('settings', 'account')"
+          >
+            <Settings class="w-4 h-4 text-sky-400" />
             <span class="flex-1 text-left">{{ t('nav.settings') }}</span>
-          </router-link>
+          </button>
 
           <router-link to="/docs" class="nav-item">
             <BookOpen class="w-4 h-4 text-sky-400" />
@@ -1164,6 +1204,32 @@ function goToSettings(tab = 'account') {
                 <span v-else-if="item.type === 2">Защищённая заметка</span>
                 <span v-else>—</span>
               </div>
+            </div>
+
+            <!-- Quick Hover Copy Actions for Logins -->
+            <div
+              v-if="item.type === 1 && !item.deletedDate"
+              class="quick-copy-actions"
+              @click.stop
+            >
+              <button
+                v-if="item.login?.username"
+                type="button"
+                class="quick-copy-btn"
+                title="Копировать логин"
+                @click="copyToClipboard(item.login.username, 'Логин')"
+              >
+                <User class="w-3.5 h-3.5" />
+              </button>
+              <button
+                v-if="item.login?.password"
+                type="button"
+                class="quick-copy-btn"
+                title="Копировать пароль"
+                @click="copyToClipboard(item.login.password, 'Пароль', item.reprompt === 1)"
+              >
+                <Key class="w-3.5 h-3.5" />
+              </button>
             </div>
 
             <!-- Star Favorite -->
@@ -2387,6 +2453,59 @@ function goToSettings(tab = 'account') {
       </div>
     </div>
 
+    <!-- Integrated Tool & Settings Modals -->
+    <ToolModalShell
+      :open="activeToolModal === 'settings'"
+      title="Настройки аккаунта и безопасности"
+      subtitle="Профиль, защита Argon2id, 2FA, экспорт и внешний вид"
+      max-width="860px"
+      accent="sky"
+      @close="activeToolModal = null"
+    >
+      <template #icon><Settings class="w-5 h-5" /></template>
+      <SettingsView :modal="true" :initial-tab="settingsInitialTab" @close="activeToolModal = null" />
+    </ToolModalShell>
+
+    <ToolModalShell
+      :open="activeToolModal === 'generator'"
+      title="Генератор паролей Novus"
+      subtitle="Криптографическая генерация высокой энтропии (CSPRNG)"
+      max-width="640px"
+      accent="indigo"
+      @close="activeToolModal = null"
+    >
+      <template #icon><Wand2 class="w-5 h-5" /></template>
+      <GeneratorView :modal="true" />
+    </ToolModalShell>
+
+    <ToolModalShell
+      :open="activeToolModal === 'sentinel'"
+      title="Novus Sentinel • Аудит безопасности"
+      subtitle="Локальный Zero-Knowledge анализ уязвимостей хранилища"
+      max-width="780px"
+      accent="amber"
+      @close="activeToolModal = null"
+    >
+      <template #icon><Sparkles class="w-5 h-5" /></template>
+      <SentinelView
+        :modal="true"
+        @select-item="(id) => { vaultStore.selectedCipherId = id; isEditing = false; }"
+        @close="activeToolModal = null"
+      />
+    </ToolModalShell>
+
+    <ToolModalShell
+      :open="activeToolModal === 'send'"
+      title="Novus Send • Защищённая передача"
+      subtitle="Сквозное шифрование текстов и файлов с автоудалением"
+      max-width="760px"
+      accent="teal"
+      @close="activeToolModal = null"
+    >
+      <template #icon><Send class="w-5 h-5" /></template>
+      <SendView :modal="true" />
+    </ToolModalShell>
+
     <!-- Toast Notification Popup -->
     <transition name="toast-fade">
       <div v-if="toastMessage" class="toast-popup">
@@ -2498,18 +2617,19 @@ function goToSettings(tab = 'account') {
   gap: 6px;
   height: 32px;
   padding: 0 10px;
-  border-radius: 8px;
+  border-radius: 9px;
   font-size: 11.5px;
   font-weight: 600;
   cursor: pointer;
-  background: rgba(15, 23, 42, 0.6);
-  border: 1px solid rgba(56, 189, 248, 0.25);
+  background: var(--input-bg, rgba(15, 23, 42, 0.6));
+  border: 1px solid var(--card-border, rgba(56, 189, 248, 0.22));
   color: var(--text-primary, #f8fafc);
-  transition: all 0.2s ease;
+  transition: all 0.18s ease;
 }
 
 .theme-pill:hover {
   border-color: #38bdf8;
+  background: var(--active-bg, rgba(14, 165, 233, 0.12));
 }
 
 .profile-pill {
@@ -2517,17 +2637,18 @@ function goToSettings(tab = 'account') {
   align-items: center;
   gap: 7px;
   height: 32px;
-  padding: 0 8px 0 4px;
-  border-radius: 8px;
-  background: rgba(15, 23, 42, 0.6);
-  border: 1px solid rgba(56, 189, 248, 0.25);
+  padding: 0 9px 0 4px;
+  border-radius: 9px;
+  background: var(--input-bg, rgba(15, 23, 42, 0.6));
+  border: 1px solid var(--card-border, rgba(56, 189, 248, 0.22));
   color: var(--text-primary, #f8fafc);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.18s ease;
 }
 
 .profile-pill:hover {
   border-color: #38bdf8;
+  background: var(--active-bg, rgba(14, 165, 233, 0.12));
 }
 
 .avatar-circle {
@@ -2736,8 +2857,8 @@ function goToSettings(tab = 'account') {
 .item-card {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 10px;
+  gap: 9px;
+  padding: 7px 9px;
   border-radius: 10px;
   background: transparent;
   border: 1px solid transparent;
@@ -2752,6 +2873,39 @@ function goToSettings(tab = 'account') {
 .item-card.active {
   background: var(--active-bg, rgba(14, 165, 233, 0.12));
   border-color: var(--active-border, rgba(56, 189, 248, 0.35));
+}
+
+.quick-copy-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 0.14s ease;
+}
+
+.item-card:hover .quick-copy-actions,
+.item-card.active .quick-copy-actions {
+  opacity: 1;
+}
+
+.quick-copy-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted, #64748b);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.quick-copy-btn:hover {
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.14);
+  border-color: rgba(56, 189, 248, 0.3);
 }
 
 .item-icon-box {

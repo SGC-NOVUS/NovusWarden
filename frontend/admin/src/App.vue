@@ -88,12 +88,17 @@ async function handleLogout() {
       transition: 'background-color 0.25s ease, color 0.25s ease'
     }"
   >
-    <!-- Top Bar Header (Matches prod Handlebars navbar exactly) -->
+    <!-- Sticky Translucent Top Bar Header -->
     <header
       :style="{
-        backgroundColor: isLight ? '#ffffff' : '#0a101d',
-        borderBottom: isLight ? '1px solid #e2e8f0' : '1px solid #1e293b',
-        boxShadow: isLight ? '0 1px 4px rgba(0,0,0,0.06)' : '0 4px 20px rgba(0,0,0,0.4)',
+        position: 'sticky',
+        top: 0,
+        zIndex: 60,
+        backdropFilter: 'blur(14px)',
+        WebkitBackdropFilter: 'blur(14px)',
+        backgroundColor: isLight ? 'rgba(255, 255, 255, 0.92)' : 'rgba(8, 15, 30, 0.88)',
+        borderBottom: isLight ? '1px solid rgba(15, 23, 42, 0.08)' : '1px solid rgba(56, 189, 248, 0.16)',
+        boxShadow: isLight ? '0 2px 12px rgba(15, 23, 42, 0.05)' : '0 4px 24px rgba(0, 0, 0, 0.45)',
         padding: '10px 24px',
         display: 'flex',
         alignItems: 'center',
@@ -103,47 +108,44 @@ async function handleLogout() {
         flexShrink: 0
       }"
     >
-      <div style="display: flex; align-items: center; gap: 14px;">
+      <div style="display: flex; align-items: center; gap: 12px;">
         <router-link to="/" style="display: flex; align-items: center; gap: 10px; text-decoration: none;">
           <img
             :src="bannerUrl"
             alt="NovusWarden Control Plane"
-            style="height: 34px; max-width: 190px; object-fit: contain; display: block;"
+            style="height: 32px; max-width: 184px; object-fit: contain; display: block;"
           />
           <span
             :style="{
-              fontSize: '11px',
-              fontWeight: 600,
-              letterSpacing: '0.8px',
-              padding: '2px 8px',
-              borderRadius: '4px',
+              fontSize: '10.5px',
+              fontWeight: 700,
+              letterSpacing: '0.7px',
+              padding: '3px 8px',
+              borderRadius: '6px',
               textTransform: 'uppercase',
               color: isLight ? '#0284c7' : '#38bdf8',
-              background: isLight ? 'rgba(2, 132, 199, 0.08)' : 'rgba(56, 189, 248, 0.1)',
-              border: isLight ? '1px solid rgba(2, 132, 199, 0.2)' : '1px solid rgba(56, 189, 248, 0.2)'
+              background: isLight ? 'rgba(2, 132, 199, 0.08)' : 'rgba(56, 189, 248, 0.12)',
+              border: isLight ? '1px solid rgba(2, 132, 199, 0.22)' : '1px solid rgba(56, 189, 248, 0.25)'
             }"
           >
             Control Plane
           </span>
         </router-link>
-        <span
-          v-if="!isLoginPage"
-          :style="{
-            backgroundColor: isLight ? '#dbeafe' : '#1e3a8a',
-            color: isLight ? '#1e40af' : '#93c5fd',
-            fontSize: '10px',
-            fontWeight: 700,
-            padding: '2px 7px',
-            borderRadius: '4px',
-            fontFamily: 'monospace'
-          }"
-        >
-          Vue 3 Modern
-        </span>
       </div>
 
-      <!-- Navigation Links (Only shown when authenticated) -->
-      <nav v-if="!isLoginPage" style="display: flex; gap: 8px; flex-wrap: wrap;">
+      <!-- Segmented Navigation Bar -->
+      <nav
+        v-if="!isLoginPage"
+        :style="{
+          display: 'flex',
+          gap: '4px',
+          flexWrap: 'wrap',
+          padding: '4px',
+          borderRadius: '11px',
+          backgroundColor: isLight ? '#f1f5f9' : 'rgba(15, 23, 42, 0.72)',
+          border: isLight ? '1px solid #e2e8f0' : '1px solid rgba(56, 189, 248, 0.16)'
+        }"
+      >
         <router-link
           v-for="item in navItems"
           :key="item.path"
@@ -155,20 +157,20 @@ async function handleLogout() {
             :href="href"
             @click="navigate"
             :style="{
-              padding: '8px 16px',
-              borderRadius: '6px',
-              fontSize: '13px',
+              padding: '6px 13px',
+              borderRadius: '8px',
+              fontSize: '12.5px',
               fontWeight: 600,
               textDecoration: 'none',
               transition: 'all 0.15s ease',
               backgroundColor: isActive
-                ? (isLight ? '#0284c7' : '#2563eb')
+                ? (isLight ? '#0284c7' : 'rgba(14, 165, 233, 0.22)')
                 : 'transparent',
               color: isActive
-                ? '#ffffff'
-                : (isLight ? '#475569' : '#9ca3af'),
+                ? (isLight ? '#ffffff' : '#38bdf8')
+                : (isLight ? '#475569' : '#94a3b8'),
               border: isActive
-                ? (isLight ? '1px solid #0284c7' : '1px solid #3b82f6')
+                ? (isLight ? '1px solid #0284c7' : '1px solid rgba(56, 189, 248, 0.35)')
                 : '1px solid transparent',
             }"
           >

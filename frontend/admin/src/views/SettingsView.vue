@@ -300,35 +300,35 @@ onMounted(loadConfig);
     </div>
 
     <!-- Filter & Category Bar -->
-    <div style="background-color: var(--admin-card-bg, #111827); border: 1px solid var(--admin-card-border, #1f2937); border-radius: 8px; padding: 16px; margin-bottom: 24px; display: flex; flex-direction: column; gap: 14px;">
+    <div style="background-color: var(--admin-card-bg); border: 1px solid var(--admin-card-border); border-radius: 14px; padding: 16px; margin-bottom: 20px; display: flex; flex-direction: column; gap: 12px; box-shadow: var(--admin-card-shadow);">
       <div style="position: relative;">
         <input
           v-model="searchQuery"
           type="text"
           placeholder="Быстрый поиск среди 100+ параметров по имени, коду или описанию..."
-          style="width: 100%; box-sizing: border-box; background-color: var(--admin-input-bg, #0b0f19); border: 1px solid var(--admin-input-border, #374151); color: var(--admin-text-main, #f9fafb); padding: 10px 14px; border-radius: 6px; font-size: 13px; outline: none;"
+          style="width: 100%; box-sizing: border-box; background-color: var(--admin-input-bg); border: 1px solid var(--admin-input-border); color: var(--admin-text-main); padding: 10px 14px; border-radius: 10px; font-size: 13px; outline: none;"
         />
         <button
           v-if="searchQuery"
           @click="searchQuery = ''"
-          style="position: absolute; right: 12px; top: 10px; background: none; border: none; color: var(--admin-text-secondary, #9ca3af); cursor: pointer; font-size: 14px;"
+          style="position: absolute; right: 12px; top: 10px; background: none; border: none; color: var(--admin-text-secondary); cursor: pointer; font-size: 14px;"
         >
           ✕
         </button>
       </div>
 
-      <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+      <div style="display: flex; gap: 6px; flex-wrap: wrap;">
         <button
           @click="activeCategory = 'all'"
           :style="{
             padding: '6px 12px',
-            borderRadius: '6px',
+            borderRadius: '8px',
             fontSize: '12px',
             fontWeight: 600,
             cursor: 'pointer',
-            border: activeCategory === 'all' ? '1px solid #3b82f6' : '1px solid #374151',
-            backgroundColor: activeCategory === 'all' ? 'rgba(37, 99, 235, 0.22)' : 'var(--admin-surface-bg, #1f2937)',
-            color: activeCategory === 'all' ? '#0284c7' : 'var(--admin-text-secondary, #9ca3af)',
+            border: activeCategory === 'all' ? '1px solid var(--admin-accent, #38bdf8)' : '1px solid var(--admin-input-border)',
+            backgroundColor: activeCategory === 'all' ? 'rgba(14, 165, 233, 0.16)' : 'var(--admin-surface-bg)',
+            color: activeCategory === 'all' ? 'var(--admin-accent, #38bdf8)' : 'var(--admin-text-secondary)',
           }"
         >
           Все параметры
@@ -337,7 +337,7 @@ onMounted(loadConfig);
           v-for="cat in [
             { id: 'settings', label: 'Основные', icon: '⚙️' },
             { id: 'folders', label: 'Папки', icon: '📁' },
-            { id: 'smtp', label: 'Почта SMTP', icon: '✉️' },
+            { id: 'smtp', label: 'Почта SMTP / Resend', icon: '✉️' },
             { id: 'email_2fa', label: 'Email 2FA', icon: '📧' },
             { id: 'yubico', label: 'Yubico', icon: '🔐' },
             { id: 'duo', label: 'Duo 2FA', icon: '📱' },
@@ -353,13 +353,13 @@ onMounted(loadConfig);
           @click="activeCategory = cat.id"
           :style="{
             padding: '6px 12px',
-            borderRadius: '6px',
+            borderRadius: '8px',
             fontSize: '12px',
             fontWeight: 600,
             cursor: 'pointer',
-            border: activeCategory === cat.id ? '1px solid #3b82f6' : '1px solid #374151',
-            backgroundColor: activeCategory === cat.id ? 'rgba(37, 99, 235, 0.22)' : 'var(--admin-surface-bg, #1f2937)',
-            color: activeCategory === cat.id ? '#0284c7' : 'var(--admin-text-secondary, #9ca3af)',
+            border: activeCategory === cat.id ? '1px solid var(--admin-accent, #38bdf8)' : '1px solid var(--admin-input-border)',
+            backgroundColor: activeCategory === cat.id ? 'rgba(14, 165, 233, 0.16)' : 'var(--admin-surface-bg)',
+            color: activeCategory === cat.id ? 'var(--admin-accent, #38bdf8)' : 'var(--admin-text-secondary)',
           }"
         >
           {{ cat.icon }} {{ cat.label }}
@@ -558,17 +558,43 @@ onMounted(loadConfig);
       </div>
     </div>
 
+    <!-- Sticky Unsaved Changes Save Bar -->
+    <div
+      v-if="modifiedCount > 0"
+      style="position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 90; display: flex; align-items: center; gap: 14px; padding: 10px 18px; border-radius: 14px; background: var(--admin-card-bg); border: 1px solid var(--admin-accent, #38bdf8); box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55); backdrop-filter: blur(14px);"
+    >
+      <span style="font-size: 13px; font-weight: 600; color: var(--admin-text-main);">
+        Несохранённых изменений: <strong style="color: var(--admin-accent, #38bdf8);">{{ modifiedCount }}</strong>
+      </span>
+      <button
+        type="button"
+        @click="loadConfig"
+        style="background: var(--admin-surface-bg); color: var(--admin-text-main); border: 1px solid var(--admin-input-border); padding: 7px 12px; border-radius: 8px; font-size: 12.5px; font-weight: 600; cursor: pointer;"
+      >
+        Отменить
+      </button>
+      <button
+        type="button"
+        :disabled="saving"
+        @click="handleSave"
+        style="background: linear-gradient(135deg, #0284c7, #2563eb); color: #ffffff; border: none; padding: 7px 16px; border-radius: 8px; font-size: 12.5px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);"
+      >
+        {{ saving ? 'Сохранение...' : 'Сохранить конфигурацию' }}
+      </button>
+    </div>
+
     <!-- SMTP Test Modal -->
     <div
       v-if="showSmtpModal"
-      style="position: fixed; inset: 0; background-color: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 100;"
+      @click.self="showSmtpModal = false"
+      style="position: fixed; inset: 0; background-color: rgba(2, 6, 18, 0.72); backdrop-filter: blur(10px); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 16px;"
     >
-      <div style="background-color: var(--admin-card-bg, #111827); border: 1px solid var(--admin-card-border, #1f2937); border-radius: 8px; width: 100%; max-width: 480px; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
-        <h3 style="font-size: 18px; font-weight: 700; color: var(--admin-text-main, #f9fafb); margin: 0 0 12px 0;">
-          ✉️ Проверка доставки SMTP-почты
+      <div style="background-color: var(--admin-card-bg); border: 1px solid var(--admin-card-border); border-radius: 16px; width: 100%; max-width: 480px; padding: 24px; box-shadow: 0 24px 60px rgba(0, 0, 0, 0.65);">
+        <h3 style="font-size: 17px; font-weight: 700; color: var(--admin-text-main); margin: 0 0 8px 0;">
+          ✉️ Проверка доставки почты (SMTP / Resend)
         </h3>
-        <p style="font-size: 13px; color: var(--admin-text-secondary, #9ca3af); margin: 0 0 16px 0;">
-          Сервер отправит тестовое диагностическое сообщение на указанный email-адрес с использованием сохранённых настроек SMTP.
+        <p style="font-size: 13px; color: var(--admin-text-secondary); margin: 0 0 16px 0; line-height: 1.5;">
+          Сервер отправит тестовое диагностическое письмо на указанный email с использованием сохранённого транспорта (Resend API или SMTP).
         </p>
         <div
           v-if="modifiedCount > 0"

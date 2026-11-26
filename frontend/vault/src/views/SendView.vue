@@ -16,12 +16,20 @@ import {
   Lock,
   PauseCircle,
   PlayCircle,
+  List,
 } from 'lucide-vue-next';
+
+const props = withDefaults(
+  defineProps<{
+    modal?: boolean;
+  }>(),
+  { modal: false }
+);
 
 const router = useRouter();
 const vaultStore = useVaultStore();
 
-const showCreateModal = ref(false);
+const activePanel = ref<'list' | 'create'>('list');
 const sendMode = ref<'text' | 'file'>('text');
 const sendName = ref('');
 const sendText = ref('');
@@ -51,7 +59,7 @@ async function handleToggleDisable(item: any) {
   try {
     await vaultStore.toggleSendDisabled(item);
   } catch (err: any) {
-    alert(err?.message || 'Ошибка обновления Send');
+    errorMsg.value = err?.message || 'Ошибка обновления Send';
   }
 }
 
@@ -108,7 +116,7 @@ async function handleCreateSend() {
         maxAccessCount: maxAccessCount.value || null,
       });
     }
-    showCreateModal.value = false;
+    activePanel.value = 'list';
     sendName.value = '';
     sendText.value = '';
     sendNotes.value = '';
@@ -128,193 +136,206 @@ async function handleDeleteSend(id: string) {
   try {
     await vaultStore.deleteSend(id);
   } catch (err: any) {
-    alert(err?.message || 'Ошибка удаления Send');
+    errorMsg.value = err?.message || 'Ошибка удаления Send';
   }
 }
 </script>
 
 <template>
-  <div class="send-page">
-    <div class="send-container">
-      <!-- Header -->
-      <div class="flex items-center justify-between mb-6">
+  <div :class="props.modal ? 'send-modal-root' : 'send-page'">
+    <div :class="props.modal ? 'send-modal-inner' : 'send-container'">
+      <!-- Standalone Header -->
+      <div v-if="!props.modal" class="flex items-center justify-between gap-3 mb-5">
         <div class="flex items-center gap-3">
           <button
             type="button"
-            class="p-2 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 transition"
-            @click="router.back()"
+            class="cyber-btn-secondary !p-2 !h-9 !w-9"
+            @click="router.push('/vault')"
             title="Назад"
           >
             <ArrowLeft class="w-4 h-4" />
           </button>
           <div>
-            <h1 class="text-xl font-bold flex items-center gap-2">
+            <h1 class="text-lg font-bold flex items-center gap-2 m-0">
               <Send class="w-5 h-5 text-teal-400" />
               <span>Novus Send • Защищённая передача</span>
             </h1>
-            <p class="text-xs text-slate-400">
-              Сквозное шифрование текстов и файлов с самоуничтожением по времени или количеству просмотров
+            <p class="text-xs text-slate-400 m-0 mt-0.5">
+              Сквозное шифрование текстов и файлов с автоудалением
             </p>
           </div>
         </div>
+      </div>
 
+      <!-- Segmented Switcher: Active Sends vs Create Send (no nested modal!) -->
+      <div class="mode-tabs mb-4">
         <button
           type="button"
-          class="cyber-btn-primary"
-          @click="showCreateModal = true"
+          class="tab-btn"
+          :class="{ active: activePanel === 'list' }"
+          @click="activePanel = 'list'; errorMsg = ''"
         >
-          <Plus class="w-4 h-4" />
-          <span>Новый Send</span>
+          <List class="w-3.5 h-3.5" />
+          <span>Мои отправления ({{ vaultStore.sends.length }})</span>
+        </button>
+        <button
+          type="button"
+          class="tab-btn"
+          :class="{ active: activePanel === 'create' }"
+          @click="activePanel = 'create'; errorMsg = ''"
+        >
+          <Plus class="w-3.5 h-3.5" />
+          <span>Создать новый Send</span>
         </button>
       </div>
 
-      <!-- Sends List -->
-      <div v-if="vaultStore.sends.length === 0" class="empty-card">
-        <div class="w-12 h-12 rounded-full bg-teal-500/10 flex items-center justify-center mb-3">
-          <Send class="w-6 h-6 text-teal-400" />
-        </div>
-        <h3 class="text-sm font-bold mb-1">Нет активных отправлений</h3>
-        <p class="text-xs text-slate-400 max-w-sm mb-4">
-          Делитесь конфиденциальными текстами и файлами с клиентами и коллегами. Данные защищены сквозным шифрованием.
-        </p>
-        <button
-          type="button"
-          class="cyber-btn-subtle"
-          @click="showCreateModal = true"
-        >
-          Создать Send
-        </button>
+      <div v-if="errorMsg" class="text-xs text-rose-400 bg-rose-500/10 border border-rose-500/30 rounded-xl p-3 mb-4">
+        {{ errorMsg }}
       </div>
 
-      <div v-else class="sends-list">
-        <div
-          v-for="item in vaultStore.sends"
-          :key="item.id"
-          class="send-item"
-        >
-          <div class="flex items-center gap-3">
-            <div class="w-8 h-8 rounded-lg bg-teal-500/10 flex items-center justify-center">
-              <FileIcon v-if="item.type === 1" class="w-4 h-4 text-sky-400" />
-              <FileText v-else class="w-4 h-4 text-teal-400" />
-            </div>
-            <div>
-              <div class="text-xs font-semibold flex items-center gap-2">
-                <span>{{ item.name }}</span>
-                <span v-if="item.type === 1" class="text-[10px] px-1.5 py-0.5 rounded bg-sky-500/15 text-sky-400">Файл</span>
-                <span v-if="item.hasPassword || item.password" class="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 flex items-center gap-0.5"><Lock class="w-2.5 h-2.5" /> Пароль</span>
-                <span v-if="item.disabled" class="text-[10px] px-1.5 py-0.5 rounded bg-rose-500/15 text-rose-400">Отключён</span>
-              </div>
-              <div class="text-[11px] text-slate-400">
-                Просмотров: {{ item.accessCount || 0 }} / {{ item.maxAccessCount || '∞' }}
-                <span v-if="item.file?.sizeName"> • {{ item.file.sizeName }}</span>
-              </div>
-            </div>
+      <!-- PANEL 1: SENDS LIST -->
+      <template v-if="activePanel === 'list'">
+        <div v-if="vaultStore.sends.length === 0" class="empty-card">
+          <div class="w-12 h-12 rounded-2xl bg-teal-500/15 border border-teal-500/30 flex items-center justify-center mb-3">
+            <Send class="w-5 h-5 text-teal-400" />
           </div>
-          <div class="flex items-center gap-2">
-            <button
-              type="button"
-              class="text-xs text-teal-400 hover:text-teal-300 flex items-center gap-1 px-2 py-1 rounded bg-teal-500/10"
-              @click="copyShareLink(item)"
-              title="Копировать ссылку с ключом расшифровки"
-            >
-              <component :is="copiedId === item.id ? Check : Copy" class="w-3.5 h-3.5" />
-              <span>{{ copiedId === item.id ? 'Скопировано' : 'Ссылка' }}</span>
-            </button>
-            <button
-              type="button"
-              class="text-xs text-sky-400 hover:text-sky-300 p-1"
-              @click="openSend(item)"
-              title="Открыть Send"
-            >
-              <ExternalLink class="w-3.5 h-3.5" />
-            </button>
-            <button
-              type="button"
-              class="text-xs text-amber-400 hover:text-amber-300 p-1"
-              @click="handleToggleDisable(item)"
-              :title="item.disabled ? 'Включить Send' : 'Приостановить Send'"
-            >
-              <component :is="item.disabled ? PlayCircle : PauseCircle" class="w-3.5 h-3.5" />
-            </button>
-            <button
-              type="button"
-              class="text-xs text-rose-400 hover:text-rose-300 p-1"
-              @click="handleDeleteSend(item.id)"
-              title="Удалить Send"
-            >
-              <Trash2 class="w-3.5 h-3.5" />
-            </button>
+          <h3 class="text-sm font-bold mb-1">Нет активных отправлений</h3>
+          <p class="text-xs text-slate-400 max-w-sm mb-4">
+            Делитесь конфиденциальными текстами и файлами с коллегами и клиентами. Ключ шифрования передаётся только во фрагменте ссылки.
+          </p>
+          <button
+            type="button"
+            class="cyber-btn-primary"
+            @click="activePanel = 'create'"
+          >
+            <Plus class="w-4 h-4" />
+            <span>Создать первый Send</span>
+          </button>
+        </div>
+
+        <div v-else class="sends-list">
+          <div
+            v-for="item in vaultStore.sends"
+            :key="item.id"
+            class="send-item"
+          >
+            <div class="flex items-center gap-3 min-w-0">
+              <div class="w-9 h-9 rounded-xl bg-teal-500/12 border border-teal-500/25 flex items-center justify-center shrink-0">
+                <FileIcon v-if="item.type === 1" class="w-4 h-4 text-sky-400" />
+                <FileText v-else class="w-4 h-4 text-teal-400" />
+              </div>
+              <div class="min-w-0">
+                <div class="text-xs font-semibold flex flex-wrap items-center gap-1.5">
+                  <span class="truncate">{{ item.name }}</span>
+                  <span v-if="item.type === 1" class="text-[10px] px-1.5 py-0.5 rounded bg-sky-500/15 text-sky-400">Файл</span>
+                  <span v-if="item.hasPassword || item.password" class="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 inline-flex items-center gap-0.5">
+                    <Lock class="w-2.5 h-2.5" /> Пароль
+                  </span>
+                  <span v-if="item.disabled" class="text-[10px] px-1.5 py-0.5 rounded bg-rose-500/15 text-rose-400">Отключён</span>
+                </div>
+                <div class="text-[11px] text-slate-400 mt-0.5">
+                  Просмотров: {{ item.accessCount || 0 }} / {{ item.maxAccessCount || '∞' }}
+                  <span v-if="item.file?.sizeName"> • {{ item.file.sizeName }}</span>
+                </div>
+              </div>
+            </div>
+            <div class="flex items-center gap-1.5 shrink-0">
+              <button
+                type="button"
+                class="text-xs text-teal-400 hover:text-teal-300 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-teal-500/12 border border-teal-500/25 font-semibold"
+                @click="copyShareLink(item)"
+                title="Копировать ссылку с ключом расшифровки"
+              >
+                <component :is="copiedId === item.id ? Check : Copy" class="w-3.5 h-3.5" />
+                <span>{{ copiedId === item.id ? 'Скопировано' : 'Ссылка' }}</span>
+              </button>
+              <button
+                type="button"
+                class="icon-action text-sky-400"
+                @click="openSend(item)"
+                title="Открыть Send"
+              >
+                <ExternalLink class="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                class="icon-action text-amber-400"
+                @click="handleToggleDisable(item)"
+                :title="item.disabled ? 'Включить Send' : 'Приостановить Send'"
+              >
+                <component :is="item.disabled ? PlayCircle : PauseCircle" class="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                class="icon-action text-rose-400"
+                @click="handleDeleteSend(item.id)"
+                title="Удалить Send"
+              >
+                <Trash2 class="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
         </div>
-      </div>
-    </div>
+      </template>
 
-    <!-- Create Send Modal (Text / File) -->
-    <div v-if="showCreateModal" class="modal-backdrop" @click.self="showCreateModal = false">
-      <div class="modal-card">
-        <h3 class="text-base font-bold mb-1">Новый Novus Send</h3>
-        <p class="text-xs text-slate-400 mb-3">
-          Данные или файл шифруются в браузере уникальным ключом перед отправкой на сервер.
-        </p>
-
+      <!-- PANEL 2: CREATE SEND FORM -->
+      <div v-else class="create-card">
         <div class="grid grid-cols-2 gap-2 mb-4">
           <button
             type="button"
-            class="py-1.5 px-3 rounded-lg text-xs font-semibold border transition"
-            :class="sendMode === 'text' ? 'bg-teal-600/20 border-teal-500 text-teal-300' : 'bg-slate-900/50 border-slate-700 text-slate-400'"
+            class="type-btn"
+            :class="{ active: sendMode === 'text' }"
             @click="sendMode = 'text'"
           >
-            Текст
+            <FileText class="w-4 h-4 text-teal-400" />
+            <span>Текстовый секрет</span>
           </button>
           <button
             type="button"
-            class="py-1.5 px-3 rounded-lg text-xs font-semibold border transition"
-            :class="sendMode === 'file' ? 'bg-sky-600/20 border-sky-500 text-sky-300' : 'bg-slate-900/50 border-slate-700 text-slate-400'"
+            class="type-btn"
+            :class="{ active: sendMode === 'file' }"
             @click="sendMode = 'file'"
           >
-            Файл
+            <Upload class="w-4 h-4 text-sky-400" />
+            <span>Зашифрованный файл</span>
           </button>
         </div>
 
-        <div v-if="errorMsg" class="text-xs text-rose-400 bg-rose-500/10 border border-rose-500/30 rounded-lg p-2.5 mb-3">
-          {{ errorMsg }}
-        </div>
-
-        <form @submit.prevent="handleCreateSend" class="space-y-3">
+        <form @submit.prevent="handleCreateSend" class="space-y-3.5">
           <div>
-            <label class="block text-xs font-semibold text-slate-300 mb-1">Название *</label>
+            <label class="field-lbl">Название *</label>
             <input
               v-model="sendName"
               type="text"
               placeholder="Например: Ключ API или архив конфига"
               required
-              class="send-input"
+              class="cyber-input"
             />
           </div>
 
           <div v-if="sendMode === 'text'">
-            <label class="block text-xs font-semibold text-slate-300 mb-1">Конфиденциальный текст *</label>
+            <label class="field-lbl">Конфиденциальный текст *</label>
             <textarea
               v-model="sendText"
               rows="4"
               placeholder="Введите секретный текст..."
-              class="send-input"
+              class="cyber-textarea"
             ></textarea>
           </div>
 
           <div v-else>
-            <label class="block text-xs font-semibold text-slate-300 mb-1">Файл (до 500 МБ) *</label>
-            <label class="flex items-center justify-center gap-2 p-4 rounded-lg border border-dashed border-slate-600 hover:border-sky-400 cursor-pointer text-xs text-slate-300 bg-black/20">
+            <label class="field-lbl">Файл (до 500 МБ) *</label>
+            <label class="flex items-center justify-center gap-2 p-5 rounded-xl border border-dashed border-slate-600 hover:border-sky-400 cursor-pointer text-xs text-slate-300 bg-black/20 transition">
               <Upload class="w-4 h-4 text-sky-400" />
               <span>{{ sendFile ? `${sendFile.name} (${Math.max(1, Math.round(sendFile.size / 1024))} КБ)` : 'Нажмите для выбора файла' }}</span>
               <input type="file" class="hidden" @change="handleFileSelect" />
             </label>
           </div>
 
-          <div class="grid grid-cols-2 gap-3">
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
-              <label class="block text-xs font-semibold text-slate-300 mb-1">Удалить через</label>
-              <select v-model.number="expirationDays" class="send-input">
+              <label class="field-lbl">Удалить через</label>
+              <select v-model.number="expirationDays" class="cyber-input">
                 <option :value="1">1 день</option>
                 <option :value="3">3 дня</option>
                 <option :value="7">7 дней</option>
@@ -322,51 +343,49 @@ async function handleDeleteSend(id: string) {
               </select>
             </div>
             <div>
-              <label class="block text-xs font-semibold text-slate-300 mb-1">Макс. просмотров</label>
+              <label class="field-lbl">Макс. просмотров</label>
               <input
                 v-model.number="maxAccessCount"
                 type="number"
                 min="1"
                 placeholder="Без ограничений"
-                class="send-input"
+                class="cyber-input"
               />
             </div>
-          </div>
-
-          <div class="grid grid-cols-2 gap-3">
             <div>
-              <label class="block text-xs font-semibold text-slate-300 mb-1">Пароль доступа (опционально)</label>
+              <label class="field-lbl">Пароль доступа</label>
               <input
                 v-model="sendPassword"
                 type="password"
-                placeholder="Без пароля"
-                class="send-input"
+                placeholder="Необязательно"
+                class="cyber-input"
               />
             </div>
-            <div class="flex items-end pb-1.5">
-              <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
-                <input type="checkbox" v-model="sendHideEmail" />
-                <span>Скрыть мой email</span>
-              </label>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
+            <div>
+              <label class="field-lbl">Заметка для получателя</label>
+              <input
+                v-model="sendNotes"
+                type="text"
+                placeholder="Дополнительный комментарий..."
+                class="cyber-input"
+              />
             </div>
+            <label class="flex items-center gap-2 h-9 px-3 rounded-lg bg-black/20 border border-slate-800 text-xs text-slate-300 cursor-pointer">
+              <input type="checkbox" v-model="sendHideEmail" class="accent-sky-500" />
+              <span>Скрыть мой email от получателя</span>
+            </label>
           </div>
 
-          <div>
-            <label class="block text-xs font-semibold text-slate-300 mb-1">Заметка (необязательно)</label>
-            <input
-              v-model="sendNotes"
-              type="text"
-              placeholder="Дополнительный комментарий для получателя..."
-              class="send-input"
-            />
-          </div>
-
-          <div class="flex justify-end gap-2 pt-2">
-            <button type="button" class="cyber-btn-subtle" @click="showCreateModal = false">
+          <div class="flex justify-end gap-2 pt-2 border-t border-slate-800/70">
+            <button type="button" class="cyber-btn-secondary" @click="activePanel = 'list'">
               Отмена
             </button>
             <button type="submit" class="cyber-btn-primary" :disabled="isSubmitting">
-              {{ isSubmitting ? 'Шифрование...' : 'Создать Send' }}
+              <Send class="w-3.5 h-3.5" />
+              <span>{{ isSubmitting ? 'Шифрование...' : 'Создать защищённый Send' }}</span>
             </button>
           </div>
         </form>
@@ -378,105 +397,159 @@ async function handleDeleteSend(id: string) {
 <style scoped>
 .send-page {
   min-height: 100vh;
-  background-color: var(--page-bg, #010811);
+  background-color: var(--page-bg, #030712);
+  background-image: var(--page-gradient);
   color: var(--text-primary, #f8fafc);
   display: flex;
   justify-content: center;
-  padding: 30px 20px;
+  padding: 28px 20px 60px 20px;
 }
 
 .send-container {
   width: 100%;
-  max-width: 680px;
+  max-width: 720px;
 }
 
-.cyber-btn-primary {
-  display: inline-flex;
+.send-modal-root {
+  color: var(--text-primary, #f8fafc);
+}
+
+.send-modal-inner {
+  width: 100%;
+}
+
+.mode-tabs {
+  display: flex;
+  background: var(--input-bg, rgba(4, 9, 21, 0.8));
+  border: 1px solid var(--card-border, rgba(56, 189, 248, 0.2));
+  border-radius: 12px;
+  padding: 4px;
+  gap: 4px;
+}
+
+.tab-btn {
+  flex: 1;
+  display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 0 14px;
+  justify-content: center;
+  gap: 7px;
   height: 36px;
-  background: #0d9488;
-  color: #ffffff;
-  border: none;
   border-radius: 8px;
-  font-size: 12px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-secondary, #94a3b8);
+  font-size: 12.5px;
   font-weight: 600;
   cursor: pointer;
+  transition: all 0.18s ease;
 }
 
-.cyber-btn-primary:hover {
-  background: #0f766e;
+.tab-btn.active {
+  background: var(--active-bg, rgba(20, 184, 166, 0.16));
+  border-color: var(--active-border, rgba(45, 212, 191, 0.35));
+  color: #2dd4bf;
+}
+
+:global(html.light) .tab-btn.active {
+  color: #0d9488;
+}
+
+.empty-card,
+.create-card {
+  background: var(--card-bg, rgba(13, 22, 41, 0.85));
+  border: 1px solid var(--card-border, rgba(56, 189, 248, 0.2));
+  border-radius: 14px;
+  padding: 20px;
 }
 
 .empty-card {
-  background: var(--card-bg, #0b1329);
-  border: 1px solid var(--card-border, rgba(56, 189, 248, 0.2));
-  border-radius: 14px;
-  padding: 40px 20px;
+  padding: 36px 20px;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
 }
 
-.cyber-btn-subtle {
-  padding: 6px 14px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 8px;
-  color: #f8fafc;
-  font-size: 12px;
-  cursor: pointer;
-}
-
 .sends-list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
 .send-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 14px;
-  border-radius: 10px;
-  background: var(--card-bg, #0b1329);
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--card-bg, rgba(13, 22, 41, 0.85));
   border: 1px solid var(--card-border, rgba(56, 189, 248, 0.2));
 }
 
-.modal-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.75);
-  backdrop-filter: blur(6px);
+.icon-action {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--hover-bg, rgba(255, 255, 255, 0.06));
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.icon-action:hover {
+  border-color: var(--card-border-strong, rgba(56, 189, 248, 0.35));
+}
+
+.type-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
-  padding: 16px;
+  gap: 8px;
+  height: 40px;
+  border-radius: 10px;
+  font-size: 12.5px;
+  font-weight: 600;
+  background: var(--input-bg, rgba(4, 9, 21, 0.65));
+  border: 1px solid var(--input-border, #334155);
+  color: var(--text-secondary, #94a3b8);
+  cursor: pointer;
+  transition: all 0.15s ease;
 }
 
-.modal-card {
-  width: 100%;
-  max-width: 460px;
-  background: var(--card-bg, #0b1329);
-  border: 1px solid var(--card-border, rgba(56, 189, 248, 0.3));
-  border-radius: 14px;
-  padding: 22px;
+.type-btn.active {
+  background: var(--active-bg, rgba(14, 165, 233, 0.14));
+  border-color: #38bdf8;
+  color: var(--text-primary, #f8fafc);
 }
 
-.send-input {
+.field-lbl {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary, #94a3b8);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-bottom: 5px;
+}
+
+.cyber-textarea {
   width: 100%;
   box-sizing: border-box;
-  background: var(--input-bg, rgba(3, 7, 18, 0.85));
+  background: var(--input-bg, rgba(4, 9, 21, 0.88));
   border: 1px solid var(--input-border, #334155);
   border-radius: 8px;
   color: var(--text-primary, #f8fafc);
-  padding: 8px 10px;
-  font-size: 12.5px;
+  padding: 10px 12px;
+  font-size: 13px;
   outline: none;
+  resize: vertical;
+}
+
+.cyber-textarea:focus {
+  border-color: var(--input-focus, #38bdf8);
 }
 </style>
-

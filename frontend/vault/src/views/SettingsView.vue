@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
+import { ref, watch, onMounted } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from '../stores/auth.ts';
 import { useVaultStore } from '../stores/vault.ts';
 import { useThemeStore } from '../stores/theme.ts';
@@ -34,13 +34,47 @@ import {
   Copy,
 } from 'lucide-vue-next';
 
+const props = withDefaults(
+  defineProps<{
+    modal?: boolean;
+    initialTab?: 'account' | 'security' | 'tools' | 'appearance';
+  }>(),
+  {
+    modal: false,
+    initialTab: 'account',
+  }
+);
+
+const emit = defineEmits<{
+  (e: 'close'): void;
+}>();
+
 const router = useRouter();
+const route = useRoute();
 const authStore = useAuthStore();
 const vaultStore = useVaultStore();
 const themeStore = useThemeStore();
 const { locale, t, setLocale } = useI18n();
 
-const activeTab = ref<'account' | 'security' | 'tools' | 'appearance'>('account');
+const validTabs = ['account', 'security', 'tools', 'appearance'] as const;
+type SettingsTab = (typeof validTabs)[number];
+
+function resolveTab(raw?: unknown): SettingsTab {
+  return typeof raw === 'string' && (validTabs as readonly string[]).includes(raw)
+    ? (raw as SettingsTab)
+    : 'account';
+}
+
+const activeTab = ref<SettingsTab>(
+  props.modal ? resolveTab(props.initialTab) : resolveTab(route.query.tab || props.initialTab)
+);
+
+watch(
+  () => props.initialTab,
+  (next) => {
+    if (next) activeTab.value = resolveTab(next);
+  }
+);
 
 // Toast Feedback
 const toastMessage = ref<string | null>(null);
@@ -503,41 +537,50 @@ async function handleChangePassword() {
   }
 }
 
-// 3. KDF Parameters
-const kdfType = ref<number>(1); // 0=PBKDF2, 1=Argon2id
-const pbkdfIterations = ref<number>(600000);
+// 3. KDF Parameters (Argon2id only — OWASP / RFC 9106 standard)
 const argonIterations = ref<number>(3);
 const argonMemory = ref<number>(64);
 const argonParallelism = ref<number>(4);
 const kdfMasterPassword = ref('');
 const isChangingKdf = ref(false);
 
+const argonPresets = [
+  { id: 'standard', label: 'Стандарт (OWASP)', memory: 64, iterations: 3, parallelism: 4, hint: 'Баланс скорости и стойкости' },
+  { id: 'strong', label: 'Усиленный', memory: 128, iterations: 4, parallelism: 4, hint: 'Повышенная защита от GPU' },
+  { id: 'paranoid', label: 'Максимум', memory: 256, iterations: 5, parallelism: 4, hint: 'Максимальная криптостойкость' },
+];
+
+function applyArgonPreset(preset: { memory: number; iterations: number; parallelism: number }) {
+  argonMemory.value = preset.memory;
+  argonIterations.value = preset.iterations;
+  argonParallelism.value = preset.parallelism;
+}
+
 async function handleChangeKdf() {
   if (!kdfMasterPassword.value) {
-    showToast('Введите текущий мастер-пароль для подтверждения смены KDF');
+    showToast('Введите текущий мастер-пароль для подтверждения обновления Argon2id');
     return;
   }
+  const safeIterations = Math.min(10, Math.max(2, Number(argonIterations.value) || 3));
+  const safeMemory = Math.min(1024, Math.max(16, Number(argonMemory.value) || 64));
+  const safeParallelism = Math.min(16, Math.max(1, Number(argonParallelism.value) || 4));
+  argonIterations.value = safeIterations;
+  argonMemory.value = safeMemory;
+  argonParallelism.value = safeParallelism;
+
   isChangingKdf.value = true;
   try {
-    if (kdfType.value === 1) {
-      await authStore.changeKdf(
-        kdfMasterPassword.value,
-        1,
-        argonIterations.value,
-        argonMemory.value,
-        argonParallelism.value
-      );
-    } else {
-      await authStore.changeKdf(
-        kdfMasterPassword.value,
-        0,
-        pbkdfIterations.value
-      );
-    }
+    await authStore.changeKdf(
+      kdfMasterPassword.value,
+      1,
+      safeIterations,
+      safeMemory,
+      safeParallelism
+    );
     kdfMasterPassword.value = '';
-    showToast('Параметры KDF успешно обновлены!');
+    showToast('Параметры Argon2id успешно применены!');
   } catch (err: any) {
-    showToast(err?.message || 'Ошибка обновления KDF');
+    showToast(err?.message || 'Ошибка обновления Argon2id');
   } finally {
     isChangingKdf.value = false;
   }
@@ -708,10 +751,10 @@ function exportVaultCsv() {
 </script>
 
 <template>
-  <div class="settings-page">
-    <div class="settings-container">
-      <!-- Header -->
-      <div class="settings-header">
+  <div :class="props.modal ? 'settings-modal-root' : 'settings-page'">
+    <div :class="props.modal ? 'settings-modal-inner' : 'settings-container'">
+      <!-- Standalone Page Header (hidden inside ToolModalShell) -->
+      <div v-if="!props.modal" class="settings-header">
         <button
           type="button"
           class="cyber-btn-secondary !p-2 !h-9 !w-9"
@@ -726,7 +769,7 @@ function exportVaultCsv() {
             <span>Настройки аккаунта и безопасности</span>
           </h1>
           <p class="settings-page-subtitle">
-            Управление профилем, параметрами нулевого разглашения, KDF и экспортом данных
+            Управление профилем, параметрами нулевого разглашения, Argon2id и экспортом данных
           </p>
         </div>
       </div>
@@ -1031,48 +1074,45 @@ function exportVaultCsv() {
           </div>
         </div>
 
-        <!-- KDF Algorithm Configuration -->
-        <div class="settings-card mt-6">
-          <h2 class="card-title flex items-center gap-2">
-            <Cpu class="w-4 h-4 text-indigo-400" />
-            <span>Алгоритм формирования ключа (KDF)</span>
-          </h2>
+        <!-- KDF Algorithm Configuration (Argon2id Only) -->
+        <div class="settings-card mt-4">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-1.5">
+            <h2 class="card-title flex items-center gap-2 !mb-0">
+              <Cpu class="w-4 h-4 text-indigo-400" />
+              <span>Алгоритм формирования ключа • Argon2id</span>
+            </h2>
+            <span class="px-2.5 py-0.5 rounded-full text-[10.5px] font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+              RFC 9106 · Только Argon2id
+            </span>
+          </div>
           <p class="card-desc">
-            Выберите криптографический алгоритм для защиты от перебора паролей на GPU и ASIC-ускорителях.
+            NovusWarden использует современный memory-hard алгоритм Argon2id для защиты мастер-ключа от перебора на GPU и ASIC. Устаревший PBKDF2 отключён для новых настроек.
           </p>
 
-          <div class="space-y-4">
-            <div class="grid grid-cols-2 gap-3">
+          <div class="space-y-3.5">
+            <!-- Quick Argon2id Presets -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
               <button
+                v-for="preset in argonPresets"
+                :key="preset.id"
                 type="button"
                 class="kdf-select-card"
-                :class="{ active: kdfType === 1 }"
-                @click="kdfType = 1"
+                :class="{ active: argonMemory === preset.memory && argonIterations === preset.iterations && argonParallelism === preset.parallelism }"
+                @click="applyArgonPreset(preset)"
               >
-                <div class="font-bold text-sm">Argon2id</div>
-                <div class="text-[11px] text-slate-400 mt-1">
-                  Современный стандарт, защищённый от атак по времени и памяти (рекомендуется)
+                <div class="font-bold text-xs">{{ preset.label }}</div>
+                <div class="text-[11px] font-mono text-sky-400 mt-0.5">
+                  {{ preset.memory }} МБ · {{ preset.iterations }} ит. · ×{{ preset.parallelism }}
                 </div>
-              </button>
-
-              <button
-                type="button"
-                class="kdf-select-card"
-                :class="{ active: kdfType === 0 }"
-                @click="kdfType = 0"
-              >
-                <div class="font-bold text-sm">PBKDF2 SHA-256</div>
-                <div class="text-[11px] text-slate-400 mt-1">
-                  Классический стандарт совместимости Bitwarden
-                </div>
+                <div class="text-[10.5px] text-slate-400 mt-1">{{ preset.hint }}</div>
               </button>
             </div>
 
-            <!-- Argon2id Settings -->
-            <div v-if="kdfType === 1" class="p-3.5 rounded-lg bg-black/20 border border-slate-800 space-y-3">
+            <!-- Argon2id Custom Parameters -->
+            <div class="p-3.5 rounded-xl bg-black/20 border border-slate-800 space-y-3">
               <div class="grid grid-cols-3 gap-3">
                 <div>
-                  <label class="field-label">Итерации</label>
+                  <label class="field-label">Итерации (2–10)</label>
                   <input
                     v-model.number="argonIterations"
                     type="number"
@@ -1104,39 +1144,26 @@ function exportVaultCsv() {
               </div>
             </div>
 
-            <!-- PBKDF2 Settings -->
-            <div v-if="kdfType === 0" class="p-3.5 rounded-lg bg-black/20 border border-slate-800">
-              <label class="field-label">Раунды хеширования PBKDF2</label>
-              <input
-                v-model.number="pbkdfIterations"
-                type="number"
-                min="100000"
-                max="2000000"
-                step="50000"
-                class="cyber-input"
-              />
-              <span class="field-hint">Рекомендуется не менее 600 000 раундов</span>
+            <div class="flex flex-col sm:flex-row gap-2.5 items-stretch sm:items-end">
+              <div class="flex-1">
+                <label class="field-label">Подтверждение мастер-паролем</label>
+                <input
+                  v-model="kdfMasterPassword"
+                  type="password"
+                  placeholder="Введите мастер-пароль для применения Argon2id"
+                  class="cyber-input"
+                />
+              </div>
+              <button
+                type="button"
+                class="cyber-btn-primary shrink-0"
+                :disabled="isChangingKdf"
+                @click="handleChangeKdf"
+              >
+                <RefreshCw v-if="isChangingKdf" class="w-4 h-4 animate-spin" />
+                <span>{{ isChangingKdf ? 'Пересчёт Argon2id...' : 'Применить Argon2id' }}</span>
+              </button>
             </div>
-
-            <div>
-              <label class="field-label">Подтверждение мастер-паролем</label>
-              <input
-                v-model="kdfMasterPassword"
-                type="password"
-                placeholder="Введите мастер-пароль для смены KDF"
-                class="cyber-input"
-              />
-            </div>
-
-            <button
-              type="button"
-              class="cyber-btn-primary"
-              :disabled="isChangingKdf"
-              @click="handleChangeKdf"
-            >
-              <RefreshCw v-if="isChangingKdf" class="w-4 h-4 animate-spin" />
-              <span>{{ isChangingKdf ? 'Пересчёт KDF...' : 'Применить алгоритм KDF' }}</span>
-            </button>
           </div>
         </div>
 
@@ -1554,25 +1581,32 @@ function exportVaultCsv() {
 <style scoped>
 .settings-page {
   min-height: 100vh;
-  background-color: var(--page-bg, #010811);
+  background-color: var(--page-bg, #030712);
   background-image: var(--page-gradient);
   color: var(--text-primary, #f8fafc);
   display: flex;
   justify-content: center;
-  padding: 30px 20px 60px 20px;
-  overflow-y: auto;
+  padding: 28px 20px 64px 20px;
 }
 
 .settings-container {
   width: 100%;
-  max-width: 680px;
+  max-width: 780px;
+}
+
+.settings-modal-root {
+  color: var(--text-primary, #f8fafc);
+}
+
+.settings-modal-inner {
+  width: 100%;
 }
 
 .settings-header {
   display: flex;
   align-items: center;
   gap: 14px;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 .settings-page-title {
@@ -1593,12 +1627,12 @@ function exportVaultCsv() {
 
 .tabs-nav {
   display: flex;
-  gap: 6px;
+  gap: 4px;
   padding: 4px;
-  background: rgba(3, 7, 18, 0.6);
-  border: 1px solid rgba(56, 189, 248, 0.2);
+  background: var(--input-bg, rgba(4, 9, 21, 0.8));
+  border: 1px solid var(--card-border, rgba(56, 189, 248, 0.2));
   border-radius: 12px;
-  margin-bottom: 24px;
+  margin-bottom: 16px;
   overflow-x: auto;
 }
 
@@ -1607,42 +1641,45 @@ function exportVaultCsv() {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
-  height: 38px;
+  gap: 6px;
+  height: 36px;
   padding: 0 12px;
   background: transparent;
-  border: none;
+  border: 1px solid transparent;
   border-radius: 8px;
   color: var(--text-secondary, #94a3b8);
   font-size: 12.5px;
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
-  transition: all 0.2s ease;
+  transition: all 0.18s ease;
 }
 
 .tab-btn:hover {
   color: var(--text-primary, #f8fafc);
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--hover-bg, rgba(255, 255, 255, 0.05));
 }
 
 .tab-btn.active {
-  background: rgba(14, 165, 233, 0.16);
+  background: var(--active-bg, rgba(14, 165, 233, 0.16));
   color: #38bdf8;
-  border: 1px solid rgba(56, 189, 248, 0.35);
-  box-shadow: 0 2px 8px rgba(14, 165, 233, 0.15);
+  border-color: var(--active-border, rgba(56, 189, 248, 0.35));
+}
+
+:global(html.light) .tab-btn.active {
+  color: #0284c7;
 }
 
 .settings-card {
-  background: var(--card-bg, #0b1329);
-  border: 1px solid var(--card-border, rgba(56, 189, 248, 0.22));
+  background: var(--card-bg, rgba(13, 22, 41, 0.85));
+  border: 1px solid var(--card-border, rgba(56, 189, 248, 0.2));
   border-radius: 14px;
-  padding: 22px;
-  box-shadow: var(--card-shadow);
+  padding: 18px;
+  box-shadow: 0 8px 24px -10px rgba(0, 0, 0, 0.25);
 }
 
 .card-title {
-  font-size: 14.5px;
+  font-size: 14px;
   font-weight: 700;
   margin: 0 0 6px 0;
 }
@@ -1650,16 +1687,16 @@ function exportVaultCsv() {
 .card-desc {
   font-size: 12px;
   color: var(--text-secondary, #94a3b8);
-  margin: 0 0 16px 0;
+  margin: 0 0 14px 0;
   line-height: 1.5;
 }
 
 .field-label {
   display: block;
-  font-size: 11.5px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--text-secondary, #94a3b8);
-  margin-bottom: 6px;
+  margin-bottom: 5px;
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
@@ -1672,24 +1709,24 @@ function exportVaultCsv() {
 }
 
 .kdf-select-card {
-  padding: 14px;
+  padding: 12px;
   border-radius: 10px;
-  background: rgba(3, 7, 18, 0.5);
-  border: 1px solid #1e293b;
+  background: var(--input-bg, rgba(3, 7, 18, 0.55));
+  border: 1px solid var(--input-border, #1e293b);
   color: var(--text-primary);
   text-align: left;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.18s ease;
 }
 
 .kdf-select-card:hover {
-  border-color: rgba(56, 189, 248, 0.4);
+  border-color: rgba(56, 189, 248, 0.45);
 }
 
 .kdf-select-card.active {
   border-color: #38bdf8;
-  background: rgba(14, 165, 233, 0.12);
-  box-shadow: 0 0 0 1px #38bdf8;
+  background: var(--active-bg, rgba(14, 165, 233, 0.12));
+  box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.45);
 }
 
 .theme-choice {
@@ -1699,22 +1736,26 @@ function exportVaultCsv() {
   gap: 4px;
   padding: 14px 10px;
   border-radius: 10px;
-  background: rgba(3, 7, 18, 0.5);
-  border: 1px solid #1e293b;
+  background: var(--input-bg, rgba(3, 7, 18, 0.5));
+  border: 1px solid var(--input-border, #1e293b);
   color: var(--text-secondary);
   font-size: 12.5px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.18s ease;
 }
 
 .theme-choice:hover {
-  border-color: rgba(56, 189, 248, 0.4);
+  border-color: rgba(56, 189, 248, 0.45);
 }
 
 .theme-choice.active {
-  background: rgba(14, 165, 233, 0.14);
+  background: var(--active-bg, rgba(14, 165, 233, 0.14));
   border-color: #38bdf8;
   color: #38bdf8;
+}
+
+:global(html.light) .theme-choice.active {
+  color: #0284c7;
 }
 
 /* Modals */

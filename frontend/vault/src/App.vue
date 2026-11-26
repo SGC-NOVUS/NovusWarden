@@ -53,13 +53,19 @@ body {
   margin: 0;
   padding: 0;
   width: 100%;
-  height: 100%;
+  min-height: 100%;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   background-color: var(--page-bg);
   background-image: var(--page-gradient);
+  background-attachment: fixed;
   color: var(--text-primary);
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   user-select: none;
+}
+
+.novus-app-root {
+  min-height: 100vh;
 }
 
 /* Custom Scrollbars */
