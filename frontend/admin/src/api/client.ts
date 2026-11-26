@@ -465,6 +465,20 @@ export const api = {
     }
   },
 
+  async testTelegram(chatId?: string): Promise<{ ok: boolean; botUsername: string; chatId: string }> {
+    const res = await apiFetch('/admin/test/telegram', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chatId: chatId || undefined }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const msg = data?.ErrorModel?.Message || data?.message || res.statusText;
+      throw new Error(`Ошибка теста Telegram: ${msg}`);
+    }
+    return data;
+  },
+
   // --- Diagnostics ---
   async getDiagnosticsData(): Promise<DiagnosticsData> {
     const res = await apiFetch('/admin/diagnostics/data');

@@ -24,6 +24,7 @@ export interface PendingTwoFactor {
   masterPasswordHash: string;
   providers: string[];
   providers2: Record<string, any>;
+  telegram2faAvailable?: boolean;
 }
 
 function twoFactorRememberStorageKey(email: string): string {
@@ -205,6 +206,7 @@ export const useAuthStore = defineStore('auth', () => {
           masterPasswordHash: passwordHash,
           providers: err.providers,
           providers2: err.providers2,
+          telegram2faAvailable: err.telegram2faAvailable,
         };
       }
       throw err;

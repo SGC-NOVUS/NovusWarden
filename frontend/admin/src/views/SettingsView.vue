@@ -20,6 +20,12 @@ const testEmail = ref('');
 const smtpTesting = ref(false);
 const smtpResult = ref<{ text: string; error?: boolean } | null>(null);
 
+// Telegram Bot Test state
+const showTelegramModal = ref(false);
+const testChatId = ref('');
+const telegramTesting = ref(false);
+const telegramResult = ref<{ text: string; error?: boolean } | null>(null);
+
 // Database backup
 const backingUp = ref(false);
 
@@ -121,6 +127,8 @@ function getGroupName(group: ConfigGroup): string {
     case 'sso': return 'Single Sign-On (SSO / OIDC)';
     case 'smtp': return 'Почтовый сервер (SMTP / Resend)';
     case 'email_2fa': return 'Email 2FA';
+    case 'telegram': return 'Telegram-бот (OTP, Вход в 1 клик и Алерты)';
+    case 'web_push': return 'Браузерный Web Push (VAPID RFC 8291)';
     case 'yubico': return 'Yubico YubiKey OTP';
     case 'duo': return 'Duo Security 2FA';
     default: return group.group;
@@ -139,6 +147,8 @@ function getGroupIcon(group: string): string {
     case 'sso': return '🔑';
     case 'smtp': return '✉️';
     case 'email_2fa': return '📧';
+    case 'telegram': return '✈️';
+    case 'web_push': return '🌐';
     case 'yubico': return '🔐';
     case 'duo': return '📱';
     default: return '🔧';
@@ -240,6 +250,19 @@ async function handleSmtpTest() {
   }
 }
 
+async function handleTelegramTest() {
+  telegramTesting.value = true;
+  telegramResult.value = null;
+  try {
+    const res = await api.testTelegram(testChatId.value.trim() || undefined);
+    telegramResult.value = { text: `Бот @${res.botUsername} успешно доставил сообщение в чат ${res.chatId}!` };
+  } catch (err: any) {
+    telegramResult.value = { text: err.message, error: true };
+  } finally {
+    telegramTesting.value = false;
+  }
+}
+
 onMounted(loadConfig);
 </script>
 
@@ -257,6 +280,12 @@ onMounted(loadConfig);
       </div>
 
       <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+        <button
+          @click="showTelegramModal = true"
+          style="background-color: var(--admin-surface-bg, #1f2937); color: var(--admin-sky, #38bdf8); border: 1px solid var(--admin-input-border, #374151); padding: 8px 14px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px;"
+        >
+          ✈️ Тест Telegram
+        </button>
         <button
           @click="showSmtpModal = true"
           style="background-color: var(--admin-surface-bg, #1f2937); color: var(--admin-sky, #38bdf8); border: 1px solid var(--admin-input-border, #374151); padding: 8px 14px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px;"
@@ -356,6 +385,8 @@ onMounted(loadConfig);
             { id: 'folders', label: 'Папки', icon: '📁' },
             { id: 'smtp', label: 'Почта SMTP / Resend', icon: '✉️' },
             { id: 'email_2fa', label: 'Email 2FA', icon: '📧' },
+            { id: 'telegram', label: 'Telegram Bot', icon: '✈️' },
+            { id: 'web_push', label: 'Web Push', icon: '🌐' },
             { id: 'yubico', label: 'Yubico', icon: '🔐' },
             { id: 'duo', label: 'Duo 2FA', icon: '📱' },
             { id: 'ws', label: 'WebSockets', icon: '⚡' },
@@ -632,6 +663,66 @@ onMounted(loadConfig);
               style="background-color: #2563eb; color: #ffffff; border: none; padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;"
             >
               {{ smtpTesting ? 'Отправка...' : 'Отправить письмо' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Telegram Bot Test Modal -->
+    <div
+      v-if="showTelegramModal"
+      @click.self="showTelegramModal = false"
+      style="position: fixed; inset: 0; background-color: rgba(2, 6, 18, 0.72); backdrop-filter: blur(10px); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 16px;"
+    >
+      <div style="background-color: var(--admin-card-bg); border: 1px solid var(--admin-card-border); border-radius: 16px; width: 100%; max-width: 480px; padding: 24px; box-shadow: 0 24px 60px rgba(0, 0, 0, 0.65);">
+        <h3 style="font-size: 17px; font-weight: 700; color: var(--admin-text-main); margin: 0 0 8px 0;">
+          ✈️ Проверка интеграции Telegram-бота
+        </h3>
+        <p style="font-size: 13px; color: var(--admin-text-secondary); margin: 0 0 16px 0; line-height: 1.5;">
+          Сервер проверит сохранённый <code>TELEGRAM_BOT_TOKEN</code> через Telegram Bot API и отправит диагностическое сообщение в указанный <code>Chat ID</code> (или в <code>TELEGRAM_ADMIN_CHAT_ID</code>). Напишите боту <code>/status</code>, чтобы узнать свой <code>Chat ID</code>.
+        </p>
+        <div
+          v-if="modifiedCount > 0"
+          style="padding: 10px 12px; border-radius: 8px; margin-bottom: 12px; font-size: 12px; background-color: var(--admin-badge-amber-bg); color: var(--admin-badge-amber-text); border: 1px solid var(--admin-badge-amber-border);"
+        >
+          ⚠️ У вас есть несохранённые изменения ({{ modifiedCount }}). Сначала сохраните <code>telegram_enabled</code> и <code>telegram_bot_token</code>!
+        </div>
+
+        <div v-if="telegramResult" :style="{
+          padding: '10px 14px',
+          borderRadius: '8px',
+          marginBottom: '16px',
+          fontSize: '12px',
+          backgroundColor: telegramResult.error ? 'var(--admin-badge-red-bg)' : 'var(--admin-badge-green-bg)',
+          color: telegramResult.error ? 'var(--admin-badge-red-text)' : 'var(--admin-badge-green-text)',
+          border: telegramResult.error ? '1px solid var(--admin-badge-red-border)' : '1px solid var(--admin-badge-green-border)',
+        }">
+          {{ telegramResult.text }}
+        </div>
+
+        <form @submit.prevent="handleTelegramTest">
+          <input
+            v-model="testChatId"
+            type="text"
+            placeholder="Chat ID (оставьте пустым для TELEGRAM_ADMIN_CHAT_ID)"
+            style="width: 100%; box-sizing: border-box; background-color: var(--admin-input-bg, #0b0f19); border: 1px solid var(--admin-input-border, #374151); color: var(--admin-text-main, #f9fafb); padding: 10px 14px; border-radius: 6px; font-size: 13px; outline: none; margin-bottom: 16px; font-family: monospace;"
+          />
+
+          <div style="display: flex; justify-content: flex-end; gap: 10px;">
+            <button
+              type="button"
+              @click="showTelegramModal = false"
+              style="background-color: var(--admin-surface-bg, #1f2937); color: var(--admin-text-main, #e5e7eb); border: 1px solid var(--admin-input-border, #374151); padding: 8px 16px; border-radius: 6px; font-size: 13px; cursor: pointer;"
+            >
+              Закрыть
+            </button>
+            <button
+              type="submit"
+              :disabled="telegramTesting"
+              style="background-color: #2563eb; color: #ffffff; border: none; padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;"
+            >
+              {{ telegramTesting ? 'Проверка...' : 'Отправить в Telegram' }}
             </button>
           </div>
         </form>

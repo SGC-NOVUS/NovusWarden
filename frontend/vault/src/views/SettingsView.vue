@@ -16,6 +16,7 @@ import { copyTextToClipboard, getClipboardClearSeconds, setClipboardClearSeconds
 import { confirmDialog, notifyToast } from '@shared/dialogs.ts';
 import WebAuthnKeysCard from '../components/WebAuthnKeysCard.vue';
 import DevicesSettingsCard from '../components/DevicesSettingsCard.vue';
+import TelegramAndPushCard from '../components/TelegramAndPushCard.vue';
 import { deriveMasterKey, hashMasterPassword, KdfConfig } from '../crypto/kdf.ts';
 import { encrypt, stretchMasterKey } from '../crypto/symmetric.ts';
 import { encryptWithPublicKey } from '../crypto/asymmetric.ts';
@@ -1556,6 +1557,9 @@ function exportVaultCsv() {
             </div>
           </div>
         </div>
+
+        <!-- Telegram Bot (OTP, 1-Click Approval, Alerts) & Browser Web Push -->
+        <TelegramAndPushCard class="mt-6" />
 
         <!-- Full FIDO2 / WebAuthn / Passkey Management -->
         <WebAuthnKeysCard class="mt-6" />

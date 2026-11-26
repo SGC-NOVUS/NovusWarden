@@ -1827,6 +1827,24 @@ async fn create_auth_request_inner(
 
     nt.send_auth_request(&user.uuid, &auth_request.uuid, &device, conn).await;
 
+    let req_dev_type = DeviceType::from_i32(auth_request.device_type).to_string();
+    crate::telegram::notify_auth_request_created(
+        &user.uuid.to_string(),
+        &auth_request.uuid.to_string(),
+        &req_dev_type,
+        &auth_request.request_ip,
+    );
+    crate::webpush::spawn_user_security_push(
+        &user.uuid.to_string(),
+        "Запрос входа с другого устройства".to_owned(),
+        format!(
+            "Устройство: {} ({}) — откройте сейф для подтверждения или отклонения",
+            req_dev_type, auth_request.request_ip
+        ),
+        "/#/settings",
+        "novus-auth-request",
+    );
+
     log_user_event(
         EventType::UserRequestedDeviceApproval,
         &user.uuid,

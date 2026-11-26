@@ -530,21 +530,46 @@ async fn authenticated_response(
     ip: &ClientIp,
     request_locale: Option<&str>,
 ) -> JsonResult {
-    if CONFIG.mail_enabled() && device.is_new() {
+    if device.is_new() {
         let now = Utc::now().naive_utc();
-        let mail_locale = user.locale.as_deref().or(request_locale);
-        if let Err(e) =
-            mail::send_new_device_logged_in_for_locale(&user.email, &ip.ip.to_string(), &now, device, mail_locale).await
-        {
-            error!("Error sending new device email: {e:#?}");
+        let ip_s = ip.ip.to_string();
+        let dev_type_s = crate::db::models::DeviceType::from_i32(device.atype).to_string();
+        crate::telegram::notify_user_security_event(
+            &user.uuid.to_string(),
+            "Вход с нового устройства в NovusWarden",
+            vec![
+                format!(
+                    "Устройство: <code>{}</code> ({})",
+                    crate::telegram::escape_html(&device.name),
+                    crate::telegram::escape_html(&dev_type_s)
+                ),
+                format!("IP-адрес: <code>{}</code>", crate::telegram::escape_html(&ip_s)),
+                format!("Время: <code>{}</code>", now.format("%Y-%m-%d %H:%M:%S UTC")),
+            ],
+        );
+        crate::webpush::spawn_user_security_push(
+            &user.uuid.to_string(),
+            "Вход с нового устройства".to_owned(),
+            format!("{} ({}) • IP: {}", device.name, dev_type_s, ip_s),
+            "/#/settings",
+            "novus-new-device",
+        );
 
-            if CONFIG.require_device_email() {
-                err!(
-                    "Could not send login notification email. Please contact your administrator.",
-                    ErrorEvent {
-                        event: EventType::UserFailedLogIn
-                    }
-                )
+        if CONFIG.mail_enabled() {
+            let mail_locale = user.locale.as_deref().or(request_locale);
+            if let Err(e) =
+                mail::send_new_device_logged_in_for_locale(&user.email, &ip_s, &now, device, mail_locale).await
+            {
+                error!("Error sending new device email: {e:#?}");
+
+                if CONFIG.require_device_email() {
+                    err!(
+                        "Could not send login notification email. Please contact your administrator.",
+                        ErrorEvent {
+                            event: EventType::UserFailedLogIn
+                        }
+                    )
+                }
             }
         }
     }
@@ -898,6 +923,19 @@ async fn twofactor_auth(
         )
     };
 
+    // Native 1-click Telegram 2FA Login Approval grant token (IP-bound, single-use, 180s TTL)
+    if twofactor_code.starts_with("nw_tg_approve:") {
+        crate::telegram::consume_approved_2fa_token(&user.uuid, &ip.ip.to_string(), twofactor_code)?;
+        TwoFactorIncomplete::mark_complete(&user.uuid, &device.uuid, conn).await?;
+        let remember = data.two_factor_remember.unwrap_or(0);
+        let two_factor = if !CONFIG.disable_2fa_remember() && remember == 1 {
+            Some(device.refresh_twofactor_remember())
+        } else {
+            None
+        };
+        return Ok(two_factor);
+    }
+
     let selected_twofactor = twofactors.into_iter().find(|tf| tf.atype == selected_id && tf.enabled);
 
     let selected_data = selected_data(selected_twofactor, locale);
@@ -968,6 +1006,15 @@ async fn twofactor_auth(
 
             log_user_event(EventType::UserRecovered2fa, &user.uuid, device.atype, &ip.ip, conn).await;
 
+            crate::telegram::notify_user_security_event(
+                &user.uuid.to_string(),
+                "ВНИМАНИЕ: Сброшена двухфакторная аутентификация (Recovery Code)",
+                vec![
+                    format!("IP-адрес: <code>{}</code>", crate::telegram::escape_html(&ip.ip.to_string())),
+                    format!("Время: <code>{}</code>", Utc::now().format("%Y-%m-%d %H:%M:%S UTC")),
+                ],
+            );
+
             if CONFIG.mail_enabled()
                 && let Err(e) = mail::send_recover_twofactor_for_locale(
                     &user.email,
@@ -1015,6 +1062,7 @@ async fn json_err_twofactor(providers: &[i32], user: &User, data: &ConnectData, 
         "TwoFactorProviders" : providers.iter().map(ToString::to_string).collect::<Vec<String>>(),
         "TwoFactorProviders2" : {}, // { "0" : null }
         "MasterPasswordPolicy": identity_master_password_policy(user, conn).await,
+        "NovusTelegram2FA": crate::telegram::can_approve_login_for_user(user_id),
     });
 
     for provider in providers {

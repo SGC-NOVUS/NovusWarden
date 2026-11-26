@@ -181,7 +181,8 @@ export default defineConfig(({ mode }) => {
             cleanUrl.startsWith('/admin') ||
             cleanUrl.startsWith('/api') ||
             cleanUrl.startsWith('/identity') ||
-            cleanUrl.startsWith('/notifications/hub')
+            cleanUrl.startsWith('/notifications/hub') ||
+            cleanUrl === '/sw-push.js'
           ) {
             return next();
           }
@@ -306,6 +307,11 @@ export default defineConfig(({ mode }) => {
         changeOrigin: true,
         secure: false,
         cookieDomainRewrite: 'localhost',
+      },
+      '/sw-push.js': {
+        target: backendTarget,
+        changeOrigin: true,
+        secure: false,
       },
     },
   },

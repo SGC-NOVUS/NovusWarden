@@ -33,7 +33,7 @@ use crate::{
 pub fn routes() -> Vec<Route> {
     // If adding more routes here, consider also adding them to
     // crate::utils::LOGGED_ROUTES to make sure they appear in the log
-    let mut routes = routes![attachments, alive, alive_head, static_files, static_locale_files];
+    let mut routes = routes![attachments, alive, alive_head, static_files, static_locale_files, sw_push_js];
     if CONFIG.web_vault_enabled() {
         routes.append(&mut routes![
             web_index,
@@ -301,6 +301,74 @@ fn well_known_webauthn() -> Cached<(ContentType, Json<Value>)> {
 #[get("/.well-known/assetlinks.json")]
 fn well_known_assetlinks() -> Cached<(ContentType, Json<Value>)> {
     Cached::long((ContentType::JSON, Json(json!([]))), true)
+}
+
+struct SwPushResponder(&'static str);
+
+impl<'r> rocket::response::Responder<'r, 'static> for SwPushResponder {
+    fn respond_to(self, _req: &'r Request<'_>) -> rocket::response::Result<'static> {
+        rocket::Response::build()
+            .header(ContentType::JavaScript)
+            .raw_header("Service-Worker-Allowed", "/")
+            .raw_header("Cache-Control", "no-cache, no-store, must-revalidate")
+            .sized_body(self.0.len(), std::io::Cursor::new(self.0))
+            .ok()
+    }
+}
+
+#[get("/sw-push.js")]
+fn sw_push_js() -> SwPushResponder {
+    SwPushResponder(
+        r"self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim()));
+
+self.addEventListener('push', (event) => {
+  let payload = {
+    title: 'NovusWarden Security',
+    body: 'Новое уведомление безопасности в вашем хранилище',
+    url: '/#/vault',
+    tag: 'novuswarden-security',
+  };
+  if (event.data) {
+    try {
+      const parsed = event.data.json();
+      payload = Object.assign(payload, parsed || {});
+    } catch (_) {
+      payload.body = event.data.text() || payload.body;
+    }
+  }
+  event.waitUntil(
+    self.registration.showNotification(payload.title, {
+      body: payload.body,
+      tag: payload.tag || 'novuswarden-security',
+      icon: '/vw_static/logo-gray.png',
+      badge: '/vw_static/logo-gray.png',
+      data: { url: payload.url || '/#/vault' },
+      requireInteraction: String(payload.tag || '').includes('auth-request') || String(payload.tag || '').includes('incomplete'),
+    })
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const targetPath = (event.notification.data && event.notification.data.url) || '/#/vault';
+  const targetUrl = new URL(targetPath, self.location.origin).href;
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+      for (const client of windowClients) {
+        if (client.url.startsWith(self.location.origin) && 'focus' in client) {
+          client.navigate(targetUrl).catch(() => {});
+          return client.focus();
+        }
+      }
+      if (self.clients.openWindow) {
+        return self.clients.openWindow(targetUrl);
+      }
+    })
+  );
+});
+",
+    )
 }
 
 struct AttachmentDownload {

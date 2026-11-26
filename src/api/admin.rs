@@ -73,6 +73,7 @@ pub fn routes() -> Vec<Route> {
         delete_config,
         backup_db,
         test_smtp,
+        test_telegram,
         users_overview,
         get_organizations_json,
         get_organization_json,
@@ -353,14 +354,16 @@ fn post_admin_login(
             state.unlock_token = None;
         }
 
+        let login_dt = crate::util::format_datetime_for_locale(&chrono::Utc::now().naive_utc(), &locale.locale);
+        crate::telegram::notify_admin_alert(false, &meta.ip, &meta.location, &meta.user_agent, &login_dt, None);
+
         if CONFIG.mail_enabled() {
             if let Some(admin_email) = CONFIG.admin_email() {
                 let ip_str = meta.ip.clone();
                 let loc_str = meta.location.clone();
                 let ua_str = meta.user_agent;
                 let alert_locale = locale.locale.clone();
-                let formatted_dt =
-                    crate::util::format_datetime_for_locale(&chrono::Utc::now().naive_utc(), &alert_locale);
+                let formatted_dt = login_dt;
                 tokio::spawn(async move {
                     if let Err(e) = mail::send_admin_login_alert_for_locale(
                         &admin_email,
@@ -433,6 +436,16 @@ fn post_admin_login(
 
         if locked {
             error!("ADMIN PANEL LOCKED DOWN after 2 failed attempts. Attacker IP: {}", meta.ip);
+            let lockout_dt = crate::util::format_datetime_for_locale(&chrono::Utc::now().naive_utc(), &locale.locale);
+            let unlock_link_opt = token.as_ref().map(|tok| format!("{}/admin/unlock?token={tok}", CONFIG.domain()));
+            crate::telegram::notify_admin_alert(
+                true,
+                &meta.ip,
+                &meta.location,
+                &meta.user_agent,
+                &lockout_dt,
+                unlock_link_opt.as_deref(),
+            );
             if let Some(token) = token
                 && CONFIG.mail_enabled()
             {
@@ -442,8 +455,7 @@ fn post_admin_login(
                     let loc_str = meta.location.clone();
                     let ua_str = meta.user_agent;
                     let alert_locale = locale.locale.clone();
-                    let formatted_dt =
-                        crate::util::format_datetime_for_locale(&chrono::Utc::now().naive_utc(), &alert_locale);
+                    let formatted_dt = lockout_dt;
                     tokio::spawn(async move {
                         if let Err(e) = mail::send_admin_lockout_alert_for_locale(
                             &admin_email,
@@ -895,6 +907,33 @@ async fn test_smtp(data: Json<InviteData>, _token: AdminToken, locale: RequestLo
     } else {
         err!(crate::i18n::admin_mail_not_enabled(&locale.locale))
     }
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct AdminTelegramTestData {
+    chat_id: Option<String>,
+}
+
+#[post("/test/telegram", format = "application/json", data = "<data>")]
+async fn test_telegram(data: Json<AdminTelegramTestData>, _token: AdminToken) -> JsonResult {
+    let payload = data.into_inner();
+    let target_chat = payload
+        .chat_id
+        .map(|s| s.trim().to_owned())
+        .filter(|s| !s.is_empty())
+        .or_else(|| CONFIG.telegram_admin_chat_id().map(|s| s.trim().to_owned()).filter(|s| !s.is_empty()));
+
+    let Some(chat_id) = target_chat else {
+        err!("Укажите Chat ID получателя или сохраните TELEGRAM_ADMIN_CHAT_ID в настройках");
+    };
+
+    let bot_username = crate::telegram::send_test_message(&chat_id, "Control Plane (Admin)").await?;
+    Ok(Json(json!({
+        "ok": true,
+        "botUsername": bot_username,
+        "chatId": chat_id,
+    })))
 }
 
 #[get("/logout")]

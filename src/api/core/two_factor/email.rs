@@ -161,12 +161,24 @@ pub async fn send_token(user_id: &UserId, conn: &DbConn, locale: Option<&str>) -
     twofactor.data = twofactor_data.to_json();
     twofactor.save(conn).await?;
 
-    mail::send_token_for_locale(
-        &twofactor_data.email,
-        &twofactor_data.last_token.map_res(crate::i18n::two_factor_token_empty(locale))?,
-        Some(locale),
-    )
-    .await?;
+    let token_str = twofactor_data.last_token.clone().map_res(crate::i18n::two_factor_token_empty(locale))?;
+
+    let tg_result = crate::telegram::try_send_2fa_otp(user_id, &token_str).await;
+    let skip_email = matches!(tg_result, Ok(true));
+    let tg_delivered =
+        tg_result.is_ok() && crate::telegram::get_user_link(&user_id.to_string()).is_some_and(|u| u.otp_enabled);
+
+    if !skip_email {
+        if CONFIG.mail_enabled() {
+            if let Err(e) = mail::send_token_for_locale(&twofactor_data.email, &token_str, Some(locale)).await
+                && !tg_delivered
+            {
+                return Err(e);
+            }
+        } else if !tg_delivered {
+            err!(crate::i18n::two_factor_email_disabled(locale));
+        }
+    }
 
     Ok(())
 }
@@ -228,12 +240,20 @@ async fn send_email(data: Json<SendEmailData>, headers: Headers, conn: DbConn) -
         TwoFactor::new(user.uuid.clone(), TwoFactorType::EmailVerificationChallenge, twofactor_data.to_json());
     twofactor.save(&conn).await?;
 
-    mail::send_token_for_locale(
-        &twofactor_data.email,
-        &twofactor_data.last_token.map_res(crate::i18n::two_factor_token_empty(&headers.locale))?,
-        Some(&headers.locale),
-    )
-    .await?;
+    let token_str = twofactor_data.last_token.clone().map_res(crate::i18n::two_factor_token_empty(&headers.locale))?;
+    let tg_res = crate::telegram::try_send_2fa_otp(&user.uuid, &token_str).await;
+    let tg_delivered =
+        tg_res.is_ok() && crate::telegram::get_user_link(&user.uuid.to_string()).is_some_and(|u| u.otp_enabled);
+
+    if CONFIG.mail_enabled() {
+        if let Err(e) = mail::send_token_for_locale(&twofactor_data.email, &token_str, Some(&headers.locale)).await
+            && !tg_delivered
+        {
+            return Err(e);
+        }
+    } else if !tg_delivered {
+        err!(crate::i18n::two_factor_email_disabled(&headers.locale));
+    }
 
     Ok(Json(json!({})))
 }

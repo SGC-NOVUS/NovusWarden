@@ -953,7 +953,7 @@ make_config! {
     /// Email 2FA Settings
     email_2fa: _enable_email_2fa {
         /// Enabled |> Disabling will prevent users from setting up new email 2FA and using existing email 2FA configured
-        _enable_email_2fa:      bool,   true,   auto,    |c| c._enable_smtp && (c.smtp_host.is_some() || c.use_sendmail || c.resend_api_key.is_some());
+        _enable_email_2fa:      bool,   true,   auto,    |c| (c._enable_smtp && (c.smtp_host.is_some() || c.use_sendmail || c.resend_api_key.is_some())) || (c.telegram_enabled && c.telegram_bot_token.is_some());
         /// Email token size |> Number of digits in an email 2FA token (min: 6, max: 255). Note that the Bitwarden clients are hardcoded to mention 6 digit codes regardless of this setting.
         email_token_size:       u8,     true,   def,      6;
         /// Token expiration time |> Maximum time in seconds a token is valid. The time the user has to open email client and copy token.
@@ -964,6 +964,28 @@ make_config! {
         email_2fa_enforce_on_verified_invite: bool,   true,   def,      false;
         /// Auto-enable 2FA (Know the risks!) |> Automatically setup email 2FA as fallback provider when needed
         email_2fa_auto_fallback: bool,  true,   def,      false;
+    },
+
+    /// Telegram Bot & 2FA Settings
+    telegram: telegram_enabled {
+        /// Enabled |> Enable native Telegram Bot integration for 2FA OTP delivery, 1-click login approval, and security alerts
+        telegram_enabled:           bool,   true,   def,      false;
+        /// Bot Token |> Bot token obtained from @BotFather (e.g. 123456789:ABCdef...)
+        telegram_bot_token:         Pass,   true,   option;
+        /// Admin Chat ID |> Optional Telegram Chat ID for instant Admin Control Plane login and brute-force lockout alerts
+        telegram_admin_chat_id:     String, true,   option;
+        /// Enable Telegram 2FA & Login Approval |> Allow users with linked Telegram chats to receive 6-digit 2FA OTPs and 1-click Web Vault login approvals
+        telegram_2fa_enabled:       bool,   true,   def,      true;
+        /// Enable Telegram Security Alerts |> Send instant new-device login, incomplete 2FA, and device login request alerts to linked Telegram chats
+        telegram_alerts_enabled:    bool,   true,   def,      true;
+    },
+
+    /// Browser Web Push (VAPID) Settings
+    web_push: web_push_enabled {
+        /// Enabled |> Enable native RFC 8291 / VAPID Browser Push notifications for Web Vault security alerts and login requests
+        web_push_enabled:           bool,   true,   def,      true;
+        /// VAPID Subject |> Contact URI (mailto: or https:) included in signed VAPID JWT headers
+        web_push_subject:           String, true,   auto,     |c| c.admin_email.as_ref().filter(|e| !e.trim().is_empty()).map_or_else(|| c.domain.clone(), |e| format!("mailto:{e}"));
     },
 }
 

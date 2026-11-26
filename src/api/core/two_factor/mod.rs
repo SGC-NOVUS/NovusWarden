@@ -196,7 +196,9 @@ pub async fn enforce_2fa_policy_for_org(
 pub async fn send_incomplete_2fa_notifications(pool: DbPool) {
     debug!("Sending notifications for incomplete 2FA logins");
 
-    if CONFIG.incomplete_2fa_time_limit() == 0 || !CONFIG.mail_enabled() {
+    if CONFIG.incomplete_2fa_time_limit() == 0
+        || (!CONFIG.mail_enabled() && !crate::telegram::is_bot_configured() && !CONFIG.web_push_enabled())
+    {
         return;
     }
 
@@ -225,24 +227,53 @@ pub async fn send_incomplete_2fa_notifications(pool: DbPool) {
             "User {} did not complete a 2FA login within the configured time limit. IP: {}",
             user.email, login.ip_address
         );
-        match mail::send_incomplete_2fa_login_for_locale(
-            &user.email,
-            &login.ip_address,
-            &login.login_time,
-            &login.device_name,
-            &DeviceType::from_i32(login.device_type).to_string(),
-            user.locale.as_deref(),
-        )
-        .await
-        {
-            Ok(()) => {
-                if let Err(e) = login.delete(&conn).await {
-                    error!("Error deleting incomplete 2FA record: {e:#?}");
+        let dev_type_str = DeviceType::from_i32(login.device_type).to_string();
+        crate::telegram::notify_user_security_event(
+            &user.uuid.to_string(),
+            "Предупреждение: незавершённый 2FA-вход (проверьте мастер-пароль!)",
+            vec![
+                format!(
+                    "Устройство: <code>{}</code> ({})",
+                    crate::telegram::escape_html(&login.device_name),
+                    crate::telegram::escape_html(&dev_type_str)
+                ),
+                format!("IP-адрес: <code>{}</code>", crate::telegram::escape_html(&login.ip_address)),
+                format!("Время попытки: <code>{}</code>", login.login_time.format("%Y-%m-%d %H:%M:%S UTC")),
+            ],
+        );
+        crate::webpush::spawn_user_security_push(
+            &user.uuid.to_string(),
+            "⚠️ Незавершённый 2FA-вход!".to_owned(),
+            format!(
+                "Кто-то ввёл верный мастер-пароль с IP {} ({}), но не прошёл 2FA.",
+                login.ip_address, login.device_name
+            ),
+            "/#/settings",
+            "novus-incomplete-2fa",
+        );
+
+        if CONFIG.mail_enabled() {
+            match mail::send_incomplete_2fa_login_for_locale(
+                &user.email,
+                &login.ip_address,
+                &login.login_time,
+                &login.device_name,
+                &dev_type_str,
+                user.locale.as_deref(),
+            )
+            .await
+            {
+                Ok(()) => {
+                    if let Err(e) = login.delete(&conn).await {
+                        error!("Error deleting incomplete 2FA record: {e:#?}");
+                    }
+                }
+                Err(e) => {
+                    error!("Error sending incomplete 2FA email: {e:#?}");
                 }
             }
-            Err(e) => {
-                error!("Error sending incomplete 2FA email: {e:#?}");
-            }
+        } else if let Err(e) = login.delete(&conn).await {
+            error!("Error deleting incomplete 2FA record: {e:#?}");
         }
     }
 }

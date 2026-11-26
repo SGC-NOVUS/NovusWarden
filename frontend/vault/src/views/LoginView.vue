@@ -26,6 +26,8 @@ import {
   Moon,
   Monitor,
   LogOut,
+  Send,
+  RefreshCw,
 } from 'lucide-vue-next';
 
 const router = useRouter();
@@ -51,6 +53,73 @@ const deviceLoginError = ref('');
 let devicePollTimer: any = null;
 let ephemeralKeyPair: { publicKeyB64: string; privateKey: CryptoKey } | null = null;
 
+// Telegram 1-Click 2FA Push Approval state
+const tgApprovalStatus = ref<'idle' | 'waiting' | 'error'>('idle');
+const tgApprovalPin = ref('');
+const tgChallengeId = ref('');
+const tgPollSecret = ref('');
+let tgPollTimer: any = null;
+
+function stopTelegramPoll() {
+  if (tgPollTimer) {
+    clearInterval(tgPollTimer);
+    tgPollTimer = null;
+  }
+}
+
+async function handleRequestTelegramApproval() {
+  const pending = authStore.pendingTwoFactor;
+  if (!pending) return;
+  stopTelegramPoll();
+  errorMessage.value = '';
+  tgApprovalStatus.value = 'waiting';
+  tgApprovalPin.value = '';
+  try {
+    const res = await api.createTelegram2faChallenge(
+      pending.email,
+      pending.masterPasswordHash,
+      navigator.userAgent.slice(0, 80)
+    );
+    tgChallengeId.value = res.challengeId;
+    tgPollSecret.value = res.pollSecret;
+    tgApprovalPin.value = res.pinCode;
+
+    tgPollTimer = setInterval(async () => {
+      try {
+        const poll = await api.pollTelegram2faChallenge(tgChallengeId.value, tgPollSecret.value);
+        if (poll.status === 'approved' && poll.grantToken) {
+          stopTelegramPoll();
+          isSubmitting.value = true;
+          const targetEmail = isUnlockMode.value ? authStore.savedEmail : email.value;
+          await authStore.login(targetEmail, password.value, rememberEmail.value, {
+            token: poll.grantToken,
+            provider: selectedTwoFactorProvider.value,
+            remember: rememberTwoFactor.value,
+          });
+          tgApprovalStatus.value = 'idle';
+          const redirectUrl = (route.query.redirect as string) || '/vault';
+          router.push(redirectUrl);
+        } else if (poll.status === 'rejected') {
+          stopTelegramPoll();
+          tgApprovalStatus.value = 'error';
+          errorMessage.value = 'Вход отклонён в Telegram пользователем.';
+        } else if (poll.status === 'expired') {
+          stopTelegramPoll();
+          tgApprovalStatus.value = 'error';
+          errorMessage.value = 'Время ожидания подтверждения в Telegram истекло.';
+        }
+      } catch {
+        // Transient network hiccup; continue polling until TTL
+      } finally {
+        isSubmitting.value = false;
+      }
+    }, 2000);
+  } catch (err: any) {
+    tgApprovalStatus.value = 'error';
+    errorMessage.value = err?.message || 'Не удалось отправить запрос в Telegram';
+  }
+}
+
 function stopDeviceLoginPoll() {
   if (devicePollTimer) {
     clearInterval(devicePollTimer);
@@ -60,6 +129,7 @@ function stopDeviceLoginPoll() {
 
 onUnmounted(() => {
   stopDeviceLoginPoll();
+  stopTelegramPoll();
 });
 
 function generateReadableAccessCode(): string {
@@ -179,6 +249,8 @@ async function handleSendEmail2fa() {
 }
 
 function handleSwitchAccount() {
+  stopTelegramPoll();
+  tgApprovalStatus.value = 'idle';
   authStore.logout();
   twoFactorStep.value = false;
   password.value = '';
@@ -383,6 +455,31 @@ async function handleLogin() {
               </div>
             </div>
 
+            <div v-if="authStore.pendingTwoFactor?.telegram2faAvailable" class="p-3 rounded-xl bg-sky-500/10 border border-sky-500/30 space-y-2 mb-1">
+              <div class="flex items-center justify-between gap-2">
+                <div class="text-xs font-semibold text-sky-300 flex items-center gap-1.5">
+                  <Send class="w-3.5 h-3.5 text-sky-400" />
+                  <span>Telegram Guard • Вход в 1 клик</span>
+                </div>
+                <span v-if="tgApprovalStatus === 'waiting' && tgApprovalPin" class="px-2 py-0.5 rounded bg-sky-500/20 border border-sky-400/40 font-mono text-xs font-bold text-sky-200">
+                  Пин: {{ tgApprovalPin }}
+                </span>
+              </div>
+              <p v-if="tgApprovalStatus === 'waiting'" class="text-[11.5px] text-slate-300 leading-snug m-0">
+                Нажмите <strong>«✅ Подтвердить ({{ tgApprovalPin }})»</strong> в чате Telegram-бота — вход выполнится автоматически.
+              </p>
+              <button
+                type="button"
+                class="cyber-btn-secondary w-full h-8! text-xs"
+                :disabled="isSubmitting"
+                @click="handleRequestTelegramApproval"
+              >
+                <RefreshCw v-if="tgApprovalStatus === 'waiting'" class="w-3.5 h-3.5 animate-spin text-sky-400" />
+                <Send v-else class="w-3.5 h-3.5 text-sky-400" />
+                <span>{{ tgApprovalStatus === 'waiting' ? 'Ожидание ответа в Telegram (отправить снова)' : 'Подтвердить вход кнопкой в Telegram' }}</span>
+              </button>
+            </div>
+
             <div class="remember-row">
               <label class="remember-label">
                 <input v-model="rememberTwoFactor" type="checkbox" class="cyber-checkbox" />
@@ -392,7 +489,7 @@ async function handleLogin() {
                 <router-link to="/recover-2fa" class="text-[11px] text-amber-400/90 hover:underline">
                   Потеряли 2FA?
                 </router-link>
-                <button type="button" class="text-xs text-slate-400 hover:text-sky-400" @click="twoFactorStep = false">
+                <button type="button" class="text-xs text-slate-400 hover:text-sky-400" @click="stopTelegramPoll(); tgApprovalStatus = 'idle'; twoFactorStep = false">
                   Назад
                 </button>
               </div>

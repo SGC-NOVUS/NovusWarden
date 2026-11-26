@@ -75,12 +75,14 @@ export interface SyncData {
 export class TwoFactorRequiredError extends Error {
   providers: string[];
   providers2: Record<string, any>;
+  telegram2faAvailable: boolean;
 
-  constructor(providers: string[], providers2: Record<string, any>) {
+  constructor(providers: string[], providers2: Record<string, any>, telegram2faAvailable = false) {
     super('Требуется двухфакторная аутентификация');
     this.name = 'TwoFactorRequiredError';
     this.providers = providers;
     this.providers2 = providers2;
+    this.telegram2faAvailable = telegram2faAvailable;
   }
 }
 
@@ -344,7 +346,8 @@ class ApiClient {
       if (Array.isArray(data?.TwoFactorProviders) && data.TwoFactorProviders.length > 0) {
         throw new TwoFactorRequiredError(
           data.TwoFactorProviders.map((p: any) => String(p)),
-          data.TwoFactorProviders2 || {}
+          data.TwoFactorProviders2 || {},
+          Boolean(data?.NovusTelegram2FA)
         );
       }
       throw new Error(extractApiError(data, 'Ошибка входа в систему'));
@@ -1734,6 +1737,135 @@ class ApiClient {
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.ErrorModel?.Message || `Ошибка сохранения Duo организации (${res.status})`);
+    return data;
+  }
+
+  // --- NovusWarden Telegram Guard & Browser Web Push (VAPID) ---
+  async getNotificationsStatus(token: string): Promise<any> {
+    const res = await fetch('/api/novus/notifications/status', {
+      headers: this.getHeaders(token, true),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(extractApiError(data, 'Ошибка загрузки статуса уведомлений'));
+    return data;
+  }
+
+  async createTelegramLinkToken(token: string): Promise<{
+    token: string;
+    botUsername: string;
+    deepLink: string;
+    expiresInSeconds: number;
+  }> {
+    const res = await fetch('/api/novus/telegram/link-token', {
+      method: 'POST',
+      headers: this.getHeaders(token),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(extractApiError(data, 'Не удалось создать ссылку привязки Telegram'));
+    return data;
+  }
+
+  async saveTelegramPreferences(
+    token: string,
+    payload: {
+      otpEnabled: boolean;
+      telegramOnlyOtp: boolean;
+      loginApprovalEnabled: boolean;
+      alertsEnabled: boolean;
+      autoEnableEmail2fa?: boolean;
+    }
+  ): Promise<any> {
+    const res = await fetch('/api/novus/telegram/preferences', {
+      method: 'PUT',
+      headers: this.getHeaders(token),
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(extractApiError(data, 'Не удалось сохранить настройки Telegram'));
+    return data;
+  }
+
+  async sendTelegramTest(token: string): Promise<any> {
+    const res = await fetch('/api/novus/telegram/test', {
+      method: 'POST',
+      headers: this.getHeaders(token),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(extractApiError(data, 'Ошибка отправки тестового сообщения в Telegram'));
+    return data;
+  }
+
+  async unlinkTelegram(token: string): Promise<void> {
+    const res = await fetch('/api/novus/telegram/link', {
+      method: 'DELETE',
+      headers: this.getHeaders(token),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(extractApiError(data, 'Не удалось отвязать Telegram'));
+    }
+  }
+
+  async createTelegram2faChallenge(
+    email: string,
+    masterPasswordHash: string,
+    deviceName = 'NovusWarden Web Vault'
+  ): Promise<{ challengeId: string; pollSecret: string; pinCode: string; expiresInSeconds: number }> {
+    const res = await fetch('/api/novus/telegram/2fa/challenge', {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify({ email, masterPasswordHash, deviceName }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(extractApiError(data, 'Не удалось отправить запрос в Telegram'));
+    return data;
+  }
+
+  async pollTelegram2faChallenge(
+    challengeId: string,
+    pollSecret: string
+  ): Promise<{ status: 'pending' | 'approved' | 'rejected' | 'expired'; grantToken?: string }> {
+    const res = await fetch('/api/novus/telegram/2fa/poll', {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify({ challengeId, pollSecret }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(extractApiError(data, 'Ошибка проверки статуса подтверждения'));
+    return data;
+  }
+
+  async subscribeWebPush(
+    token: string,
+    payload: { endpoint: string; keys: { p256dh: string; auth: string }; userAgent?: string }
+  ): Promise<any> {
+    const res = await fetch('/api/novus/webpush/subscribe', {
+      method: 'POST',
+      headers: this.getHeaders(token),
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(extractApiError(data, 'Не удалось зарегистрировать Web Push подписку'));
+    return data;
+  }
+
+  async unsubscribeWebPush(token: string, subId: string): Promise<any> {
+    const res = await fetch(`/api/novus/webpush/subscribe/${encodeURIComponent(subId)}`, {
+      method: 'DELETE',
+      headers: this.getHeaders(token),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(extractApiError(data, 'Не удалось удалить подписку браузера'));
+    return data;
+  }
+
+  async sendWebPushTest(token: string): Promise<any> {
+    const res = await fetch('/api/novus/webpush/test', {
+      method: 'POST',
+      headers: this.getHeaders(token),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(extractApiError(data, 'Ошибка отправки тестового Push-уведомления'));
     return data;
   }
 }

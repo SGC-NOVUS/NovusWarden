@@ -62,7 +62,9 @@ mod ratelimit;
 mod sso;
 mod sso_client;
 mod storage;
+mod telegram;
 mod util;
+mod webpush;
 
 use crate::api::{
     WS_ANONYMOUS_SUBSCRIPTIONS, WS_USERS, core::two_factor::duo_oidc::purge_duo_contexts, purge_auth_requests,
@@ -672,6 +674,9 @@ fn schedule_jobs(pool: db::DbPool) {
             let _runtime_guard = runtime.enter();
 
             let mut sched = JobScheduler::new();
+
+            // Launch native Telegram Bot long-polling worker (auto-activates when TELEGRAM_ENABLED=true)
+            runtime.spawn(telegram::run_poller_loop(pool.clone()));
 
             // Purge sends that are past their deletion date.
             if !CONFIG.send_purge_schedule().is_empty() {
