@@ -9,6 +9,7 @@ import { generatePassword } from '../crypto/generator.ts';
 import { generateRsaSshKey } from '../crypto/ssh.ts';
 import { notificationsClient } from '../services/notifications.ts';
 import { useI18n } from '@shared/i18n.ts';
+import { copyTextToClipboard } from '@shared/clipboard.ts';
 import ToolModalShell from '../components/ToolModalShell.vue';
 import SettingsView from './SettingsView.vue';
 import GeneratorView from './GeneratorView.vue';
@@ -184,14 +185,18 @@ function showToast(msg: string) {
 
 function copyToClipboard(text?: string | null, label = 'Текст', requireRepromptCheck = false) {
   if (!text) return;
-  const doCopy = () => {
-    navigator.clipboard.writeText(text);
-    showToast(`${label} скопирован в буфер обмена`);
+  const doCopy = async () => {
+    const ok = await copyTextToClipboard(text);
+    showToast(
+      ok
+        ? `${label} скопирован в буфер обмена`
+        : 'Не удалось скопировать автоматически — скопируйте вручную (Ctrl+C)'
+    );
   };
   if (requireRepromptCheck && vaultStore.selectedCipher?.reprompt === 1) {
     runWithReprompt(doCopy);
   } else {
-    doCopy();
+    void doCopy();
   }
 }
 

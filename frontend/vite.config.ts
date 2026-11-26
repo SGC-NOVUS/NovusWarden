@@ -20,9 +20,13 @@ export default defineConfig(({ mode }) => {
   const rollupInput = isAdminBuild
     ? { admin: resolve(__dirname, 'admin/index.html') }
     : isVaultBuild
-    ? { vault: resolve(__dirname, 'vault/index.html') }
+    ? {
+        vault: resolve(__dirname, 'vault/index.html'),
+        'webauthn-fallback-connector': resolve(__dirname, 'vault/webauthn-fallback-connector.html'),
+      }
     : {
         vault: resolve(__dirname, 'vault/index.html'),
+        'webauthn-fallback-connector': resolve(__dirname, 'vault/webauthn-fallback-connector.html'),
         admin: resolve(__dirname, 'admin/index.html'),
       };
 
@@ -37,10 +41,12 @@ export default defineConfig(({ mode }) => {
         if (!isAdminBuild && !isVaultBuild) return;
         const subDirName = isAdminBuild ? 'admin' : 'vault';
         const nestedDir = resolve(outDir, subDirName);
-        const nestedHtml = resolve(nestedDir, 'index.html');
-        const rootHtml = resolve(outDir, 'index.html');
-        if (fs.existsSync(nestedHtml)) {
-          fs.renameSync(nestedHtml, rootHtml);
+        if (fs.existsSync(nestedDir)) {
+          for (const entry of fs.readdirSync(nestedDir)) {
+            if (entry.endsWith('.html')) {
+              fs.renameSync(resolve(nestedDir, entry), resolve(outDir, entry));
+            }
+          }
           fs.rmSync(nestedDir, { recursive: true, force: true });
         }
       },
@@ -116,6 +122,19 @@ export default defineConfig(({ mode }) => {
             if (fs.existsSync(adminHtmlPath)) {
               let html = fs.readFileSync(adminHtmlPath, 'utf-8');
               html = await server.transformIndexHtml('/admin/ui/', html);
+              res.setHeader('Content-Type', 'text/html; charset=utf-8');
+              res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+              res.end(html);
+              return;
+            }
+          }
+
+          // 3.5 WebAuthn Fallback Connector (Vue 3 + Vite)
+          if (cleanUrl === '/webauthn-fallback-connector.html') {
+            const connectorHtmlPath = resolve(__dirname, 'vault/webauthn-fallback-connector.html');
+            if (fs.existsSync(connectorHtmlPath)) {
+              let html = fs.readFileSync(connectorHtmlPath, 'utf-8');
+              html = await server.transformIndexHtml('/webauthn-fallback-connector.html', html);
               res.setHeader('Content-Type', 'text/html; charset=utf-8');
               res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
               res.end(html);

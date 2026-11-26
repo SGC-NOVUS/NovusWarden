@@ -2,6 +2,7 @@
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useVaultStore } from '../stores/vault.ts';
+import { copyTextToClipboard } from '@shared/clipboard.ts';
 import {
   Send,
   ArrowLeft,
@@ -50,7 +51,11 @@ function openSend(item: any) {
 
 async function copyShareLink(item: any) {
   const link = item.shareUrl || `${window.location.origin}/#/send/${item.accessId || item.id}`;
-  await navigator.clipboard.writeText(link);
+  const ok = await copyTextToClipboard(link);
+  if (!ok) {
+    errorMsg.value = 'Не удалось скопировать ссылку автоматически — откройте и скопируйте вручную';
+    return;
+  }
   copiedId.value = item.id;
   setTimeout(() => { copiedId.value = null; }, 2000);
 }

@@ -5,6 +5,11 @@ import { useAuthStore } from '../stores/auth.ts';
 import { useThemeStore } from '../stores/theme.ts';
 import { api, TwoFactorRequiredError } from '../api/client.ts';
 import { generateEphemeralKeyPair } from '../crypto/asymmetric.ts';
+import {
+  parseWebauthnRequestOptions,
+  buildWebauthnAssertionJson,
+  formatWebauthnError,
+} from '../crypto/webauthn.ts';
 import { useI18n } from '@shared/i18n.ts';
 import {
   Lock,
@@ -189,6 +194,8 @@ function handleSsoContinue() {
 }
 
 async function handleLogin() {
+  if (isSubmitting.value) return;
+
   const targetEmail = isUnlockMode.value ? authStore.savedEmail : email.value;
   if (!targetEmail.trim()) {
     errorMessage.value = 'Пожалуйста, введите адрес электронной почты';
@@ -198,7 +205,7 @@ async function handleLogin() {
     errorMessage.value = 'Пожалуйста, введите мастер-пароль';
     return;
   }
-  if (twoFactorStep.value && !twoFactorCode.value.trim()) {
+  if (twoFactorStep.value && selectedTwoFactorProvider.value !== 7 && !twoFactorCode.value.trim()) {
     errorMessage.value = 'Введите код двухфакторной аутентификации';
     return;
   }
@@ -209,6 +216,25 @@ async function handleLogin() {
   try {
     if (isUnlockMode.value && !twoFactorStep.value) {
       await authStore.unlock(password.value);
+    } else if (twoFactorStep.value && selectedTwoFactorProvider.value === 7) {
+      if (typeof navigator === 'undefined' || !('credentials' in navigator)) {
+        throw new Error('WebAuthn не поддерживается в текущем браузере');
+      }
+      const rawWebauthn = authStore.pendingTwoFactor?.providers2?.['7'];
+      if (!rawWebauthn) {
+        throw new Error('Параметры вызова WebAuthn не получены от сервера');
+      }
+      const publicKey = parseWebauthnRequestOptions(rawWebauthn);
+      const asserted = (await navigator.credentials.get({ publicKey })) as PublicKeyCredential | null;
+      if (!asserted) {
+        throw new Error('Не получен ответ от ключа безопасности');
+      }
+      const assertionJson = buildWebauthnAssertionJson(asserted);
+      await authStore.login(targetEmail, password.value, rememberEmail.value, {
+        token: assertionJson,
+        provider: 7,
+        remember: rememberTwoFactor.value,
+      });
     } else {
       await authStore.login(
         targetEmail,
@@ -231,6 +257,7 @@ async function handleLogin() {
       twoFactorProviders.value = err.providers;
       const preferred =
         err.providers.find((p) => p === '0') ??
+        err.providers.find((p) => p === '7') ??
         err.providers.find((p) => p === '1') ??
         err.providers.find((p) => p === '3') ??
         err.providers[0] ??
@@ -244,7 +271,11 @@ async function handleLogin() {
       }
       return;
     }
-    errorMessage.value = err?.message || 'Неверный логин или мастер-пароль';
+    if (twoFactorStep.value && selectedTwoFactorProvider.value === 7 && err?.name) {
+      errorMessage.value = formatWebauthnError(err, locale.value);
+    } else {
+      errorMessage.value = err?.message || 'Неверный логин или мастер-пароль';
+    }
   } finally {
     isSubmitting.value = false;
   }
@@ -321,7 +352,11 @@ async function handleLogin() {
               </select>
             </div>
 
-            <div class="field-group">
+            <div v-if="selectedTwoFactorProvider === 7" class="p-3 rounded-lg bg-sky-500/10 border border-sky-500/30 text-xs text-slate-300 leading-relaxed">
+              Нажмите <strong class="text-sky-300">«Считать ключ безопасности»</strong> и приложите аппаратный ключ FIDO2 или подтвердите Passkey в браузере.
+            </div>
+
+            <div v-else class="field-group">
               <div class="flex justify-between items-center mb-1">
                 <label for="twofactor-code" class="field-label !mb-0">Код подтверждения</label>
                 <button
@@ -427,11 +462,23 @@ async function handleLogin() {
             :disabled="isSubmitting"
           >
             <span v-if="!isSubmitting">
-              {{ twoFactorStep ? t('auth.verifySubmit') : isUnlockMode ? t('auth.unlockSubmit') : t('auth.loginSubmit') }}
+              {{
+                twoFactorStep
+                  ? selectedTwoFactorProvider === 7
+                    ? 'Считать ключ безопасности'
+                    : t('auth.verifySubmit')
+                  : isUnlockMode
+                  ? t('auth.unlockSubmit')
+                  : t('auth.loginSubmit')
+              }}
             </span>
             <span v-else class="flex items-center gap-2">
               <span class="btn-spinner"></span>
-              Расшифровка ключей...
+              {{
+                twoFactorStep && selectedTwoFactorProvider === 7
+                  ? 'Ожидание ключа безопасности...'
+                  : 'Расшифровка ключей...'
+              }}
             </span>
             <ArrowRight v-if="!isSubmitting" class="w-4 h-4" />
           </button>

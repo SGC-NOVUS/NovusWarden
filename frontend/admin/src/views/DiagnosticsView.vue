@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { api, adminUrl, type DiagnosticsData } from '../api/client.ts';
+import { copyTextToClipboard } from '@shared/clipboard.ts';
 
 const loading = ref(true);
 const diag = ref<DiagnosticsData | null>(null);
@@ -121,7 +122,8 @@ async function handleGenerateSupport() {
 
 async function copySupport() {
   if (!supportJson.value) return;
-  await navigator.clipboard.writeText(supportJson.value);
+  const ok = await copyTextToClipboard(supportJson.value);
+  if (!ok) return;
   copied.value = true;
   setTimeout(() => {
     copied.value = false;

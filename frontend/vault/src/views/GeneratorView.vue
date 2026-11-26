@@ -7,6 +7,7 @@ import {
   evaluatePasswordStrength,
   PasswordScore,
 } from '../crypto/generator.ts';
+import { copyTextToClipboard } from '@shared/clipboard.ts';
 import {
   Wand2,
   Copy,
@@ -103,9 +104,10 @@ const strength = computed<PasswordScore>(() => {
   return evaluatePasswordStrength(generatedResult.value);
 });
 
-function copyResult(text = generatedResult.value) {
+async function copyResult(text = generatedResult.value) {
   if (!text) return;
-  navigator.clipboard.writeText(text);
+  const ok = await copyTextToClipboard(text);
+  if (!ok) return;
   copied.value = true;
   setTimeout(() => {
     copied.value = false;

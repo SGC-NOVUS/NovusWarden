@@ -12,6 +12,7 @@ import {
   normalizeSupportedLocale,
   type SupportedLocale,
 } from '@shared/i18n.ts';
+import { copyTextToClipboard } from '@shared/clipboard.ts';
 import { deriveMasterKey, hashMasterPassword, KdfConfig } from '../crypto/kdf.ts';
 import { encrypt, stretchMasterKey } from '../crypto/symmetric.ts';
 import { encryptWithPublicKey } from '../crypto/asymmetric.ts';
@@ -398,10 +399,14 @@ watch(
   { immediate: true }
 );
 
-function copyTotpSecret() {
+async function copyTotpSecret() {
   if (!twoFaSetupKey.value) return;
-  navigator.clipboard.writeText(twoFaSetupKey.value);
-  showToast('Секретный ключ TOTP скопирован');
+  const ok = await copyTextToClipboard(twoFaSetupKey.value);
+  showToast(
+    ok
+      ? 'Секретный ключ TOTP скопирован'
+      : 'Не удалось скопировать автоматически — выделите ключ вручную (Ctrl+C)'
+  );
 }
 
 function closeTotpSetup() {

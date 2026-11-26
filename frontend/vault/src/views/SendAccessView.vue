@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { api, RawSend } from '../api/client.ts';
 import { base64ToBytes } from '../crypto/utils.ts';
 import { deriveSendKey, decrypt, decryptBytes, hashSendPassword } from '../crypto/symmetric.ts';
+import { copyTextToClipboard } from '@shared/clipboard.ts';
 import { ShieldCheck, FileText, Download, Lock, AlertTriangle, Copy, Check } from 'lucide-vue-next';
 
 const route = useRoute();
@@ -70,7 +71,11 @@ async function loadSend(password?: string) {
 
 async function copyText() {
   if (!decryptedText.value) return;
-  await navigator.clipboard.writeText(decryptedText.value);
+  const ok = await copyTextToClipboard(decryptedText.value);
+  if (!ok) {
+    errorMsg.value = 'Не удалось скопировать текст автоматически — выделите его вручную (Ctrl+C)';
+    return;
+  }
   copied.value = true;
   setTimeout(() => { copied.value = false; }, 2000);
 }

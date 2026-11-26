@@ -2,6 +2,7 @@
 export default {
   content: [
     './vault/index.html',
+    './vault/webauthn-fallback-connector.html',
     './vault/src/**/*.{vue,js,ts,jsx,tsx}',
     './admin/index.html',
     './admin/src/**/*.{vue,js,ts,jsx,tsx}',

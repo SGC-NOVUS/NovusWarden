@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
 import { api, type BillingConfig, type UserSummary } from '../api/client.ts';
+import { copyTextToClipboard } from '@shared/clipboard.ts';
 
 // Server operating mode
 const serverMode = ref<'unlimited' | 'managed'>('unlimited');
@@ -147,15 +148,15 @@ function updateCheckoutLink() {
   generatedCheckoutLink.value = `${base}/checkout?plan=${checkoutPlan.value}&period=${checkoutPeriod.value}${emailParam}`;
 }
 
-function copyCheckoutLink() {
-  navigator.clipboard.writeText(generatedCheckoutLink.value);
-  alert('Ссылка на оплату скопирована в буфер обмена!');
+async function copyCheckoutLink() {
+  const ok = await copyTextToClipboard(generatedCheckoutLink.value);
+  alert(ok ? 'Ссылка на оплату скопирована в буфер обмена!' : 'Не удалось скопировать ссылку — выделите её вручную.');
 }
 
-function copyWebhookUrl() {
+async function copyWebhookUrl() {
   const url = `${window.location.origin}/api/billing/webhook`;
-  navigator.clipboard.writeText(url);
-  alert('Webhook URL скопирован: ' + url);
+  const ok = await copyTextToClipboard(url);
+  alert(ok ? 'Webhook URL скопирован: ' + url : 'Webhook URL: ' + url);
 }
 
 // License generator state
