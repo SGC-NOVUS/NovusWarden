@@ -345,7 +345,7 @@ async function handleLogin() {
           <template v-if="twoFactorStep">
             <div v-if="twoFactorProviders.length > 1" class="field-group">
               <label class="field-label">Способ подтверждения</label>
-              <select v-model.number="selectedTwoFactorProvider" class="cyber-input !pl-3">
+              <select v-model.number="selectedTwoFactorProvider" class="cyber-input pl-3!">
                 <option v-for="p in twoFactorProviders" :key="p" :value="Number(p)">
                   {{ providerLabel(p) }}
                 </option>
@@ -358,7 +358,7 @@ async function handleLogin() {
 
             <div v-else class="field-group">
               <div class="flex justify-between items-center mb-1">
-                <label for="twofactor-code" class="field-label !mb-0">Код подтверждения</label>
+                <label for="twofactor-code" class="field-label mb-0!">Код подтверждения</label>
                 <button
                   v-if="selectedTwoFactorProvider === 1"
                   type="button"
@@ -421,7 +421,7 @@ async function handleLogin() {
             <!-- Password Field -->
             <div class="field-group">
               <div class="flex justify-between items-center mb-1">
-                <label for="password" class="field-label !mb-0">{{ t('auth.passwordLabel') }}</label>
+                <label for="password" class="field-label mb-0!">{{ t('auth.passwordLabel') }}</label>
               </div>
               <div class="input-wrap">
                 <KeyRound class="input-icon" />
@@ -563,14 +563,14 @@ async function handleLogin() {
         <div class="flex justify-end gap-2">
           <button
             type="button"
-            class="cyber-btn-secondary !h-8 !px-3"
+            class="cyber-btn-secondary h-8! px-3!"
             @click="showSsoModal = false"
           >
             Отмена
           </button>
           <button
             type="button"
-            class="cyber-btn-primary !h-8 !px-4"
+            class="cyber-btn-primary h-8! px-4!"
             @click="handleSsoContinue"
           >
             Продолжить
@@ -598,7 +598,7 @@ async function handleLogin() {
           {{ deviceLoginError }}
         </div>
         <div class="flex justify-end gap-2">
-          <button type="button" class="cyber-btn-secondary !h-8 !px-3" @click="closeDeviceLoginModal">
+          <button type="button" class="cyber-btn-secondary h-8! px-3!" @click="closeDeviceLoginModal">
             Отмена
           </button>
         </div>

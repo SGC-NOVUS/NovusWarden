@@ -900,7 +900,7 @@ function exportVaultCsv() {
       <div v-if="!props.modal" class="settings-header">
         <button
           type="button"
-          class="cyber-btn-secondary !p-2 !h-9 !w-9"
+          class="cyber-btn-secondary p-2! h-9! w-9!"
           @click="router.push('/vault')"
           title="Вернуться в хранилище"
         >
@@ -975,7 +975,7 @@ function exportVaultCsv() {
                 type="text"
                 :value="authStore.savedEmail"
                 disabled
-                class="cyber-input !opacity-70 !cursor-not-allowed"
+                class="cyber-input opacity-70! cursor-not-allowed!"
               />
               <span class="field-hint">Используется как соль для вычисления мастер-ключа</span>
             </div>
@@ -1220,7 +1220,7 @@ function exportVaultCsv() {
         <!-- KDF Algorithm Configuration (Argon2id Only) -->
         <div class="settings-card mt-4">
           <div class="flex flex-wrap items-center justify-between gap-2 mb-1.5">
-            <h2 class="card-title flex items-center gap-2 !mb-0">
+            <h2 class="card-title flex items-center gap-2 mb-0!">
               <Cpu class="w-4 h-4 text-indigo-400" />
               <span>Алгоритм формирования ключа • Argon2id</span>
             </h2>
@@ -1401,7 +1401,7 @@ function exportVaultCsv() {
         <!-- Two-Factor Authentication (TOTP) -->
         <div class="settings-card mt-6">
           <div class="flex items-center justify-between mb-2">
-            <h2 class="card-title flex items-center gap-2 !mb-0">
+            <h2 class="card-title flex items-center gap-2 mb-0!">
               <Shield class="w-4 h-4 text-emerald-400" />
               <span>Двухфакторная аутентификация (TOTP)</span>
             </h2>
@@ -1463,7 +1463,7 @@ function exportVaultCsv() {
                     </code>
                     <button
                       type="button"
-                      class="cyber-btn-secondary !px-3 shrink-0"
+                      class="cyber-btn-secondary px-3! shrink-0"
                       title="Скопировать ключ"
                       @click="copyTotpSecret"
                     >

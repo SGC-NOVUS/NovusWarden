@@ -500,7 +500,7 @@ const themeLabel = computed(() =>
     <!-- Header -->
     <header class="org-header">
       <div class="flex items-center gap-3">
-        <button type="button" class="cyber-btn-secondary !h-8 !px-3" @click="router.push('/vault')">
+        <button type="button" class="cyber-btn-secondary h-8! px-3!" @click="router.push('/vault')">
           <ArrowLeft class="w-4 h-4" />
           <span>{{ t('nav.backToVault') }}</span>
         </button>
@@ -514,21 +514,21 @@ const themeLabel = computed(() =>
       </div>
 
       <div class="flex items-center gap-2 flex-wrap">
-        <select v-if="authStore.organizations.length" v-model="activeOrgId" class="cyber-select !h-8 !w-52 text-xs">
+        <select v-if="authStore.organizations.length" v-model="activeOrgId" class="cyber-select h-8! w-52! text-xs">
           <option v-for="o in authStore.organizations" :key="o.id" :value="o.id">{{ o.name }}</option>
         </select>
 
-        <button type="button" class="cyber-btn-primary !h-8 !px-3" @click="showCreateModal = true">
+        <button type="button" class="cyber-btn-primary h-8! px-3!" @click="showCreateModal = true">
           <Plus class="w-4 h-4" />
           <span>{{ t('org.createNew') }}</span>
         </button>
 
-        <button type="button" class="cyber-btn-secondary !h-8 !px-2.5 text-xs" @click="cycleLocale" :title="t('lang.label')">
+        <button type="button" class="cyber-btn-secondary h-8! px-2.5! text-xs" @click="cycleLocale" :title="t('lang.label')">
           <Globe class="w-3.5 h-3.5 text-sky-400" />
           <span>{{ locale.toUpperCase() }}</span>
         </button>
 
-        <button type="button" class="cyber-btn-secondary !h-8 !px-2.5 text-xs" @click="themeStore.cycleTheme">
+        <button type="button" class="cyber-btn-secondary h-8! px-2.5! text-xs" @click="themeStore.cycleTheme">
           <component :is="themeIcon" class="w-3.5 h-3.5 text-sky-400" />
           <span>{{ themeLabel }}</span>
         </button>
@@ -646,20 +646,20 @@ const themeLabel = computed(() =>
                 </div>
               </div>
               <div class="flex items-center gap-1.5 flex-wrap">
-                <select :value="m.type" @change="(e: any) => handleChangeMemberRole(m, Number(e.target.value))" class="cyber-select !h-7 !w-28 text-[11px]">
+                <select :value="m.type" @change="(e: any) => handleChangeMemberRole(m, Number(e.target.value))" class="cyber-select h-7! w-28! text-[11px]">
                   <option :value="0">Owner</option>
                   <option :value="1">Admin</option>
                   <option :value="3">Manager</option>
                   <option :value="2">User</option>
                 </select>
-                <button v-if="m.status === 1" type="button" class="cyber-btn-primary !h-7 !px-2 text-[11px]" @click="handleConfirmMember(m)">
+                <button v-if="m.status === 1" type="button" class="cyber-btn-primary h-7! px-2! text-[11px]" @click="handleConfirmMember(m)">
                   <CheckCircle2 class="w-3.5 h-3.5" /> Подтвердить
                 </button>
-                <button type="button" class="cyber-btn-secondary !h-7 !px-2 text-[11px]" @click="handleRevokeRestoreMember(m)">
+                <button type="button" class="cyber-btn-secondary h-7! px-2! text-[11px]" @click="handleRevokeRestoreMember(m)">
                   <component :is="m.status < 0 ? RotateCcw : Ban" class="w-3.5 h-3.5" />
                   <span>{{ m.status < 0 ? 'Восст.' : 'Отозвать' }}</span>
                 </button>
-                <button type="button" class="cyber-btn-danger !h-7 !px-2 text-[11px]" @click="handleDeleteMember(m)">
+                <button type="button" class="cyber-btn-danger h-7! px-2! text-[11px]" @click="handleDeleteMember(m)">
                   <Trash2 class="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -685,7 +685,7 @@ const themeLabel = computed(() =>
                 <div class="font-semibold text-slate-200">{{ col.name }}</div>
                 <div class="text-[11px] text-slate-400 font-mono">{{ col.id }}</div>
               </div>
-              <button type="button" class="cyber-btn-danger !h-7 !px-2.5 text-[11px]" @click="handleDeleteCollection(col.id)">
+              <button type="button" class="cyber-btn-danger h-7! px-2.5! text-[11px]" @click="handleDeleteCollection(col.id)">
                 <Trash2 class="w-3.5 h-3.5" />
               </button>
             </div>
@@ -715,7 +715,7 @@ const themeLabel = computed(() =>
                 <span class="font-semibold text-slate-200">{{ g.name }}</span>
                 <span v-if="g.accessAll" class="ml-2 px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400 text-[10px]">Все коллекции</span>
               </div>
-              <button type="button" class="cyber-btn-danger !h-7 !px-2.5 text-[11px]" @click="handleDeleteGroup(g.id)">
+              <button type="button" class="cyber-btn-danger h-7! px-2.5! text-[11px]" @click="handleDeleteGroup(g.id)">
                 <Trash2 class="w-3.5 h-3.5" />
               </button>
             </div>
@@ -735,7 +735,7 @@ const themeLabel = computed(() =>
             </div>
             <button
               type="button"
-              :class="isPolicyEnabled(pol.type) ? 'cyber-btn-primary !h-7 !px-3' : 'cyber-btn-secondary !h-7 !px-3'"
+              :class="isPolicyEnabled(pol.type) ? 'cyber-btn-primary h-7! px-3!' : 'cyber-btn-secondary h-7! px-3!'"
               @click="handleTogglePolicy(pol.type)"
             >
               {{ isPolicyEnabled(pol.type) ? t('common.enabled') : t('common.disabled') }}

@@ -21,10 +21,10 @@ defineProps({
   <EmailLayout :img-src="img_src" :heading="tSubject">
     <EText class="nw-text" style="font-size: 15px; color: #334155; text-align: center">{{ tIntro }}</EText>
     <ESection class="nw-box" style="background-color: #f8fafc; padding: 18px 20px; border-radius: 8px; border: 1px solid #cbd5e1">
-      <EText style="font-size: 15px; color: #0284c7; text-align: center">{{ tHint }}: <strong>"{{ hint }}"</strong></EText>
-      <EText class="nw-text" style="font-size: 14px; color: #334155; text-align: center">{{ tLoginHtml }}: <a :href="`${url}/`" style="color: #0284c7">{{ tLoginLink }}</a></EText>
+      <EText class="nw-accent" style="font-size: 15px; color: #0284c7; text-align: center">{{ tHint }}: <strong>"{{ hint }}"</strong></EText>
+      <EText class="nw-text" style="font-size: 14px; color: #334155; text-align: center">{{ tLoginHtml }}: <a class="nw-link" :href="`${url}/`" style="color: #0284c7">{{ tLoginLink }}</a></EText>
     </ESection>
-    <EText class="nw-text" style="font-size: 14px; color: #334155; text-align: center">{{ tRecPre }} <a :href="`${url}/#/recover-delete`" style="color: #0284c7">{{ tRecLink }}</a> {{ tRecSuf }}</EText>
+    <EText class="nw-text" style="font-size: 14px; color: #334155; text-align: center">{{ tRecPre }} <a class="nw-link" :href="`${url}/#/recover-delete`" style="color: #0284c7">{{ tRecLink }}</a> {{ tRecSuf }}</EText>
     <EText class="nw-muted" style="font-size: 13px; color: #64748b; text-align: center">{{ tIgnore }}</EText>
   </EmailLayout>
 </template>

@@ -105,7 +105,7 @@ onMounted(loadOrganizations);
       <div style="display: flex; gap: 10px; flex-wrap: wrap;">
         <router-link
           to="/subscriptions"
-          style="background-color: var(--admin-surface-bg, #1f2937); color: #fbbf24; border: 1px solid #b45309; padding: 8px 14px; border-radius: 6px; font-size: 13px; font-weight: 600; text-decoration: none; display: flex; align-items: center; gap: 6px;"
+          style="background-color: var(--admin-badge-amber-bg); color: var(--admin-badge-amber-text); border: 1px solid var(--admin-badge-amber-border); padding: 8px 14px; border-radius: 6px; font-size: 13px; font-weight: 600; text-decoration: none; display: flex; align-items: center; gap: 6px;"
         >
           💎 Тарифы B2B для организаций
         </router-link>
@@ -123,13 +123,13 @@ onMounted(loadOrganizations);
       v-if="message"
       :style="{
         padding: '12px 16px',
-        borderRadius: '6px',
+        borderRadius: '8px',
         marginBottom: '20px',
         fontSize: '13px',
         fontWeight: 500,
-        backgroundColor: message.error ? '#450a0a' : '#052e16',
-        color: message.error ? '#fca5a5' : '#86efac',
-        border: message.error ? '1px solid #991b1b' : '1px solid #166534',
+        backgroundColor: message.error ? 'var(--admin-badge-red-bg)' : 'var(--admin-badge-green-bg)',
+        color: message.error ? 'var(--admin-badge-red-text)' : 'var(--admin-badge-green-text)',
+        border: message.error ? '1px solid var(--admin-badge-red-border)' : '1px solid var(--admin-badge-green-border)',
       }"
     >
       {{ message.text }}
@@ -177,7 +177,7 @@ onMounted(loadOrganizations);
             <!-- Org details -->
             <td style="padding: 14px 18px;">
               <div style="display: flex; align-items: center; gap: 12px;">
-                <div style="width: 38px; height: 38px; border-radius: 8px; background-color: #312e81; color: #c7d2fe; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; flex-shrink: 0;">
+                <div style="width: 38px; height: 38px; border-radius: 8px; background-color: var(--admin-badge-purple-bg); color: var(--admin-badge-purple-text); border: 1px solid var(--admin-badge-purple-border); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; flex-shrink: 0;">
                   {{ org.name.charAt(0).toUpperCase() }}
                 </div>
                 <div>
@@ -226,13 +226,13 @@ onMounted(loadOrganizations);
               <div style="display: flex; gap: 8px; justify-content: flex-end;">
                 <button
                   @click="openOrgDetails(org)"
-                  style="background-color: var(--admin-surface-bg, #1f2937); color: #93c5fd; border: 1px solid #1d4ed8; padding: 6px 12px; border-radius: 4px; font-size: 12px; font-weight: 600; cursor: pointer;"
+                  style="background-color: var(--admin-badge-blue-bg); color: var(--admin-badge-blue-text); border: 1px solid var(--admin-badge-blue-border); padding: 6px 12px; border-radius: 5px; font-size: 12px; font-weight: 600; cursor: pointer;"
                 >
                   🔍 Подробнее
                 </button>
                 <button
                   @click="handleDeleteOrg(org)"
-                  style="background-color: #450a0a; color: #f87171; border: 1px solid #991b1b; padding: 6px 12px; border-radius: 4px; font-size: 12px; font-weight: 600; cursor: pointer;"
+                  style="background-color: var(--admin-badge-red-bg); color: var(--admin-badge-red-text); border: 1px solid var(--admin-badge-red-border); padding: 6px 12px; border-radius: 5px; font-size: 12px; font-weight: 600; cursor: pointer;"
                 >
                   Удалить организацию
                 </button>
@@ -283,8 +283,8 @@ onMounted(loadOrganizations);
           </div>
 
           <div>
-            <h4 style="margin: 0 0 8px 0; font-size: 13px; color: #93c5fd;">Участники ({{ orgDetail.members.length }})</h4>
-            <div v-if="orgDetail.members.length === 0" style="color: #6b7280; font-size: 12px;">Нет участников</div>
+            <h4 style="margin: 0 0 8px 0; font-size: 13px; color: var(--admin-blue);">Участники ({{ orgDetail.members.length }})</h4>
+            <div v-if="orgDetail.members.length === 0" style="color: var(--admin-text-muted); font-size: 12px;">Нет участников</div>
             <div v-else style="border: 1px solid var(--admin-card-border, #1f2937); border-radius: 6px; overflow: hidden;">
               <div
                 v-for="m in orgDetail.members"
@@ -296,9 +296,9 @@ onMounted(loadOrganizations);
                   <span v-if="m.name" style="color: var(--admin-text-secondary, #9ca3af); margin-left: 6px;">({{ m.name }})</span>
                 </div>
                 <div style="display: flex; gap: 6px; font-size: 11px;">
-                  <span style="background: #1e3a8a; color: #93c5fd; padding: 2px 7px; border-radius: 4px;">{{ roleLabel(m.type) }}</span>
-                  <span style="background: var(--admin-surface-bg, #1f2937); color: var(--admin-text-subtle, #cbd5e1); padding: 2px 7px; border-radius: 4px;">{{ memberStatusLabel(m.status) }}</span>
-                  <span v-if="m.accessAll" style="background: #064e3b; color: #6ee7b7; padding: 2px 7px; border-radius: 4px;">Access All</span>
+                  <span style="background: var(--admin-badge-blue-bg); color: var(--admin-badge-blue-text); border: 1px solid var(--admin-badge-blue-border); padding: 2px 7px; border-radius: 4px;">{{ roleLabel(m.type) }}</span>
+                  <span style="background: var(--admin-badge-neutral-bg); color: var(--admin-badge-neutral-text); padding: 2px 7px; border-radius: 4px;">{{ memberStatusLabel(m.status) }}</span>
+                  <span v-if="m.accessAll" style="background: var(--admin-badge-green-bg); color: var(--admin-badge-green-text); padding: 2px 7px; border-radius: 4px;">Access All</span>
                 </div>
               </div>
             </div>
@@ -306,17 +306,17 @@ onMounted(loadOrganizations);
 
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
             <div>
-              <h4 style="margin: 0 0 8px 0; font-size: 13px; color: #93c5fd;">Коллекции ({{ orgDetail.collections.length }})</h4>
-              <div v-if="orgDetail.collections.length === 0" style="color: #6b7280; font-size: 12px;">Нет коллекций</div>
+              <h4 style="margin: 0 0 8px 0; font-size: 13px; color: var(--admin-blue);">Коллекции ({{ orgDetail.collections.length }})</h4>
+              <div v-if="orgDetail.collections.length === 0" style="color: var(--admin-text-muted); font-size: 12px;">Нет коллекций</div>
               <ul v-else style="margin: 0; padding-left: 16px; color: var(--admin-text-subtle, #cbd5e1); font-size: 12px;">
                 <li v-for="c in orgDetail.collections" :key="c.id">{{ c.id }}</li>
               </ul>
             </div>
             <div>
-              <h4 style="margin: 0 0 8px 0; font-size: 13px; color: #93c5fd;">Группы ({{ orgDetail.groups.length }})</h4>
-              <div v-if="orgDetail.groups.length === 0" style="color: #6b7280; font-size: 12px;">Нет групп</div>
+              <h4 style="margin: 0 0 8px 0; font-size: 13px; color: var(--admin-blue);">Группы ({{ orgDetail.groups.length }})</h4>
+              <div v-if="orgDetail.groups.length === 0" style="color: var(--admin-text-muted); font-size: 12px;">Нет групп</div>
               <ul v-else style="margin: 0; padding-left: 16px; color: var(--admin-text-subtle, #cbd5e1); font-size: 12px;">
-                <li v-for="g in orgDetail.groups" :key="g.id">{{ g.name }} <span v-if="g.accessAll" style="color: #34d399;">(All)</span></li>
+                <li v-for="g in orgDetail.groups" :key="g.id">{{ g.name }} <span v-if="g.accessAll" style="color: var(--admin-emerald);">(All)</span></li>
               </ul>
             </div>
           </div>

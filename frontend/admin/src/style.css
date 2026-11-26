@@ -1,21 +1,57 @@
+@import "tailwindcss/theme" layer(theme);
+@import "tailwindcss/utilities" layer(utilities);
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* NovusWarden Control Plane Unified Design Tokens & Utilities */
 :root,
 html.dark {
+  color-scheme: dark;
   --admin-bg: #020814;
   --admin-bg-grad: radial-gradient(ellipse at 50% 0%, #091a36 0%, #030a18 55%, #01050d 100%);
   --admin-sidebar-bg: rgba(7, 13, 27, 0.94);
   --admin-header-bg: rgba(8, 15, 30, 0.88);
   --admin-card-bg: rgba(13, 22, 41, 0.88);
   --admin-surface-bg: rgba(17, 29, 54, 0.85);
+  --admin-surface-alt: rgba(7, 13, 27, 0.9);
+  --admin-table-head: rgba(15, 23, 42, 0.88);
   --admin-card-border: rgba(56, 189, 248, 0.18);
   --admin-card-border-strong: rgba(56, 189, 248, 0.34);
   --admin-card-shadow: 0 18px 42px -12px rgba(0, 0, 0, 0.65);
   --admin-input-bg: rgba(4, 9, 21, 0.9);
   --admin-input-border: rgba(51, 65, 85, 0.9);
   --admin-text-main: #f8fafc;
+  --admin-text-subtle: #cbd5e1;
   --admin-text-secondary: #94a3b8;
   --admin-text-muted: #64748b;
   --admin-accent: #38bdf8;
+  --admin-sky: #38bdf8;
+  --admin-blue: #93c5fd;
+  --admin-emerald: #34d399;
+  --admin-amber: #fbbf24;
+  --admin-purple: #c084fc;
+  --admin-rose: #fb7185;
+  --admin-btn-bg: rgba(17, 29, 54, 0.88);
+  --admin-btn-border: #334155;
+  --admin-btn-text: #f8fafc;
+  /* Adaptive Semantic Badges & Alerts */
+  --admin-badge-green-bg: rgba(6, 78, 59, 0.72);
+  --admin-badge-green-text: #6ee7b7;
+  --admin-badge-green-border: rgba(16, 185, 129, 0.45);
+  --admin-badge-blue-bg: rgba(12, 74, 110, 0.72);
+  --admin-badge-blue-text: #7dd3fc;
+  --admin-badge-blue-border: rgba(56, 189, 248, 0.42);
+  --admin-badge-amber-bg: rgba(113, 63, 18, 0.68);
+  --admin-badge-amber-text: #fde68a;
+  --admin-badge-amber-border: rgba(245, 158, 11, 0.45);
+  --admin-badge-purple-bg: rgba(76, 29, 149, 0.7);
+  --admin-badge-purple-text: #e9d5ff;
+  --admin-badge-purple-border: rgba(139, 92, 246, 0.5);
+  --admin-badge-red-bg: rgba(127, 29, 29, 0.55);
+  --admin-badge-red-text: #fca5a5;
+  --admin-badge-red-border: rgba(239, 68, 68, 0.48);
+  --admin-badge-neutral-bg: rgba(51, 65, 85, 0.72);
+  --admin-badge-neutral-text: #cbd5e1;
+  --admin-badge-neutral-border: rgba(100, 116, 139, 0.48);
   --card-elevated: rgba(15, 23, 42, 0.98);
   --card-border-strong: rgba(56, 189, 248, 0.35);
   --text-primary: #f8fafc;
@@ -26,21 +62,53 @@ html.dark {
 }
 
 html.light {
+  color-scheme: light;
   --admin-bg: #f1f5f9;
   --admin-bg-grad: radial-gradient(ellipse at 50% 0%, #ffffff 0%, #f1f5f9 60%, #e2e8f0 100%);
   --admin-sidebar-bg: #ffffff;
   --admin-header-bg: rgba(255, 255, 255, 0.92);
-  --admin-card-bg: rgba(255, 255, 255, 0.96);
+  --admin-card-bg: rgba(255, 255, 255, 0.98);
   --admin-surface-bg: #f8fafc;
-  --admin-card-border: rgba(15, 23, 42, 0.1);
-  --admin-card-border-strong: rgba(2, 132, 199, 0.32);
-  --admin-card-shadow: 0 12px 32px -10px rgba(15, 23, 42, 0.1);
+  --admin-surface-alt: #f1f5f9;
+  --admin-table-head: #f1f5f9;
+  --admin-card-border: rgba(15, 23, 42, 0.11);
+  --admin-card-border-strong: rgba(2, 132, 199, 0.34);
+  --admin-card-shadow: 0 12px 32px -10px rgba(15, 23, 42, 0.08);
   --admin-input-bg: #ffffff;
   --admin-input-border: #cbd5e1;
   --admin-text-main: #0f172a;
+  --admin-text-subtle: #334155;
   --admin-text-secondary: #475569;
   --admin-text-muted: #64748b;
   --admin-accent: #0284c7;
+  --admin-sky: #0284c7;
+  --admin-blue: #1d4ed8;
+  --admin-emerald: #047857;
+  --admin-amber: #b45309;
+  --admin-purple: #6d28d9;
+  --admin-rose: #be123c;
+  --admin-btn-bg: #ffffff;
+  --admin-btn-border: #cbd5e1;
+  --admin-btn-text: #0f172a;
+  /* Adaptive Semantic Badges & Alerts (WCAG AA+ on white) */
+  --admin-badge-green-bg: #ecfdf5;
+  --admin-badge-green-text: #065f46;
+  --admin-badge-green-border: #6ee7b7;
+  --admin-badge-blue-bg: #eff6ff;
+  --admin-badge-blue-text: #1d4ed8;
+  --admin-badge-blue-border: #93c5fd;
+  --admin-badge-amber-bg: #fffbeb;
+  --admin-badge-amber-text: #92400e;
+  --admin-badge-amber-border: #fcd34d;
+  --admin-badge-purple-bg: #f5f3ff;
+  --admin-badge-purple-text: #5b21b6;
+  --admin-badge-purple-border: #c4b5fd;
+  --admin-badge-red-bg: #fef2f2;
+  --admin-badge-red-text: #b91c1c;
+  --admin-badge-red-border: #fca5a5;
+  --admin-badge-neutral-bg: #f1f5f9;
+  --admin-badge-neutral-text: #334155;
+  --admin-badge-neutral-border: #cbd5e1;
   --card-elevated: #ffffff;
   --card-border-strong: #cbd5e1;
   --text-primary: #0f172a;
@@ -65,6 +133,10 @@ body {
   color: var(--admin-text-main);
 }
 
+html.light .text-sky-400 {
+  color: #0284c7;
+}
+
 .admin-sticky-save-bar {
   position: fixed;
   left: 50%;
@@ -78,6 +150,6 @@ body {
   border-radius: 14px;
   background: var(--card-elevated);
   border: 1px solid var(--admin-card-border-strong);
-  box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.65);
+  box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.45);
   backdrop-filter: blur(14px);
 }

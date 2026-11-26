@@ -104,11 +104,11 @@ onMounted(loadDevices);
 <template>
   <section class="settings-card">
     <div class="flex items-center justify-between gap-2 mb-2">
-      <h2 class="card-heading !mb-0">
+      <h2 class="card-heading mb-0!">
         <Monitor class="w-4 h-4 text-sky-400" />
         <span>Активные устройства и доверенные 2FA-сессии</span>
       </h2>
-      <button type="button" class="cyber-btn-secondary !h-7 !px-2.5 !text-[11px]" :disabled="loading" @click="loadDevices">
+      <button type="button" class="cyber-btn-secondary h-7! px-2.5! text-[11px]!" :disabled="loading" @click="loadDevices">
         <RefreshCw class="w-3 h-3" :class="{ 'animate-spin': loading }" />
         <span>Обновить</span>
       </button>
@@ -164,7 +164,7 @@ onMounted(loadDevices);
         <button
           v-if="dev.twoFactorRemember || dev.isTrusted"
           type="button"
-          class="cyber-btn-danger !h-7 !px-2.5 !text-[11px] shrink-0 self-end sm:self-center"
+          class="cyber-btn-danger h-7! px-2.5! text-[11px]! shrink-0 self-end sm:self-center"
           :disabled="revokingId === dev.identifier"
           @click="handleRevokeTrust(dev)"
         >

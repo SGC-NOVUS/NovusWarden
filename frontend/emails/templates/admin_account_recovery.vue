@@ -22,7 +22,7 @@ defineProps({
 <template>
   <EmailLayout :img-src="img_src" :heading="`${tSubjPre} ${org_name} ${tSubjSuf}`">
     <EText class="nw-text" style="font-size: 15px; color: #334155; line-height: 24px; text-align: center">
-      {{ ifResetPw }}{{ tResetPwPre }} <strong style="color: #0f172a">{{ user_name }}</strong> {{ tResetPwSuf }}{{ endIf }}
+      {{ ifResetPw }}{{ tResetPwPre }} <strong class="nw-strong" style="color: #0f172a">{{ user_name }}</strong> {{ tResetPwSuf }}{{ endIf }}
       {{ ifReset2fa }} {{ tReset2fa }}{{ ifFallback }} {{ tFallback2fa }}{{ endIf }}{{ endIf }}
     </EText>
     <EText class="nw-muted" style="font-size: 13px; color: #64748b; line-height: 20px; text-align: center">{{ tIgnore }}</EText>

@@ -129,7 +129,7 @@ onMounted(parseParams);
         <button
           id="webauthn-button"
           type="button"
-          class="cyber-btn-primary w-full !h-11 !text-sm"
+          class="cyber-btn-primary w-full h-11! text-sm!"
           :disabled="isReading || (!hasPayload && !returnUri)"
           @click="handleAction"
         >

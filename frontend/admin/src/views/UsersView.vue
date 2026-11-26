@@ -151,15 +151,15 @@ function getPlanBadge(plan?: string) {
   switch ((plan || '').toLowerCase()) {
     case 'enterprise':
     case 'enterprise + pam':
-      return { label: '🏢 Enterprise', bg: '#4c1d95', color: '#e9d5ff', border: '#7c3aed' };
+      return { label: '🏢 Enterprise', bg: 'var(--admin-badge-purple-bg)', color: 'var(--admin-badge-purple-text)', border: 'var(--admin-badge-purple-border)' };
     case 'lifetime':
     case 'lifetime vip':
     case 'vip':
-      return { label: '👑 Lifetime VIP', bg: '#78350f', color: '#fde68a', border: '#d97706' };
+      return { label: '👑 Lifetime VIP', bg: 'var(--admin-badge-amber-bg)', color: 'var(--admin-badge-amber-text)', border: 'var(--admin-badge-amber-border)' };
     case 'pro':
-      return { label: '⚡ Novus Pro', bg: '#0369a1', color: '#bae6fd', border: '#0284c7' };
+      return { label: '⚡ Novus Pro', bg: 'var(--admin-badge-blue-bg)', color: 'var(--admin-badge-blue-text)', border: 'var(--admin-badge-blue-border)' };
     default:
-      return { label: 'Free', bg: 'var(--admin-surface-bg, #1f2937)', color: 'var(--admin-text-secondary, #94a3b8)', border: 'var(--admin-input-border, #374151)' };
+      return { label: 'Free', bg: 'var(--admin-badge-neutral-bg)', color: 'var(--admin-badge-neutral-text)', border: 'var(--admin-badge-neutral-border)' };
   }
 }
 
@@ -319,12 +319,12 @@ function getRoleLabel(type: number): string {
 
 function getRoleBadgeStyle(type: number) {
   switch (type) {
-    case 0: return { backgroundColor: '#701a75', color: '#f5d0fe', border: '1px solid #a21caf' };
-    case 1: return { backgroundColor: 'rgba(37, 99, 235, 0.22)', color: '#0284c7', border: '1px solid #2563eb' };
+    case 0: return { backgroundColor: 'var(--admin-badge-purple-bg)', color: 'var(--admin-badge-purple-text)', border: '1px solid var(--admin-badge-purple-border)' };
+    case 1: return { backgroundColor: 'var(--admin-badge-blue-bg)', color: 'var(--admin-badge-blue-text)', border: '1px solid var(--admin-badge-blue-border)' };
     case 3:
     case 4:
-      return { backgroundColor: '#14532d', color: '#86efac', border: '1px solid #16a34a' };
-    default: return { backgroundColor: 'var(--admin-surface-bg, #1f2937)', color: 'var(--admin-text-subtle, #cbd5e1)', border: '1px solid #374151' };
+      return { backgroundColor: 'var(--admin-badge-green-bg)', color: 'var(--admin-badge-green-text)', border: '1px solid var(--admin-badge-green-border)' };
+    default: return { backgroundColor: 'var(--admin-badge-neutral-bg)', color: 'var(--admin-badge-neutral-text)', border: '1px solid var(--admin-badge-neutral-border)' };
   }
 }
 
@@ -363,13 +363,13 @@ onMounted(loadUsers);
         <button
           @click="handleForceResync"
           :disabled="resyncing"
-          style="background-color: var(--admin-surface-bg, #1f2937); color: #fbbf24; border: 1px solid #b45309; padding: 8px 14px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;"
+          style="background-color: var(--admin-badge-amber-bg); color: var(--admin-badge-amber-text); border: 1px solid var(--admin-badge-amber-border); padding: 8px 14px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;"
         >
           🔄 {{ resyncing ? 'Синхронизация...' : 'Синхронизировать клиентов' }}
         </button>
         <button
           @click="handleExportUsers"
-          style="background-color: var(--admin-surface-bg, #1f2937); color: #34d399; border: 1px solid var(--admin-input-border, #374151); padding: 8px 14px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;"
+          style="background-color: var(--admin-surface-bg, #1f2937); color: var(--admin-emerald, #34d399); border: 1px solid var(--admin-input-border, #374151); padding: 8px 14px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;"
         >
           📥 Экспорт JSON
         </button>
@@ -387,13 +387,13 @@ onMounted(loadUsers);
       v-if="message"
       :style="{
         padding: '12px 16px',
-        borderRadius: '6px',
+        borderRadius: '8px',
         marginBottom: '20px',
         fontSize: '13px',
         fontWeight: 500,
-        backgroundColor: message.error ? '#450a0a' : '#052e16',
-        color: message.error ? '#fca5a5' : '#86efac',
-        border: message.error ? '1px solid #991b1b' : '1px solid #166534',
+        backgroundColor: message.error ? 'var(--admin-badge-red-bg)' : 'var(--admin-badge-green-bg)',
+        color: message.error ? 'var(--admin-badge-red-text)' : 'var(--admin-badge-green-text)',
+        border: message.error ? '1px solid var(--admin-badge-red-border)' : '1px solid var(--admin-badge-green-border)',
       }"
     >
       {{ message.text }}
@@ -412,7 +412,7 @@ onMounted(loadUsers);
         />
         <select
           v-model="invitePlan"
-          style="background-color: var(--admin-input-bg, #0b0f19); border: 1px solid var(--admin-input-border, #374151); color: #93c5fd; padding: 10px 12px; border-radius: 6px; font-size: 13px; font-weight: 600; outline: none; cursor: pointer;"
+          style="background-color: var(--admin-input-bg, #0b0f19); border: 1px solid var(--admin-input-border, #374151); color: var(--admin-blue, #93c5fd); padding: 10px 12px; border-radius: 6px; font-size: 13px; font-weight: 600; outline: none; cursor: pointer;"
           title="Выберите тарифный план для приглашаемого пользователя"
         >
           <option value="free">Тариф: Free</option>
@@ -469,9 +469,9 @@ onMounted(loadUsers);
               fontSize: '12px',
               fontWeight: 600,
               cursor: 'pointer',
-              border: statusFilter === pill.id ? '1px solid #3b82f6' : '1px solid #374151',
-              backgroundColor: statusFilter === pill.id ? 'rgba(37, 99, 235, 0.22)' : 'var(--admin-surface-bg, #1f2937)',
-              color: statusFilter === pill.id ? '#0284c7' : 'var(--admin-text-secondary, #9ca3af)',
+              border: statusFilter === pill.id ? '1px solid var(--admin-badge-blue-border)' : '1px solid var(--admin-input-border)',
+              backgroundColor: statusFilter === pill.id ? 'var(--admin-badge-blue-bg)' : 'var(--admin-surface-bg)',
+              color: statusFilter === pill.id ? 'var(--admin-badge-blue-text)' : 'var(--admin-text-secondary)',
             }"
           >
             {{ pill.label }}
@@ -514,7 +514,7 @@ onMounted(loadUsers);
             <!-- User Info Column -->
             <td style="padding: 14px 18px;">
               <div style="display: flex; align-items: center; gap: 12px;">
-                <div style="width: 36px; height: 36px; border-radius: 8px; background-color: #1e3a8a; color: #93c5fd; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; flex-shrink: 0;">
+                <div style="width: 36px; height: 36px; border-radius: 8px; background-color: var(--admin-badge-blue-bg); color: var(--admin-badge-blue-text); border: 1px solid var(--admin-badge-blue-border); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; flex-shrink: 0;">
                   {{ (user.name || user.email || 'U').charAt(0).toUpperCase() }}
                 </div>
                 <div>
@@ -533,39 +533,39 @@ onMounted(loadUsers);
               <div style="display: flex; flex-direction: column; gap: 4px; align-items: flex-start;">
                 <span
                   v-if="!user.userEnabled"
-                  style="font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 4px; background-color: #450a0a; color: #f87171; border: 1px solid #991b1b;"
+                  style="font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 5px; background-color: var(--admin-badge-red-bg); color: var(--admin-badge-red-text); border: 1px solid var(--admin-badge-red-border);"
                 >
                   Отключен
                 </span>
                 <span
                   v-else-if="user.status === 1"
-                  style="font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 4px; background-color: #713f12; color: #fde047; border: 1px solid #a16207;"
+                  style="font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 5px; background-color: var(--admin-badge-amber-bg); color: var(--admin-badge-amber-text); border: 1px solid var(--admin-badge-amber-border);"
                 >
                   Приглашён
                 </span>
                 <span
                   v-else
-                  style="font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 4px; background-color: #064e3b; color: #34d399; border: 1px solid #059669;"
+                  style="font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 5px; background-color: var(--admin-badge-green-bg); color: var(--admin-badge-green-text); border: 1px solid var(--admin-badge-green-border);"
                 >
                   Активен
                 </span>
 
                 <span
                   v-if="user.twoFactorEnabled"
-                  style="font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 4px; background-color: #064e3b; color: #86efac;"
+                  style="font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 5px; background-color: var(--admin-badge-green-bg); color: var(--admin-badge-green-text); border: 1px solid var(--admin-badge-green-border);"
                 >
                   🛡️ 2FA
                 </span>
 
                 <span
                   v-if="user.emailVerified"
-                  style="font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 4px; background-color: #0c4a6e; color: #7dd3fc;"
+                  style="font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 5px; background-color: var(--admin-badge-blue-bg); color: var(--admin-badge-blue-text); border: 1px solid var(--admin-badge-blue-border);"
                 >
                   ✉️ Подтверждён
                 </span>
                 <span
                   v-else
-                  style="font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 4px; background-color: #374151; color: var(--admin-text-secondary, #9ca3af);"
+                  style="font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 5px; background-color: var(--admin-badge-neutral-bg); color: var(--admin-badge-neutral-text); border: 1px solid var(--admin-badge-neutral-border);"
                 >
                   ✉️ Не подтверждён
                 </span>
@@ -575,7 +575,7 @@ onMounted(loadUsers);
                     fontSize: '10px',
                     fontWeight: 600,
                     padding: '2px 6px',
-                    borderRadius: '4px',
+                    borderRadius: '5px',
                     backgroundColor: getPlanBadge(user.subscriptionPlan).bg,
                     color: getPlanBadge(user.subscriptionPlan).color,
                     border: `1px solid ${getPlanBadge(user.subscriptionPlan).border}`,
@@ -590,10 +590,10 @@ onMounted(loadUsers);
 
             <!-- SSO Column -->
             <td style="padding: 14px 18px; font-size: 12px; color: var(--admin-text-subtle, #cbd5e1);">
-              <div v-if="user.ssoIdentifier" style="font-family: monospace; font-size: 11px; color: #38bdf8;">
+              <div v-if="user.ssoIdentifier" style="font-family: monospace; font-size: 11px; color: var(--admin-sky, #38bdf8);">
                 {{ user.ssoIdentifier }}
               </div>
-              <span v-else style="color: #64748b;">—</span>
+              <span v-else style="color: var(--admin-text-muted, #64748b);">—</span>
             </td>
 
             <!-- Ciphers Column -->
@@ -644,21 +644,21 @@ onMounted(loadUsers);
                 <button
                   @click="openUserDetailsModal(user)"
                   title="Подробная информация из базы"
-                  style="background: var(--admin-surface-bg, #1f2937); color: #93c5fd; border: 1px solid #1d4ed8; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; cursor: pointer;"
+                  style="background: var(--admin-badge-blue-bg); color: var(--admin-badge-blue-text); border: 1px solid var(--admin-badge-blue-border); padding: 4px 8px; border-radius: 5px; font-size: 11px; font-weight: 600; cursor: pointer;"
                 >
                   🔍 Детали
                 </button>
                 <button
                   @click="openLicenseModal(user)"
                   title="Назначить лицензию / изменить тарифный план"
-                  style="background: #1e1b4b; color: #c084fc; border: 1px solid #7c3aed; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; cursor: pointer;"
+                  style="background: var(--admin-badge-purple-bg); color: var(--admin-badge-purple-text); border: 1px solid var(--admin-badge-purple-border); padding: 4px 8px; border-radius: 5px; font-size: 11px; font-weight: 600; cursor: pointer;"
                 >
                   👑 Тариф
                 </button>
                 <button
                   @click="handleDeauth(user.id)"
                   title="Отозвать все активные сессии"
-                  style="background: var(--admin-surface-bg, #1f2937); color: var(--admin-text-main, #e5e7eb); border: 1px solid var(--admin-input-border, #374151); padding: 4px 8px; border-radius: 4px; font-size: 11px; cursor: pointer;"
+                  style="background: var(--admin-surface-bg); color: var(--admin-text-main); border: 1px solid var(--admin-input-border); padding: 4px 8px; border-radius: 5px; font-size: 11px; font-weight: 500; cursor: pointer;"
                 >
                   Сброс сессий
                 </button>
@@ -666,14 +666,14 @@ onMounted(loadUsers);
                   v-if="user.twoFactorEnabled"
                   @click="handleRemove2FA(user.id)"
                   title="Сбросить 2FA"
-                  style="background: var(--admin-surface-bg, #1f2937); color: #fbbf24; border: 1px solid var(--admin-input-border, #374151); padding: 4px 8px; border-radius: 4px; font-size: 11px; cursor: pointer;"
+                  style="background: var(--admin-badge-amber-bg); color: var(--admin-badge-amber-text); border: 1px solid var(--admin-badge-amber-border); padding: 4px 8px; border-radius: 5px; font-size: 11px; font-weight: 600; cursor: pointer;"
                 >
                   Сброс 2FA
                 </button>
                 <button
                   @click="handleToggleUser(user)"
                   :title="user.userEnabled ? 'Отключить учётную запись' : 'Активировать учётную запись'"
-                  style="background: var(--admin-surface-bg, #1f2937); color: #38bdf8; border: 1px solid var(--admin-input-border, #374151); padding: 4px 8px; border-radius: 4px; font-size: 11px; cursor: pointer;"
+                  style="background: var(--admin-surface-bg); color: var(--admin-sky); border: 1px solid var(--admin-input-border); padding: 4px 8px; border-radius: 5px; font-size: 11px; font-weight: 600; cursor: pointer;"
                 >
                   {{ user.userEnabled ? 'Отключить' : 'Включить' }}
                 </button>
@@ -681,7 +681,7 @@ onMounted(loadUsers);
                   v-if="user.status === 1"
                   @click="handleResendInvite(user.id, user.email)"
                   title="Отправить приглашение повторно"
-                  style="background: var(--admin-surface-bg, #1f2937); color: #34d399; border: 1px solid var(--admin-input-border, #374151); padding: 4px 8px; border-radius: 4px; font-size: 11px; cursor: pointer;"
+                  style="background: var(--admin-badge-green-bg); color: var(--admin-badge-green-text); border: 1px solid var(--admin-badge-green-border); padding: 4px 8px; border-radius: 5px; font-size: 11px; font-weight: 600; cursor: pointer;"
                 >
                   Повторить инвайт
                 </button>
@@ -689,14 +689,14 @@ onMounted(loadUsers);
                   v-if="user.ssoIdentifier"
                   @click="handleDeleteSSO(user.id, user.email)"
                   title="Удалить SSO связь"
-                  style="background: var(--admin-surface-bg, #1f2937); color: #f59e0b; border: 1px solid var(--admin-input-border, #374151); padding: 4px 8px; border-radius: 4px; font-size: 11px; cursor: pointer;"
+                  style="background: var(--admin-badge-amber-bg); color: var(--admin-badge-amber-text); border: 1px solid var(--admin-badge-amber-border); padding: 4px 8px; border-radius: 5px; font-size: 11px; font-weight: 600; cursor: pointer;"
                 >
                   Удалить SSO
                 </button>
                 <button
                   @click="handleDelete(user.id, user.email)"
                   title="Безвозвратно удалить пользователя"
-                  style="background: #450a0a; color: #f87171; border: 1px solid #991b1b; padding: 4px 8px; border-radius: 4px; font-size: 11px; cursor: pointer;"
+                  style="background: var(--admin-badge-red-bg); color: var(--admin-badge-red-text); border: 1px solid var(--admin-badge-red-border); padding: 4px 8px; border-radius: 5px; font-size: 11px; font-weight: 600; cursor: pointer;"
                 >
                   Удалить
                 </button>
@@ -755,8 +755,8 @@ onMounted(loadUsers);
             :style="{
               padding: '10px 14px',
               borderRadius: '6px',
-              border: selectedRole === role.type ? '1px solid #3b82f6' : '1px solid #374151',
-              backgroundColor: selectedRole === role.type ? 'rgba(37, 99, 235, 0.22)' : 'var(--admin-surface-bg, #1f2937)',
+              border: selectedRole === role.type ? '1px solid #3b82f6' : '1px solid var(--admin-input-border)',
+              backgroundColor: selectedRole === role.type ? 'var(--admin-badge-blue-bg)' : 'var(--admin-surface-bg)',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'flex-start',
@@ -835,8 +835,8 @@ onMounted(loadUsers);
               :style="{
                 padding: '10px 14px',
                 borderRadius: '8px',
-                border: licensePlan === plan.id ? '1px solid #8b5cf6' : '1px solid #374151',
-                backgroundColor: licensePlan === plan.id ? 'rgba(124, 58, 237, 0.2)' : 'var(--admin-surface-bg, #1f2937)',
+                border: licensePlan === plan.id ? '1px solid #8b5cf6' : '1px solid var(--admin-input-border)',
+                backgroundColor: licensePlan === plan.id ? 'var(--admin-badge-purple-bg)' : 'var(--admin-surface-bg)',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'flex-start',
@@ -897,7 +897,7 @@ onMounted(loadUsers);
             type="button"
             @click="handleSaveLicense"
             :disabled="savingLicense"
-            style="background: linear-gradient(135deg, #7c3aed, #4f46e5); color: var(--admin-text-main, #f9fafb); border: none; padding: 10px 20px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;"
+            style="background: linear-gradient(135deg, #7c3aed, #4f46e5); color: #ffffff; border: none; padding: 10px 20px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;"
           >
             {{ savingLicense ? 'Сохранение...' : 'Сохранить лицензию' }}
           </button>
@@ -936,7 +936,7 @@ onMounted(loadUsers);
             </div>
             <div style="background: var(--admin-surface-alt, #0b0f19); padding: 10px 12px; border-radius: 6px; border: 1px solid var(--admin-card-border, #1f2937);">
               <div style="font-size: 11px; color: var(--admin-text-secondary, #9ca3af);">UUID</div>
-              <div style="color: #93c5fd; font-family: monospace; font-size: 11px; word-break: break-all;">{{ userDetails.id }}</div>
+              <div style="color: var(--admin-blue, #93c5fd); font-family: monospace; font-size: 11px; word-break: break-all;">{{ userDetails.id }}</div>
             </div>
             <div style="background: var(--admin-surface-alt, #0b0f19); padding: 10px 12px; border-radius: 6px; border: 1px solid var(--admin-card-border, #1f2937);">
               <div style="font-size: 11px; color: var(--admin-text-secondary, #9ca3af);">KDF (Тип / Итерации)</div>

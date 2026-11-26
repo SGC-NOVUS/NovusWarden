@@ -16,9 +16,9 @@ defineProps({
 <template>
   <EmailLayout variant="danger" :img-src="img_src" :heading="`${tSubjPre} ${ip}`">
     <EText class="nw-text" style="font-size: 15px; color: #334155; text-align: center">{{ tIntro }}</EText>
-    <ESection style="background-color: #1e1b2e; padding: 18px 20px; border-radius: 8px; border: 1px solid #7f1d1d">
-      <EText style="font-size: 13px; color: #cbd5e1; margin: 4px 0"><strong style="color: #0f172a">{{ tDate }}:</strong> {{ datetime }}</EText>
-      <EText style="font-size: 13px; color: #cbd5e1; margin: 4px 0"><strong style="color: #0f172a">{{ tIp }}:</strong> {{ ip }}</EText>
+    <ESection class="nw-box-danger" style="background-color: #fef2f2; padding: 18px 20px; border-radius: 8px; border: 1px solid #fca5a5">
+      <EText class="nw-text-danger" style="font-size: 13px; color: #991b1b; margin: 4px 0"><strong class="nw-strong" style="color: #0f172a">{{ tDate }}:</strong> {{ datetime }}</EText>
+      <EText class="nw-text-danger" style="font-size: 13px; color: #991b1b; margin: 4px 0"><strong class="nw-strong" style="color: #0f172a">{{ tIp }}:</strong> {{ ip }}</EText>
     </ESection>
     <EText class="nw-muted" style="font-size: 13px; color: #64748b; text-align: center">{{ tIgnore }}</EText>
   </EmailLayout>

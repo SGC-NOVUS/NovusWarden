@@ -380,7 +380,7 @@ onMounted(() => {
         <button
           v-if="isVerified"
           type="button"
-          class="cyber-btn-secondary w-full mt-2.5 !h-9"
+          class="cyber-btn-secondary w-full mt-2.5 h-9!"
           @click="handleCloseTab"
         >
           <X class="w-4 h-4" />

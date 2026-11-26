@@ -52,7 +52,7 @@ async function handleRecover() {
   <div class="min-h-screen flex flex-col justify-between p-5 box-border">
     <header class="max-w-5xl w-full mx-auto flex justify-between items-center">
       <router-link to="/"><img :src="brandBannerSrc" alt="NovusWarden" class="h-9 object-contain" /></router-link>
-      <router-link to="/login" class="cyber-btn-secondary !h-8 !px-3 no-underline">
+      <router-link to="/login" class="cyber-btn-secondary h-8! px-3! no-underline">
         <ArrowLeft class="w-3.5 h-3.5" />
         <span>Назад ко входу</span>
       </router-link>
@@ -78,7 +78,7 @@ async function handleRecover() {
             <label class="text-[11.5px] font-semibold text-slate-300 block mb-1">Email</label>
             <div class="relative flex items-center">
               <Mail class="w-4 h-4 text-slate-500 absolute left-3 pointer-events-none" />
-              <input v-model="email" type="email" required placeholder="name@company.com" class="cyber-input !pl-9" />
+              <input v-model="email" type="email" required placeholder="name@company.com" class="cyber-input pl-9!" />
             </div>
           </div>
 
@@ -86,7 +86,7 @@ async function handleRecover() {
             <label class="text-[11.5px] font-semibold text-slate-300 block mb-1">Мастер-пароль</label>
             <div class="relative flex items-center">
               <KeyRound class="w-4 h-4 text-slate-500 absolute left-3 pointer-events-none" />
-              <input v-model="masterPassword" type="password" required placeholder="••••••••••••••••" class="cyber-input !pl-9" />
+              <input v-model="masterPassword" type="password" required placeholder="••••••••••••••••" class="cyber-input pl-9!" />
             </div>
           </div>
 
@@ -99,12 +99,12 @@ async function handleRecover() {
                 type="text"
                 required
                 placeholder="XXXX XXXX XXXX XXXX..."
-                class="cyber-input !pl-9 font-mono uppercase tracking-wider"
+                class="cyber-input pl-9! font-mono uppercase tracking-wider"
               />
             </div>
           </div>
 
-          <button type="submit" class="cyber-btn-primary w-full !h-10 mt-2" :disabled="submitting">
+          <button type="submit" class="cyber-btn-primary w-full h-10! mt-2" :disabled="submitting">
             {{ submitting ? 'Проверка и сброс 2FA...' : 'Сбросить 2FA и войти' }}
           </button>
         </form>

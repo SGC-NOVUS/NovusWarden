@@ -345,13 +345,13 @@ async function handleSaveBilling() {
 function getPlanBadge(planId?: string) {
   switch (planId?.toLowerCase()) {
     case 'lifetime':
-      return { label: 'Lifetime VIP 👑', bg: '#78350f', color: '#fde68a', border: '#b45309' };
+      return { label: 'Lifetime VIP 👑', bg: 'var(--admin-badge-amber-bg)', color: 'var(--admin-badge-amber-text)', border: 'var(--admin-badge-amber-border)' };
     case 'enterprise':
-      return { label: 'Enterprise 🏢', bg: '#4c1d95', color: '#ddd6fe', border: '#7c3aed' };
+      return { label: 'Enterprise 🏢', bg: 'var(--admin-badge-purple-bg)', color: 'var(--admin-badge-purple-text)', border: 'var(--admin-badge-purple-border)' };
     case 'pro':
-      return { label: 'Novus Pro ⚡', bg: '#0369a1', color: '#e0f2fe', border: '#0284c7' };
+      return { label: 'Novus Pro ⚡', bg: 'var(--admin-badge-blue-bg)', color: 'var(--admin-badge-blue-text)', border: 'var(--admin-badge-blue-border)' };
     default:
-      return { label: 'Free (Базовый)', bg: 'var(--admin-surface-bg, #1f2937)', color: 'var(--admin-text-secondary, #9ca3af)', border: 'var(--admin-input-border, #374151)' };
+      return { label: 'Free (Базовый)', bg: 'var(--admin-badge-neutral-bg)', color: 'var(--admin-badge-neutral-text)', border: 'var(--admin-badge-neutral-border)' };
   }
 }
 
@@ -365,7 +365,7 @@ onMounted(async () => {
     <!-- Header -->
     <div style="margin-bottom: 24px; display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px;">
       <div>
-        <h1 style="font-size: 24px; font-weight: 700; color: #38bdf8; margin: 0 0 6px 0;">
+        <h1 style="font-size: 24px; font-weight: 700; color: var(--admin-sky, #38bdf8); margin: 0 0 6px 0;">
           Центр тарифов, подписок и монетизации
         </h1>
         <p style="font-size: 13px; color: var(--admin-text-secondary, #9ca3af); margin: 0;">
@@ -374,13 +374,13 @@ onMounted(async () => {
       </div>
 
       <div style="display: flex; gap: 10px; align-items: center;">
-        <div v-if="saveNotice" style="background-color: #064e3b; color: #34d399; padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 600; border: 1px solid #059669;">
+        <div v-if="saveNotice" style="background-color: var(--admin-badge-green-bg); color: var(--admin-badge-green-text); padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 600; border: 1px solid var(--admin-badge-green-border);">
           ✓ Изменения успешно сохранены
         </div>
         <button
           @click="handleSaveBilling"
           :disabled="saving"
-          style="background: linear-gradient(135deg, #0284c7, #2563eb); color: var(--admin-text-main, #f9fafb); border: none; padding: 9px 18px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);"
+          style="background: linear-gradient(135deg, #0284c7, #2563eb); color: #ffffff; border: none; padding: 9px 18px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);"
         >
           {{ saving ? 'Сохранение...' : '💾 Сохранить изменения' }}
         </button>
@@ -390,7 +390,7 @@ onMounted(async () => {
     <!-- Error Banner -->
     <div
       v-if="errorMessage"
-      style="padding: 12px 16px; border-radius: 6px; margin-bottom: 20px; font-size: 13px; background-color: #450a0a; color: #fca5a5; border: 1px solid #991b1b;"
+      style="padding: 12px 16px; border-radius: 8px; margin-bottom: 20px; font-size: 13px; background-color: var(--admin-badge-red-bg); color: var(--admin-badge-red-text); border: 1px solid var(--admin-badge-red-border);"
     >
       {{ errorMessage }}
     </div>
@@ -416,10 +416,10 @@ onMounted(async () => {
           }"
         >
           <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
-            <span style="font-size: 15px; font-weight: 700; color: #38bdf8;">
+            <span style="font-size: 15px; font-weight: 700; color: var(--admin-sky, #38bdf8);">
               ⭐ Безлимитный Open Source
             </span>
-            <span style="font-size: 11px; padding: 2px 8px; border-radius: 4px; background-color: #0369a1; color: #e0f2fe; font-weight: 600;">
+            <span style="font-size: 11px; padding: 2px 8px; border-radius: 4px; background-color: var(--admin-badge-blue-bg); color: var(--admin-badge-blue-text); border: 1px solid var(--admin-badge-blue-border); font-weight: 600;">
               Бесплатно
             </span>
           </div>
@@ -442,10 +442,10 @@ onMounted(async () => {
           }"
         >
           <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
-            <span style="font-size: 15px; font-weight: 700; color: #f59e0b;">
+            <span style="font-size: 15px; font-weight: 700; color: var(--admin-amber, #f59e0b);">
               💼 Коммерческий SaaS & Платные тарифы
             </span>
-            <span style="font-size: 11px; padding: 2px 8px; border-radius: 4px; background-color: #78350f; color: #fde68a; font-weight: 600;">
+            <span style="font-size: 11px; padding: 2px 8px; border-radius: 4px; background-color: var(--admin-badge-amber-bg); color: var(--admin-badge-amber-text); border: 1px solid var(--admin-badge-amber-border); font-weight: 600;">
               Платный биллинг
             </span>
           </div>
@@ -818,7 +818,7 @@ onMounted(async () => {
         <div style="display: flex; gap: 10px;">
           <button
             @click="showInviteModal = true"
-            style="background: linear-gradient(135deg, #0284c7, #2563eb); color: var(--admin-text-main, #f9fafb); border: none; padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px;"
+            style="background: linear-gradient(135deg, #0284c7, #2563eb); color: #ffffff; border: none; padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px;"
           >
             ✉️ Пригласить пользователя с тарифом
           </button>
@@ -880,8 +880,9 @@ onMounted(async () => {
                     fontWeight: 600,
                     padding: '2px 8px',
                     borderRadius: '4px',
-                    backgroundColor: user.userEnabled ? '#064e3b' : '#450a0a',
-                    color: user.userEnabled ? '#34d399' : '#f87171',
+                    backgroundColor: user.userEnabled ? 'var(--admin-badge-green-bg)' : 'var(--admin-badge-red-bg)',
+                    color: user.userEnabled ? 'var(--admin-badge-green-text)' : 'var(--admin-badge-red-text)',
+                    border: user.userEnabled ? '1px solid var(--admin-badge-green-border)' : '1px solid var(--admin-badge-red-border)',
                   }"
                 >
                   {{ user.userEnabled ? 'Активен' : 'Отключён' }}
@@ -908,7 +909,7 @@ onMounted(async () => {
               <td style="padding: 14px 16px; text-align: right;">
                 <button
                   @click="openUserLicenseModal(user)"
-                  style="background-color: var(--admin-surface-bg, #1f2937); color: #38bdf8; border: 1px solid #0284c7; padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; transition: background 0.15s;"
+                  style="background-color: var(--admin-badge-blue-bg); color: var(--admin-badge-blue-text); border: 1px solid var(--admin-badge-blue-border); padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; transition: background 0.15s;"
                 >
                   👑 Выдать лицензию / Сменить тариф
                 </button>
@@ -1023,7 +1024,7 @@ onMounted(async () => {
                 </span>
               </td>
               <td style="padding: 12px 10px;">
-                <span style="background-color: #064e3b; color: #34d399; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">
+                <span style="background-color: var(--admin-badge-green-bg); color: var(--admin-badge-green-text); border: 1px solid var(--admin-badge-green-border); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">
                   {{ org.status }}
                 </span>
               </td>
@@ -1076,7 +1077,7 @@ onMounted(async () => {
 
       <button
         @click="generateLicense"
-        style="background: linear-gradient(135deg, #0284c7, #2563eb); color: var(--admin-text-main, #f9fafb); border: none; padding: 10px 20px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; margin-bottom: 16px;"
+        style="background: linear-gradient(135deg, #0284c7, #2563eb); color: #ffffff; border: none; padding: 10px 20px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; margin-bottom: 16px;"
       >
         Сгенерировать лицензию
       </button>
@@ -1197,7 +1198,7 @@ onMounted(async () => {
             type="button"
             @click="saveUserLicense"
             :disabled="savingLicense"
-            style="background: linear-gradient(135deg, #0284c7, #2563eb); color: var(--admin-text-main, #f9fafb); border: none; padding: 9px 18px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;"
+            style="background: linear-gradient(135deg, #0284c7, #2563eb); color: #ffffff; border: none; padding: 9px 18px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;"
           >
             {{ savingLicense ? 'Сохранение...' : 'Применить лицензию' }}
           </button>
@@ -1255,7 +1256,7 @@ onMounted(async () => {
             type="button"
             @click="handleInviteUser"
             :disabled="inviting"
-            style="background: linear-gradient(135deg, #0284c7, #2563eb); color: var(--admin-text-main, #f9fafb); border: none; padding: 9px 18px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;"
+            style="background: linear-gradient(135deg, #0284c7, #2563eb); color: #ffffff; border: none; padding: 9px 18px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;"
           >
             {{ inviting ? 'Отправка...' : 'Отправить приглашение' }}
           </button>
@@ -1335,7 +1336,7 @@ onMounted(async () => {
           <button
             type="button"
             @click="copyCheckoutLink"
-            style="background: linear-gradient(135deg, #0284c7, #2563eb); color: var(--admin-text-main, #f9fafb); border: none; padding: 9px 18px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;"
+            style="background: linear-gradient(135deg, #0284c7, #2563eb); color: #ffffff; border: none; padding: 9px 18px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;"
           >
             📋 Скопировать ссылку
           </button>

@@ -124,7 +124,7 @@ onMounted(() => {
         <div v-else-if="authStore.isAuthenticated" class="w-full space-y-2.5">
           <button
             type="button"
-            class="cyber-btn-primary w-full !h-10"
+            class="cyber-btn-primary w-full h-10!"
             :disabled="loading || !token"
             @click="handleAccept"
           >
@@ -141,14 +141,14 @@ onMounted(() => {
           </p>
           <router-link
             :to="{ name: 'login', query: { redirect: route.fullPath } }"
-            class="cyber-btn-primary w-full !h-10 no-underline"
+            class="cyber-btn-primary w-full h-10! no-underline"
           >
             <LogIn class="w-4 h-4" />
             <span>Войти и принять</span>
           </router-link>
           <router-link
             :to="{ name: 'signup', query: invitedEmail ? { email: invitedEmail } : undefined }"
-            class="cyber-btn-secondary w-full !h-10 no-underline"
+            class="cyber-btn-secondary w-full h-10! no-underline"
           >
             <UserPlus class="w-4 h-4" />
             <span>Создать аккаунт</span>

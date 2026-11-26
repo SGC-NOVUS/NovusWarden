@@ -755,7 +755,7 @@ function goToSettings(tab: SettingsTabName = 'account') {
         <div class="relative">
           <button
             type="button"
-            class="cyber-btn-primary !h-8 !px-3"
+            class="cyber-btn-primary h-8! px-3!"
             @click="showNewItemMenu = !showNewItemMenu"
           >
             <Plus class="w-4 h-4" />
@@ -1098,7 +1098,7 @@ function goToSettings(tab: SettingsTabName = 'account') {
         <!-- Folders Section -->
         <div class="nav-section">
           <div class="flex justify-between items-center mb-1 px-2">
-            <span class="nav-section-title !mb-0 !p-0">Папки</span>
+            <span class="nav-section-title mb-0! p-0!">Папки</span>
             <button
               type="button"
               class="folder-add-btn"
@@ -1373,14 +1373,14 @@ function goToSettings(tab: SettingsTabName = 'account') {
             <div class="flex gap-2">
               <button
                 type="button"
-                class="cyber-btn-secondary !h-8 !px-3"
+                class="cyber-btn-secondary h-8! px-3!"
                 @click="cancelEdit"
               >
                 Отмена
               </button>
               <button
                 type="button"
-                class="cyber-btn-primary !h-8 !px-4"
+                class="cyber-btn-primary h-8! px-4!"
                 @click="handleSave"
               >
                 Сохранить
@@ -1441,7 +1441,7 @@ function goToSettings(tab: SettingsTabName = 'account') {
 
               <div class="field-box">
                 <div class="flex justify-between items-center mb-1">
-                  <label class="detail-label !mb-0">Пароль</label>
+                  <label class="detail-label mb-0!">Пароль</label>
                   <button
                     type="button"
                     class="btn-generate"
@@ -1456,7 +1456,7 @@ function goToSettings(tab: SettingsTabName = 'account') {
                     v-model="editForm.login.password"
                     :type="showPassword ? 'text' : 'password'"
                     placeholder="Мастер-пароль или сгенерированный ключ"
-                    class="cyber-input !pr-10"
+                    class="cyber-input pr-10!"
                   />
                   <button
                     type="button"
@@ -1481,7 +1481,7 @@ function goToSettings(tab: SettingsTabName = 'account') {
 
               <div class="field-box">
                 <div class="flex justify-between items-center mb-1">
-                  <label class="detail-label !mb-0">Адреса сайта (URI)</label>
+                  <label class="detail-label mb-0!">Адреса сайта (URI)</label>
                   <button
                     type="button"
                     class="btn-generate"
@@ -1504,7 +1504,7 @@ function goToSettings(tab: SettingsTabName = 'account') {
                   />
                   <select
                     v-model="uriEntry.match"
-                    class="cyber-select !w-28 text-[11px]"
+                    class="cyber-select w-28! text-[11px]"
                     title="Правило совпадения URI"
                   >
                     <option :value="null">По умолч.</option>
@@ -1655,7 +1655,7 @@ function goToSettings(tab: SettingsTabName = 'account') {
             <template v-if="editForm.type === 5 && editForm.sshKey">
               <div class="field-box">
                 <div class="flex items-center justify-between mb-1.5">
-                  <label class="detail-label !mb-0">Приватный ключ SSH</label>
+                  <label class="detail-label mb-0!">Приватный ключ SSH</label>
                   <div class="flex items-center gap-2">
                     <button
                       type="button"
@@ -1809,7 +1809,7 @@ function goToSettings(tab: SettingsTabName = 'account') {
             <!-- Custom Fields -->
             <div class="field-box">
               <div class="flex justify-between items-center mb-1.5">
-                <label class="detail-label !mb-0">Настраиваемые поля</label>
+                <label class="detail-label mb-0!">Настраиваемые поля</label>
                 <button
                   type="button"
                   class="btn-generate"
@@ -1891,7 +1891,7 @@ function goToSettings(tab: SettingsTabName = 'account') {
               <template v-if="!vaultStore.selectedCipher.deletedDate">
                 <button
                   type="button"
-                  class="cyber-btn-secondary !h-8 !px-3"
+                  class="cyber-btn-secondary h-8! px-3!"
                   @click="startEdit"
                 >
                   <Edit2 class="w-3.5 h-3.5" />
@@ -1900,7 +1900,7 @@ function goToSettings(tab: SettingsTabName = 'account') {
                 <button
                   v-if="authStore.organizations.length > 0 || vaultStore.selectedCipher.organizationId"
                   type="button"
-                  class="cyber-btn-secondary !h-8 !w-8 !p-0 text-sky-400 hover:text-sky-300"
+                  class="cyber-btn-secondary h-8! w-8! p-0! text-sky-400 hover:text-sky-300"
                   @click="openShareModal"
                   :title="vaultStore.selectedCipher.organizationId ? 'Управление коллекциями' : 'Перенести в организацию'"
                 >
@@ -1908,7 +1908,7 @@ function goToSettings(tab: SettingsTabName = 'account') {
                 </button>
                 <button
                   type="button"
-                  class="cyber-btn-secondary !h-8 !w-8 !p-0 text-amber-400 hover:text-amber-300"
+                  class="cyber-btn-secondary h-8! w-8! p-0! text-amber-400 hover:text-amber-300"
                   @click="handleToggleArchive"
                   :title="vaultStore.selectedCipher.archivedDate ? 'Вернуть из архива' : 'Архивировать'"
                 >
@@ -1916,7 +1916,7 @@ function goToSettings(tab: SettingsTabName = 'account') {
                 </button>
                 <button
                   type="button"
-                  class="cyber-btn-secondary !h-8 !w-8 !p-0 text-rose-400 hover:text-rose-300"
+                  class="cyber-btn-secondary h-8! w-8! p-0! text-rose-400 hover:text-rose-300"
                   @click="handleDelete(false)"
                   title="Переместить в корзину"
                 >
@@ -1926,14 +1926,14 @@ function goToSettings(tab: SettingsTabName = 'account') {
               <template v-else>
                 <button
                   type="button"
-                  class="cyber-btn-primary !h-8 !px-3"
+                  class="cyber-btn-primary h-8! px-3!"
                   @click="handleRestore"
                 >
                   Восстановить
                 </button>
                 <button
                   type="button"
-                  class="cyber-btn-danger !h-8 !px-3"
+                  class="cyber-btn-danger h-8! px-3!"
                   @click="handleDelete(true)"
                 >
                   Удалить навсегда
@@ -2004,7 +2004,7 @@ function goToSettings(tab: SettingsTabName = 'account') {
                   </div>
                   <button
                     type="button"
-                    class="cyber-btn-primary !h-7 !px-2.5 text-xs"
+                    class="cyber-btn-primary h-7! px-2.5! text-xs"
                     @click="copyToClipboard(liveTotp.code, 'TOTP код')"
                   >
                     <Copy class="w-3.5 h-3.5" />
@@ -2427,7 +2427,7 @@ function goToSettings(tab: SettingsTabName = 'account') {
             <!-- Encrypted Attachments -->
             <div class="data-row">
               <div class="flex items-center justify-between mb-1.5">
-                <span class="data-label flex items-center gap-1.5 !mb-0">
+                <span class="data-label flex items-center gap-1.5 mb-0!">
                   <Paperclip class="w-3.5 h-3.5 text-amber-400" />
                   <span>Вложения ({{ vaultStore.selectedCipher.attachments?.length || 0 }})</span>
                 </span>

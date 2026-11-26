@@ -598,7 +598,7 @@ export const useVaultStore = defineStore('vault', () => {
       folderId: item.folderId || null,
       favorite: !!item.favorite,
       reprompt: item.reprompt || 0,
-      fields: encFields.length ? encFields : undefined,
+      fields: encFields.length ? encFields : null,
       passwordHistory: encHistory.length ? encHistory : undefined,
     };
 
@@ -1069,10 +1069,12 @@ export const useVaultStore = defineStore('vault', () => {
   async function uploadAttachment(cipherId: string, file: File) {
     if (!authStore.token || !authStore.userKey) throw new Error('Пользователь не авторизован');
     const cipher = ciphers.value.find((c) => c.id === cipherId);
-    let cipherKey = authStore.userKey;
+    const baseKey =
+      (cipher?.organizationId && authStore.orgKeys[cipher.organizationId]) || authStore.userKey;
+    let cipherKey = baseKey;
     if (cipher?.cipherKeyStr) {
       try {
-        cipherKey = await decryptToBytes(cipher.cipherKeyStr, authStore.userKey);
+        cipherKey = await decryptToBytes(cipher.cipherKeyStr, baseKey);
       } catch { /* fallback */ }
     }
     const attKey = getRandomBytes(64);
@@ -1094,10 +1096,12 @@ export const useVaultStore = defineStore('vault', () => {
     if (!resp.ok) throw new Error('Не удалось скачать вложение');
     const encBuf = new Uint8Array(await resp.arrayBuffer());
 
-    let cipherKey = authStore.userKey;
+    const baseKey =
+      (cipher.organizationId && authStore.orgKeys[cipher.organizationId]) || authStore.userKey;
+    let cipherKey = baseKey;
     if (cipher.cipherKeyStr) {
       try {
-        cipherKey = await decryptToBytes(cipher.cipherKeyStr, authStore.userKey);
+        cipherKey = await decryptToBytes(cipher.cipherKeyStr, baseKey);
       } catch { /* fallback */ }
     }
     const keyStr = meta.key || att.key;

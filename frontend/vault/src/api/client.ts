@@ -867,9 +867,12 @@ class ApiClient {
       body: form,
     });
     if (!upRes.ok) {
-      throw new Error(`Ошибка загрузки файла вложения (${upRes.status})`);
+      const err = await upRes.json().catch(() => ({}));
+      throw new Error(err.ErrorModel?.Message || err.message || `Ошибка загрузки файла вложения (${upRes.status})`);
     }
-    return await upRes.json();
+    // POST /api/ciphers/{id}/attachment/{attId} returns HTTP 200 with an empty body (EmptyResult);
+    // the updated cipher payload is returned in the v2 init response (`meta.cipherResponse`).
+    return (meta.cipherResponse || meta) as RawCipher;
   }
 
   async getCipherAttachment(token: string, cipherId: string, attachmentId: string): Promise<RawAttachment> {

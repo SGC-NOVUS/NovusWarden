@@ -400,9 +400,9 @@ async function handleLogout() {
   width: 100%;
   padding: 9px 12px;
   border-radius: 10px;
-  border: 1px solid rgba(244, 63, 94, 0.32);
-  background: rgba(244, 63, 94, 0.12);
-  color: #fb7185;
+  border: 1px solid var(--admin-badge-red-border);
+  background: var(--admin-badge-red-bg);
+  color: var(--admin-badge-red-text);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -410,7 +410,7 @@ async function handleLogout() {
 }
 
 .cp-logout-btn:hover:not(:disabled) {
-  background: rgba(244, 63, 94, 0.22);
+  filter: brightness(1.06);
 }
 
 .cp-main-col {

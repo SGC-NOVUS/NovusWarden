@@ -143,7 +143,7 @@ async function handleDeleteKey(item: WebAuthnKeyItem) {
 <template>
   <section class="settings-card">
     <div class="flex items-center justify-between gap-2 mb-2">
-      <h2 class="card-heading !mb-0">
+      <h2 class="card-heading mb-0!">
         <Fingerprint class="w-4 h-4 text-sky-400" />
         <span>Ключи безопасности (FIDO2 / WebAuthn / Passkeys)</span>
       </h2>
@@ -200,7 +200,7 @@ async function handleDeleteKey(item: WebAuthnKeyItem) {
 
           <button
             type="button"
-            class="cyber-btn-danger !h-8 !px-2.5 shrink-0"
+            class="cyber-btn-danger h-8! px-2.5! shrink-0"
             :disabled="loading"
             title="Удалить ключ"
             @click="handleDeleteKey(item)"

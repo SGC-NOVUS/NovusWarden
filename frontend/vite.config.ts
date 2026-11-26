@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
+import tailwindcss from '@tailwindcss/vite';
 import { resolve } from 'path';
 import fs from 'fs';
 
@@ -41,6 +42,7 @@ export default defineConfig(({ mode }) => {
   base: isAdminBuild ? '/admin/ui/' : '/',
   plugins: [
     vue(),
+    tailwindcss(),
     {
       name: 'novus-flatten-html-entry',
       closeBundle() {
@@ -54,6 +56,13 @@ export default defineConfig(({ mode }) => {
             }
           }
           fs.rmSync(nestedDir, { recursive: true, force: true });
+        }
+        if (isVaultBuild) {
+          fs.writeFileSync(
+            resolve(outDir, 'vw-version.json'),
+            JSON.stringify({ version: '2026.11.0' }, null, 2) + '\n',
+            'utf-8'
+          );
         }
       },
     },

@@ -113,7 +113,7 @@ function openItem(id: string) {
       <div v-if="!props.modal" class="flex items-center gap-3 mb-5">
         <button
           type="button"
-          class="cyber-btn-secondary !p-2 !h-9 !w-9"
+          class="cyber-btn-secondary p-2! h-9! w-9!"
           @click="router.push('/vault')"
           title="Назад"
         >

@@ -20,7 +20,7 @@ defineProps({
 
 <template>
   <EmailLayout variant="danger" :img-src="img_src" :heading="`${tSubjPre} ${grantee_name} ${tSubjSuf}`">
-    <EText class="nw-text" style="font-size: 15px; color: #334155; text-align: center"><strong style="color: #0f172a">{{ grantee_name }}</strong> {{ tMid }} <strong style="color: #0f172a">{{ atype }}</strong> {{ tSufPre }} <a :href="`${url}/`" style="color: #0284c7">{{ tLink }}</a> {{ tSuf }}</EText>
-    <EText style="font-size: 14px; color: #94a3b8; text-align: center">{{ tWaitPre }} <strong style="color: #0f172a">{{ wait_time_days }}</strong> {{ tWaitSuf }}</EText>
+    <EText class="nw-text" style="font-size: 15px; color: #334155; text-align: center"><strong class="nw-strong" style="color: #0f172a">{{ grantee_name }}</strong> {{ tMid }} <strong class="nw-strong" style="color: #0f172a">{{ atype }}</strong> {{ tSufPre }} <a class="nw-link" :href="`${url}/`" style="color: #0284c7">{{ tLink }}</a> {{ tSuf }}</EText>
+    <EText class="nw-muted" style="font-size: 14px; color: #475569; text-align: center">{{ tWaitPre }} <strong class="nw-strong" style="color: #0f172a">{{ wait_time_days }}</strong> {{ tWaitSuf }}</EText>
   </EmailLayout>
 </template>

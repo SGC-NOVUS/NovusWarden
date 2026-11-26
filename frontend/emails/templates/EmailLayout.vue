@@ -37,19 +37,29 @@ defineProps({
           .nw-heading-danger { color: #f87171 !important; }
           .nw-heading-success { color: #34d399 !important; }
           .nw-text { color: #cbd5e1 !important; }
+          .nw-text-danger { color: #fecaca !important; }
           .nw-strong { color: #f8fafc !important; }
           .nw-muted { color: #94a3b8 !important; }
           .nw-box { background-color: #0f172a !important; border-color: #334155 !important; }
+          .nw-box-danger { background-color: #2a1218 !important; border-color: #991b1b !important; }
           .nw-hr { border-color: #334155 !important; }
-          .nw-link { color: #60a5fa !important; }
+          .nw-link, .nw-accent { color: #38bdf8 !important; }
+          .nw-logo-frame { background-color: #ffffff !important; border-color: #334155 !important; }
         }
-        [data-ogsc] .nw-body { background-color: #0b1120 !important; }
-        [data-ogsc] .nw-card { background-color: #1e293b !important; border-color: #334155 !important; }
+        [data-ogsc] .nw-body, [data-ogsb] .nw-body { background-color: #0b1120 !important; }
+        [data-ogsc] .nw-card, [data-ogsb] .nw-card { background-color: #1e293b !important; border-color: #334155 !important; }
+        [data-ogsc] .nw-card-danger, [data-ogsb] .nw-card-danger { background-color: #1e293b !important; border-color: #7f1d1d !important; }
         [data-ogsc] .nw-heading { color: #f8fafc !important; }
+        [data-ogsc] .nw-heading-danger { color: #f87171 !important; }
+        [data-ogsc] .nw-heading-success { color: #34d399 !important; }
         [data-ogsc] .nw-text { color: #cbd5e1 !important; }
+        [data-ogsc] .nw-text-danger { color: #fecaca !important; }
         [data-ogsc] .nw-strong { color: #f8fafc !important; }
         [data-ogsc] .nw-muted { color: #94a3b8 !important; }
-        [data-ogsc] .nw-box { background-color: #0f172a !important; border-color: #334155 !important; }
+        [data-ogsc] .nw-box, [data-ogsb] .nw-box { background-color: #0f172a !important; border-color: #334155 !important; }
+        [data-ogsc] .nw-box-danger, [data-ogsb] .nw-box-danger { background-color: #2a1218 !important; border-color: #991b1b !important; }
+        [data-ogsc] .nw-link, [data-ogsc] .nw-accent { color: #38bdf8 !important; }
+        [data-ogsc] .nw-logo-frame, [data-ogsb] .nw-logo-frame { background-color: #ffffff !important; border-color: #334155 !important; }
       </component>
     </EHead>
     <EBody class="nw-body" style="background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 24px 0">
@@ -66,7 +76,7 @@ defineProps({
         }"
       >
         <ESection style="text-align: center; margin-bottom: 24px">
-          <div style="display: inline-block; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 6px 14px">
+          <div class="nw-logo-frame" style="display: inline-block; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 6px 14px">
             <EImg :src="`${imgSrc}logo-gray.png`" width="190" height="47" alt="NovusWarden" style="margin: 0 auto; display: block; border-radius: 6px" />
           </div>
         </ESection>

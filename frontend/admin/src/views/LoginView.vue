@@ -127,14 +127,23 @@ async function handleLogin() {
       <!-- Error Alert -->
       <div
         v-if="errorMessage"
-        style="background: rgba(239, 68, 68, 0.15); border: 1px solid #ef4444; border-radius: 10px; padding: 10px 14px; margin-bottom: 16px; display: flex; align-items: flex-start; gap: 8px;"
+        :style="{
+          background: isLight ? '#fef2f2' : 'rgba(239, 68, 68, 0.15)',
+          border: isLight ? '1px solid #fca5a5' : '1px solid #ef4444',
+          borderRadius: '10px',
+          padding: '10px 14px',
+          marginBottom: '16px',
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: '8px',
+        }"
       >
-        <svg style="flex-shrink: 0; margin-top: 2px;" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="2">
+        <svg style="flex-shrink: 0; margin-top: 2px;" width="16" height="16" viewBox="0 0 24 24" fill="none" :stroke="isLight ? '#dc2626' : '#f87171'" stroke-width="2">
           <circle cx="12" cy="12" r="10"></circle>
           <line x1="12" y1="8" x2="12" y2="12"></line>
           <line x1="12" y1="16" x2="12.01" y2="16"></line>
         </svg>
-        <div style="font-size: 12px; line-height: 1.4; color: #fca5a5;">
+        <div :style="{ fontSize: '12px', lineHeight: 1.4, color: isLight ? '#b91c1c' : '#fca5a5' }">
           {{ errorMessage }}
         </div>
       </div>
@@ -239,7 +248,7 @@ async function handleLogin() {
         </p>
         <router-link
           to="/docs"
-          style="display: inline-block; margin-top: 8px; font-size: 11.5px; font-weight: 600; color: #38bdf8; text-decoration: none;"
+          :style="{ display: 'inline-block', marginTop: '8px', fontSize: '11.5px', fontWeight: 600, color: isLight ? '#0284c7' : '#38bdf8', textDecoration: 'none' }"
         >
           Документация, безопасность и прозрачность →
         </router-link>

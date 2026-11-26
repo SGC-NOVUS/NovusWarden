@@ -15,6 +15,6 @@ defineProps({
 
 <template>
   <EmailLayout :img-src="img_src" :heading="`${tSubjPre} ${grantor_name} ${tSubjSuf}`">
-    <EText class="nw-text" style="font-size: 15px; color: #334155; text-align: center"><strong style="color: #0f172a">{{ grantor_name }}</strong> {{ tMid }} <a :href="`${url}/`" style="color: #0284c7">{{ tLink }}</a> {{ tSuf }}</EText>
+    <EText class="nw-text" style="font-size: 15px; color: #334155; text-align: center"><strong class="nw-strong" style="color: #0f172a">{{ grantor_name }}</strong> {{ tMid }} <a class="nw-link" :href="`${url}/`" style="color: #0284c7">{{ tLink }}</a> {{ tSuf }}</EText>
   </EmailLayout>
 </template>

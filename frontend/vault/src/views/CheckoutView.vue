@@ -34,7 +34,7 @@ const brandBannerSrc = computed(() =>
   <div class="min-h-screen flex flex-col justify-between p-5 box-border">
     <header class="max-w-5xl w-full mx-auto flex justify-between items-center">
       <router-link to="/"><img :src="brandBannerSrc" alt="NovusWarden" class="h-9 object-contain" /></router-link>
-      <router-link to="/vault" class="cyber-btn-secondary !h-8 !px-3 no-underline">
+      <router-link to="/vault" class="cyber-btn-secondary h-8! px-3! no-underline">
         <ArrowLeft class="w-3.5 h-3.5" />
         <span>В хранилище</span>
       </router-link>
@@ -64,7 +64,7 @@ const brandBannerSrc = computed(() =>
           Для активации лицензии войдите в свой аккаунт NovusWarden или свяжитесь с администратором кластера SGC-NOVUS.
         </p>
 
-        <router-link to="/login" class="cyber-btn-primary w-full !h-10 no-underline">
+        <router-link to="/login" class="cyber-btn-primary w-full h-10! no-underline">
           Продолжить войти в NovusWarden
         </router-link>
       </div>

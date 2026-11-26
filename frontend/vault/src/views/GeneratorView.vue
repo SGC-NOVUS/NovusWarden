@@ -124,7 +124,7 @@ regenerate();
       <div v-if="!props.modal" class="flex items-center gap-3 mb-5">
         <button
           type="button"
-          class="cyber-btn-secondary !p-2 !h-9 !w-9"
+          class="cyber-btn-secondary p-2! h-9! w-9!"
           @click="router.push('/vault')"
           title="Назад"
         >
@@ -198,7 +198,7 @@ regenerate();
           <div class="flex items-center gap-2">
             <button
               type="button"
-              class="cyber-btn-secondary !h-8 !px-3"
+              class="cyber-btn-secondary h-8! px-3!"
               @click="regenerate"
               title="Сгенерировать заново"
             >
@@ -207,7 +207,7 @@ regenerate();
             </button>
             <button
               type="button"
-              class="cyber-btn-primary !h-8 !px-3.5"
+              class="cyber-btn-primary h-8! px-3.5!"
               @click="copyResult()"
             >
               <component :is="copied ? Check : Copy" class="w-3.5 h-3.5 text-white" />
@@ -301,7 +301,7 @@ regenerate();
               v-model="separator"
               type="text"
               maxlength="3"
-              class="cyber-input !h-9"
+              class="cyber-input h-9!"
               @input="regenerate"
             />
           </div>
@@ -323,30 +323,30 @@ regenerate();
         <div class="grid grid-cols-3 gap-2">
           <button
             type="button"
-            class="preset-pill !h-9"
+            class="preset-pill h-9!"
             :class="{ active: usernameType === 'plus' }"
             @click="usernameType = 'plus'; regenerate()"
           >Plus-адрес</button>
           <button
             type="button"
-            class="preset-pill !h-9"
+            class="preset-pill h-9!"
             :class="{ active: usernameType === 'catchall' }"
             @click="usernameType = 'catchall'; regenerate()"
           >Catch-all</button>
           <button
             type="button"
-            class="preset-pill !h-9"
+            class="preset-pill h-9!"
             :class="{ active: usernameType === 'word' }"
             @click="usernameType = 'word'; regenerate()"
           >Случайный логин</button>
         </div>
         <div v-if="usernameType === 'plus'">
           <label class="block text-slate-400 font-semibold mb-1">Базовый Email</label>
-          <input v-model="baseEmail" type="email" class="cyber-input !h-9" @input="regenerate" />
+          <input v-model="baseEmail" type="email" class="cyber-input h-9!" @input="regenerate" />
         </div>
         <div v-else-if="usernameType === 'catchall'">
           <label class="block text-slate-400 font-semibold mb-1">Домен Catch-All</label>
-          <input v-model="catchallDomain" type="text" class="cyber-input !h-9" @input="regenerate" />
+          <input v-model="catchallDomain" type="text" class="cyber-input h-9!" @input="regenerate" />
         </div>
       </div>
 

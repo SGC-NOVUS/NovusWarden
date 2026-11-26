@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { api, adminUrl, type DiagnosticsData } from '../api/client.ts';
 import { copyTextToClipboard } from '@shared/clipboard.ts';
 import { notifyToast } from '@shared/dialogs.ts';
@@ -17,6 +17,16 @@ const domainMatches = ref<boolean>(true);
 const isHttps = ref<boolean>(typeof window !== 'undefined' && window.location.protocol === 'https:');
 const wsStatus = ref<'checking' | 'ok' | 'error' | 'disabled'>('checking');
 const httpCheckStatus = ref<'checking' | 'ok' | 'error'>('checking');
+
+const hasEnvWarnings = computed(() => {
+  const d = diag.value;
+  if (!d) return false;
+  const badConfigStatus =
+    !!d.config_file_status &&
+    d.config_file_status !== 'Loaded' &&
+    d.config_file_status !== 'No config file';
+  return badConfigStatus || !!d.invalid_env_vars || Boolean(d.invalid_feature_flags?.length);
+});
 
 function runWsCheck(enabled: boolean) {
   if (!enabled) {
@@ -162,7 +172,7 @@ onMounted(loadDiagnostics);
       Выполнение диагностических проверок сервера...
     </div>
 
-    <div v-else-if="error" style="background-color: #450a0a; border: 1px solid #991b1b; color: #fca5a5; padding: 16px; border-radius: 8px; margin-bottom: 24px;">
+    <div v-else-if="error" style="background-color: var(--admin-badge-red-bg); border: 1px solid var(--admin-badge-red-border); color: var(--admin-badge-red-text); padding: 16px; border-radius: 8px; margin-bottom: 24px;">
       {{ error }}
     </div>
 
@@ -174,10 +184,10 @@ onMounted(loadDiagnostics);
           <div style="font-size: 12px; color: var(--admin-text-secondary, #9ca3af); text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;">
             Версия сервера NovusWarden
           </div>
-          <div style="font-size: 20px; font-weight: 700; color: #38bdf8; margin-top: 8px;">
+          <div style="font-size: 20px; font-weight: 700; color: var(--admin-sky, #38bdf8); margin-top: 8px;">
             {{ diag?.current_release }}
           </div>
-          <div style="font-size: 12px; color: #64748b; margin-top: 4px;">
+          <div style="font-size: 12px; color: var(--admin-text-muted, #64748b); margin-top: 4px;">
             Последняя upstream-версия: <span style="color: var(--admin-text-subtle, #cbd5e1);">{{ diag?.latest_release || 'Актуальная' }}</span>
           </div>
         </div>
@@ -187,11 +197,11 @@ onMounted(loadDiagnostics);
           <div style="font-size: 12px; color: var(--admin-text-secondary, #9ca3af); text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;">
             Web Vault Интерфейс
           </div>
-          <div style="font-size: 20px; font-weight: 700; color: #a78bfa; margin-top: 8px;">
+          <div style="font-size: 20px; font-weight: 700; color: var(--admin-purple, #a78bfa); margin-top: 8px;">
             {{ diag?.web_vault_enabled ? (diag?.active_web_release || 'Включен') : 'Отключен' }}
           </div>
-          <div style="font-size: 12px; color: #64748b; margin-top: 4px;">
-            Upstream Web: <span style="color: var(--admin-text-subtle, #cbd5e1);">{{ diag?.latest_web_release || 'v2024.12.0' }}</span>
+          <div style="font-size: 12px; color: var(--admin-text-muted, #64748b); margin-top: 4px;">
+            Upstream Web: <span style="color: var(--admin-text-subtle, #cbd5e1);">{{ diag?.latest_web_release || 'v2026.11.0' }}</span>
           </div>
         </div>
 
@@ -200,10 +210,10 @@ onMounted(loadDiagnostics);
           <div style="font-size: 12px; color: var(--admin-text-secondary, #9ca3af); text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;">
             База данных
           </div>
-          <div style="font-size: 20px; font-weight: 700; color: #34d399; margin-top: 8px;">
+          <div style="font-size: 20px; font-weight: 700; color: var(--admin-emerald, #34d399); margin-top: 8px;">
             {{ diag?.db_type }}
           </div>
-          <div style="font-size: 12px; color: #64748b; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" :title="diag?.db_version">
+          <div style="font-size: 12px; color: var(--admin-text-muted, #64748b); margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" :title="diag?.db_version">
             {{ diag?.db_version }}
           </div>
         </div>
@@ -213,10 +223,10 @@ onMounted(loadDiagnostics);
           <div style="font-size: 12px; color: var(--admin-text-secondary, #9ca3af); text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;">
             Окружение и ОС
           </div>
-          <div style="font-size: 20px; font-weight: 700; color: #fbbf24; margin-top: 8px;">
+          <div style="font-size: 20px; font-weight: 700; color: var(--admin-amber, #fbbf24); margin-top: 8px;">
             {{ diag?.host_os }} / {{ diag?.host_arch }}
           </div>
-          <div style="font-size: 12px; color: #64748b; margin-top: 4px;">
+          <div style="font-size: 12px; color: var(--admin-text-muted, #64748b); margin-top: 4px;">
             Docker: <span style="color: var(--admin-text-subtle, #cbd5e1);">{{ diag?.running_within_container ? (diag?.container_base_image || 'Да (Alpine/Debian)') : 'Нативная среда' }}</span>
           </div>
         </div>
@@ -230,7 +240,7 @@ onMounted(loadDiagnostics);
 
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px;">
           <!-- DNS Check -->
-          <div style="background-color: var(--admin-input-bg, #0b0f19); border: 1px solid var(--admin-card-border, #1f2937); border-radius: 6px; padding: 14px;">
+          <div style="background-color: var(--admin-surface-alt, #0b0f19); border: 1px solid var(--admin-card-border, #1f2937); border-radius: 8px; padding: 14px;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
               <span style="font-size: 13px; font-weight: 600; color: var(--admin-text-main, #e5e7eb);">Разрешение имён DNS</span>
               <span
@@ -239,20 +249,21 @@ onMounted(loadDiagnostics);
                   fontWeight: 600,
                   padding: '2px 8px',
                   borderRadius: '999px',
-                  backgroundColor: !diag?.dns_resolved?.includes('Unable') ? '#064e3b' : '#450a0a',
-                  color: !diag?.dns_resolved?.includes('Unable') ? '#34d399' : '#f87171',
+                  backgroundColor: !diag?.dns_resolved?.includes('Unable') ? 'var(--admin-badge-green-bg)' : 'var(--admin-badge-red-bg)',
+                  color: !diag?.dns_resolved?.includes('Unable') ? 'var(--admin-badge-green-text)' : 'var(--admin-badge-red-text)',
+                  border: !diag?.dns_resolved?.includes('Unable') ? '1px solid var(--admin-badge-green-border)' : '1px solid var(--admin-badge-red-border)',
                 }"
               >
                 {{ !diag?.dns_resolved?.includes('Unable') ? 'Успешно' : 'Ошибка' }}
               </span>
             </div>
             <div style="font-size: 12px; color: var(--admin-text-secondary, #9ca3af); margin-top: 6px;">
-              github.com -> <code style="color: #38bdf8;">{{ diag?.dns_resolved }}</code>
+              github.com -> <code style="color: var(--admin-sky, #38bdf8);">{{ diag?.dns_resolved }}</code>
             </div>
           </div>
 
           <!-- HTTP Access -->
-          <div style="background-color: var(--admin-input-bg, #0b0f19); border: 1px solid var(--admin-card-border, #1f2937); border-radius: 6px; padding: 14px;">
+          <div style="background-color: var(--admin-surface-alt, #0b0f19); border: 1px solid var(--admin-card-border, #1f2937); border-radius: 8px; padding: 14px;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
               <span style="font-size: 13px; font-weight: 600; color: var(--admin-text-main, #e5e7eb);">Исходящий интернет-доступ</span>
               <span
@@ -261,8 +272,9 @@ onMounted(loadDiagnostics);
                   fontWeight: 600,
                   padding: '2px 8px',
                   borderRadius: '999px',
-                  backgroundColor: diag?.has_http_access ? '#064e3b' : '#450a0a',
-                  color: diag?.has_http_access ? '#34d399' : '#f87171',
+                  backgroundColor: diag?.has_http_access ? 'var(--admin-badge-green-bg)' : 'var(--admin-badge-red-bg)',
+                  color: diag?.has_http_access ? 'var(--admin-badge-green-text)' : 'var(--admin-badge-red-text)',
+                  border: diag?.has_http_access ? '1px solid var(--admin-badge-green-border)' : '1px solid var(--admin-badge-red-border)',
                 }"
               >
                 {{ diag?.has_http_access ? 'Доступен' : 'Ограничен' }}
@@ -274,7 +286,7 @@ onMounted(loadDiagnostics);
           </div>
 
           <!-- WebSockets Live Check -->
-          <div style="background-color: var(--admin-input-bg, #0b0f19); border: 1px solid var(--admin-card-border, #1f2937); border-radius: 6px; padding: 14px;">
+          <div style="background-color: var(--admin-surface-alt, #0b0f19); border: 1px solid var(--admin-card-border, #1f2937); border-radius: 8px; padding: 14px;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
               <span style="font-size: 13px; font-weight: 600; color: var(--admin-text-main, #e5e7eb);">WebSocket уведомления</span>
               <span
@@ -283,21 +295,22 @@ onMounted(loadDiagnostics);
                   fontWeight: 600,
                   padding: '2px 8px',
                   borderRadius: '999px',
-                  backgroundColor: wsStatus === 'ok' ? '#064e3b' : wsStatus === 'error' ? '#450a0a' : 'var(--admin-input-border, #374151)',
-                  color: wsStatus === 'ok' ? '#34d399' : wsStatus === 'error' ? '#f87171' : 'var(--admin-text-secondary, #9ca3af)',
+                  backgroundColor: wsStatus === 'ok' ? 'var(--admin-badge-green-bg)' : wsStatus === 'error' ? 'var(--admin-badge-red-bg)' : 'var(--admin-badge-neutral-bg)',
+                  color: wsStatus === 'ok' ? 'var(--admin-badge-green-text)' : wsStatus === 'error' ? 'var(--admin-badge-red-text)' : 'var(--admin-badge-neutral-text)',
+                  border: wsStatus === 'ok' ? '1px solid var(--admin-badge-green-border)' : wsStatus === 'error' ? '1px solid var(--admin-badge-red-border)' : '1px solid var(--admin-badge-neutral-border)',
                 }"
               >
                 {{ wsStatus === 'ok' ? 'Подключено (Live)' : wsStatus === 'error' ? 'Ошибка WS' : wsStatus === 'checking' ? 'Проверка...' : 'Отключены' }}
               </span>
             </div>
             <div style="font-size: 12px; color: var(--admin-text-secondary, #9ca3af); margin-top: 6px;">
-              Соединение <code style="color: #38bdf8;">/notifications/anonymous-hub</code> | HTTP-тест 404:
-              <span :style="{ color: httpCheckStatus === 'ok' ? '#34d399' : '#f87171', fontWeight: 600 }">{{ httpCheckStatus.toUpperCase() }}</span>
+              Соединение <code style="color: var(--admin-sky, #38bdf8);">/notifications/anonymous-hub</code> | HTTP-тест 404:
+              <span :style="{ color: httpCheckStatus === 'ok' ? 'var(--admin-emerald)' : 'var(--admin-rose)', fontWeight: 600 }">{{ httpCheckStatus.toUpperCase() }}</span>
             </div>
           </div>
 
           <!-- Domain & HTTPS Match -->
-          <div style="background-color: var(--admin-input-bg, #0b0f19); border: 1px solid var(--admin-card-border, #1f2937); border-radius: 6px; padding: 14px;">
+          <div style="background-color: var(--admin-surface-alt, #0b0f19); border: 1px solid var(--admin-card-border, #1f2937); border-radius: 8px; padding: 14px;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
               <span style="font-size: 13px; font-weight: 600; color: var(--admin-text-main, #e5e7eb);">Домен и HTTPS</span>
               <span
@@ -306,30 +319,56 @@ onMounted(loadDiagnostics);
                   fontWeight: 600,
                   padding: '2px 8px',
                   borderRadius: '999px',
-                  backgroundColor: domainMatches && isHttps ? '#064e3b' : '#713f12',
-                  color: domainMatches && isHttps ? '#34d399' : '#fde047',
+                  backgroundColor: domainMatches && isHttps ? 'var(--admin-badge-green-bg)' : 'var(--admin-badge-amber-bg)',
+                  color: domainMatches && isHttps ? 'var(--admin-badge-green-text)' : 'var(--admin-badge-amber-text)',
+                  border: domainMatches && isHttps ? '1px solid var(--admin-badge-green-border)' : '1px solid var(--admin-badge-amber-border)',
                 }"
               >
                 {{ domainMatches ? 'Совпадает' : 'Несовпадение' }} • {{ isHttps ? 'HTTPS' : 'HTTP' }}
               </span>
             </div>
             <div style="font-size: 12px; color: var(--admin-text-secondary, #9ca3af); margin-top: 6px;">
-              DOMAIN: <code style="color: #38bdf8;">{{ diag?.admin_url || '—' }}</code>
+              DOMAIN: <code style="color: var(--admin-sky, #38bdf8);">{{ diag?.admin_url || '—' }}</code>
             </div>
           </div>
 
           <!-- Config & Env Diagnostics -->
-          <div v-if="diag?.config_file_status || diag?.invalid_env_vars || (diag?.invalid_feature_flags?.length)" style="background-color: var(--admin-input-bg, #0b0f19); border: 1px solid #7f1d1d; border-radius: 6px; padding: 14px;">
-            <div style="font-size: 13px; font-weight: 600; color: #fca5a5;">Предупреждения окружения</div>
+          <div
+            v-if="diag?.config_file_status || diag?.invalid_env_vars || (diag?.invalid_feature_flags?.length)"
+            :style="{
+              backgroundColor: 'var(--admin-surface-alt, #0b0f19)',
+              border: hasEnvWarnings ? '1px solid var(--admin-badge-red-border)' : '1px solid var(--admin-card-border)',
+              borderRadius: '8px',
+              padding: '14px',
+            }"
+          >
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span :style="{ fontSize: '13px', fontWeight: 600, color: hasEnvWarnings ? 'var(--admin-badge-red-text)' : 'var(--admin-text-main)' }">
+                {{ hasEnvWarnings ? 'Предупреждения окружения' : 'Конфигурация окружения' }}
+              </span>
+              <span
+                :style="{
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  padding: '2px 8px',
+                  borderRadius: '999px',
+                  backgroundColor: hasEnvWarnings ? 'var(--admin-badge-red-bg)' : 'var(--admin-badge-green-bg)',
+                  color: hasEnvWarnings ? 'var(--admin-badge-red-text)' : 'var(--admin-badge-green-text)',
+                  border: hasEnvWarnings ? '1px solid var(--admin-badge-red-border)' : '1px solid var(--admin-badge-green-border)',
+                }"
+              >
+                {{ hasEnvWarnings ? 'Требует внимания' : (diag?.config_file_status || 'OK') }}
+              </span>
+            </div>
             <div style="font-size: 12px; color: var(--admin-text-secondary, #9ca3af); margin-top: 6px;">
-              <div v-if="diag?.config_file_status">Конфиг: <code style="color: #fde047;">{{ diag.config_file_status }}</code></div>
-              <div v-if="diag?.invalid_env_vars">Неверные ENV: <code style="color: #f87171;">{{ diag.invalid_env_vars }}</code></div>
-              <div v-if="diag?.invalid_feature_flags?.length">Неизвестные флаги: <code style="color: #f87171;">{{ diag.invalid_feature_flags.join(', ') }}</code></div>
+              <div v-if="diag?.config_file_status">Конфиг: <code :style="{ color: hasEnvWarnings ? 'var(--admin-amber)' : 'var(--admin-emerald)', fontWeight: 600 }">{{ diag.config_file_status }}</code></div>
+              <div v-if="diag?.invalid_env_vars">Неверные ENV: <code style="color: var(--admin-rose);">{{ diag.invalid_env_vars }}</code></div>
+              <div v-if="diag?.invalid_feature_flags?.length">Неизвестные флаги: <code style="color: var(--admin-rose);">{{ diag.invalid_feature_flags.join(', ') }}</code></div>
             </div>
           </div>
 
           <!-- IP Header Match -->
-          <div style="background-color: var(--admin-input-bg, #0b0f19); border: 1px solid var(--admin-card-border, #1f2937); border-radius: 6px; padding: 14px;">
+          <div style="background-color: var(--admin-surface-alt, #0b0f19); border: 1px solid var(--admin-card-border, #1f2937); border-radius: 8px; padding: 14px;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
               <span style="font-size: 13px; font-weight: 600; color: var(--admin-text-main, #e5e7eb);">Заголовок реального IP клиента</span>
               <span
@@ -338,15 +377,16 @@ onMounted(loadDiagnostics);
                   fontWeight: 600,
                   padding: '2px 8px',
                   borderRadius: '999px',
-                  backgroundColor: diag?.ip_header_exists ? '#064e3b' : '#713f12',
-                  color: diag?.ip_header_exists ? '#34d399' : '#fde047',
+                  backgroundColor: diag?.ip_header_exists ? 'var(--admin-badge-green-bg)' : 'var(--admin-badge-amber-bg)',
+                  color: diag?.ip_header_exists ? 'var(--admin-badge-green-text)' : 'var(--admin-badge-amber-text)',
+                  border: diag?.ip_header_exists ? '1px solid var(--admin-badge-green-border)' : '1px solid var(--admin-badge-amber-border)',
                 }"
               >
                 {{ diag?.ip_header_exists ? (diag?.ip_header_name || 'Определён') : 'Прямой IP' }}
               </span>
             </div>
             <div style="font-size: 12px; color: var(--admin-text-secondary, #9ca3af); margin-top: 6px;">
-              Конфигурация IP_HEADER: <code style="color: #38bdf8;">{{ diag?.ip_header_config || 'X-Real-IP / CF-Connecting-IP' }}</code>
+              Конфигурация IP_HEADER: <code style="color: var(--admin-sky, #38bdf8);">{{ diag?.ip_header_config || 'X-Real-IP / CF-Connecting-IP' }}</code>
             </div>
           </div>
         </div>
@@ -373,13 +413,13 @@ onMounted(loadDiagnostics);
           </div>
           <div>
             <div style="font-size: 12px; color: var(--admin-text-secondary, #9ca3af);">Сетевое время NTP</div>
-            <div style="font-size: 14px; font-weight: 600; color: #34d399; margin-top: 4px; font-family: monospace;">
+            <div style="font-size: 14px; font-weight: 600; color: var(--admin-emerald, #34d399); margin-top: 4px; font-family: monospace;">
               {{ diag?.ntp_time || 'NTP доступен' }}
             </div>
           </div>
           <div>
             <div style="font-size: 12px; color: var(--admin-text-secondary, #9ca3af);">Разница времени сервера и браузера</div>
-            <div style="font-size: 14px; font-weight: 600; color: (timeDifferenceSeconds || 0) <= 15 ? '#34d399' : '#f87171'; margin-top: 4px;">
+            <div :style="{ fontSize: '14px', fontWeight: 600, color: (timeDifferenceSeconds || 0) <= 15 ? 'var(--admin-emerald)' : 'var(--admin-rose)', marginTop: '4px' }">
               {{ timeDifferenceSeconds !== null ? `${timeDifferenceSeconds} сек.` : 'Синхронизировано' }}
             </div>
           </div>
@@ -411,12 +451,12 @@ onMounted(loadDiagnostics);
           <div style="display: flex; justify-content: flex-end; margin-bottom: 8px;">
             <button
               @click="copySupport"
-              style="background-color: var(--admin-surface-bg, #1f2937); color: #38bdf8; border: 1px solid var(--admin-input-border, #374151); padding: 6px 12px; border-radius: 4px; font-size: 12px; font-weight: 600; cursor: pointer;"
+              style="background-color: var(--admin-surface-bg, #1f2937); color: var(--admin-sky, #38bdf8); border: 1px solid var(--admin-input-border, #374151); padding: 6px 12px; border-radius: 4px; font-size: 12px; font-weight: 600; cursor: pointer;"
             >
               {{ copied ? 'Скопировано в буфер!' : 'Копировать в буфер' }}
             </button>
           </div>
-          <pre style="background-color: var(--admin-input-bg, #0b0f19); border: 1px solid var(--admin-card-border, #1f2937); border-radius: 6px; padding: 14px; color: var(--admin-text-subtle, #cbd5e1); font-size: 12px; max-height: 280px; overflow-y: auto; font-family: monospace;">{{ supportJson }}</pre>
+          <pre style="background-color: var(--admin-surface-alt, #0b0f19); border: 1px solid var(--admin-card-border, #1f2937); border-radius: 6px; padding: 14px; color: var(--admin-text-subtle, #cbd5e1); font-size: 12px; max-height: 280px; overflow-y: auto; font-family: monospace;">{{ supportJson }}</pre>
         </div>
       </div>
     </div>

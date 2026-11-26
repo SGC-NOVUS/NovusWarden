@@ -64,7 +64,7 @@ const currentTab = computed(
             cursor: 'pointer',
             background: activeTab === tab.id ? 'rgba(14, 165, 233, 0.16)' : 'var(--admin-surface-bg, #1f2937)',
             border: activeTab === tab.id ? '1px solid #0ea5e9' : '1px solid var(--admin-btn-border, #374151)',
-            color: activeTab === tab.id ? '#38bdf8' : 'var(--admin-text-subtle, #cbd5e1)',
+            color: activeTab === tab.id ? 'var(--admin-accent, #38bdf8)' : 'var(--admin-text-subtle, #cbd5e1)',
           }"
         >
           {{ tab.label }}
@@ -105,7 +105,7 @@ const currentTab = computed(
               padding: 3px 8px;
               border-radius: 6px;
               background: rgba(14, 165, 233, 0.14);
-              color: #38bdf8;
+              color: var(--admin-accent, #38bdf8);
               border: 1px solid rgba(14, 165, 233, 0.3);
             "
           >
@@ -130,7 +130,7 @@ const currentTab = computed(
             background: var(--admin-input-bg, #0b0f19);
             border: 1px solid var(--admin-input-border, #334155);
             font-size: 12px;
-            color: #38bdf8;
+            color: var(--admin-sky, #38bdf8);
             overflow-x: auto;
           "
         ><code>{{ card.code }}</code></pre>

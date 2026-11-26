@@ -149,6 +149,20 @@ function togglePassword(name: string) {
   showPasswords.value[name] = !showPasswords.value[name];
 }
 
+function isSecretElement(el: ConfigElement): boolean {
+  const n = (el.name || '').toLowerCase();
+  return (
+    el.type === 'password' ||
+    n === 'database_url' ||
+    n === 'admin_token' ||
+    n.includes('password') ||
+    n.includes('secret') ||
+    n.includes('token') ||
+    n.includes('api_key') ||
+    n.includes('installation_key')
+  );
+}
+
 async function handleSave() {
   saving.value = true;
   message.value = null;
@@ -245,7 +259,7 @@ onMounted(loadConfig);
       <div style="display: flex; gap: 10px; flex-wrap: wrap;">
         <button
           @click="showSmtpModal = true"
-          style="background-color: var(--admin-surface-bg, #1f2937); color: #38bdf8; border: 1px solid var(--admin-input-border, #374151); padding: 8px 14px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px;"
+          style="background-color: var(--admin-surface-bg, #1f2937); color: var(--admin-sky, #38bdf8); border: 1px solid var(--admin-input-border, #374151); padding: 8px 14px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px;"
         >
           ✉️ Тест SMTP
         </button>
@@ -253,14 +267,14 @@ onMounted(loadConfig);
           v-if="configData?.can_backup"
           @click="handleBackup"
           :disabled="backingUp"
-          style="background-color: var(--admin-surface-bg, #1f2937); color: #34d399; border: 1px solid var(--admin-input-border, #374151); padding: 8px 14px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;"
+          style="background-color: var(--admin-surface-bg, #1f2937); color: var(--admin-emerald, #34d399); border: 1px solid var(--admin-input-border, #374151); padding: 8px 14px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;"
         >
           💾 {{ backingUp ? 'Создание...' : 'Бэкап БД' }}
         </button>
         <button
           @click="handleReset"
           :disabled="resetting"
-          style="background-color: #450a0a; color: #f87171; border: 1px solid #991b1b; padding: 8px 14px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;"
+          style="background-color: var(--admin-badge-red-bg); color: var(--admin-badge-red-text); border: 1px solid var(--admin-badge-red-border); padding: 8px 14px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;"
         >
           Сброс к умолчанию
         </button>
@@ -282,13 +296,13 @@ onMounted(loadConfig);
       v-if="message"
       :style="{
         padding: '12px 16px',
-        borderRadius: '6px',
+        borderRadius: '8px',
         marginBottom: '20px',
         fontSize: '13px',
         fontWeight: 500,
-        backgroundColor: message.error ? '#450a0a' : '#052e16',
-        color: message.error ? '#fca5a5' : '#86efac',
-        border: message.error ? '1px solid #991b1b' : '1px solid #166534',
+        backgroundColor: message.error ? 'var(--admin-badge-red-bg)' : 'var(--admin-badge-green-bg)',
+        color: message.error ? 'var(--admin-badge-red-text)' : 'var(--admin-badge-green-text)',
+        border: message.error ? '1px solid var(--admin-badge-red-border)' : '1px solid var(--admin-badge-green-border)',
       }"
     >
       {{ message.text }}
@@ -297,7 +311,7 @@ onMounted(loadConfig);
     <!-- Plaintext ADMIN_TOKEN security warning -->
     <div
       v-if="isPlaintextAdminToken"
-      style="padding: 12px 16px; border-radius: 6px; margin-bottom: 20px; font-size: 13px; background-color: #451a03; color: #fde68a; border: 1px solid #d97706;"
+      style="padding: 12px 16px; border-radius: 8px; margin-bottom: 20px; font-size: 13px; background-color: var(--admin-badge-amber-bg); color: var(--admin-badge-amber-text); border: 1px solid var(--admin-badge-amber-border);"
     >
       <strong>⚠️ Незащищённый ADMIN_TOKEN:</strong> используется открытый токен вместо PHC-хэша Argon2id (<code>$argon2id$...</code>). Сгенерируйте хэш командой <code>vaultwarden hash</code>.
     </div>
@@ -425,31 +439,31 @@ onMounted(loadConfig);
                 </label>
                 <span
                   v-if="hasRiskWarning(el)"
-                  style="font-size: 10px; font-weight: 700; background-color: #78350f; color: #fde68a; padding: 1px 6px; border-radius: 4px;"
+                  style="font-size: 10px; font-weight: 700; background-color: var(--admin-badge-amber-bg); color: var(--admin-badge-amber-text); border: 1px solid var(--admin-badge-amber-border); padding: 1px 6px; border-radius: 4px;"
                 >
                   ⚠️ Риск безопасности
                 </span>
                 <span
-                  style="font-family: monospace; font-size: 11px; background-color: var(--admin-surface-bg, #1f2937); color: var(--admin-text-secondary, #94a3b8); padding: 2px 6px; border-radius: 4px;"
+                  style="font-family: monospace; font-size: 11px; background-color: var(--admin-badge-neutral-bg); color: var(--admin-badge-neutral-text); padding: 2px 6px; border-radius: 4px;"
                 >
                   {{ el.name }}
                 </span>
                 <span
                   v-if="el.overridden"
-                  style="font-size: 10px; font-weight: 700; background-color: #854d0e; color: #fef08a; padding: 1px 6px; border-radius: 4px;"
+                  style="font-size: 10px; font-weight: 700; background-color: var(--admin-badge-amber-bg); color: var(--admin-badge-amber-text); border: 1px solid var(--admin-badge-amber-border); padding: 1px 6px; border-radius: 4px;"
                   title="Параметр переопределён переменными окружения"
                 >
                   ⚡ Переопределено
                 </span>
                 <span
                   v-if="!el.editable"
-                  style="font-size: 10px; font-weight: 600; background-color: #374151; color: var(--admin-text-subtle, #cbd5e1); padding: 1px 6px; border-radius: 4px;"
+                  style="font-size: 10px; font-weight: 600; background-color: var(--admin-badge-neutral-bg); color: var(--admin-badge-neutral-text); border: 1px solid var(--admin-badge-neutral-border); padding: 1px 6px; border-radius: 4px;"
                 >
                   🔒 Read-only
                 </span>
                 <span
                   v-if="values[el.name] !== initialValues[el.name]"
-                  style="font-size: 10px; font-weight: 700; background-color: #1e3a8a; color: #93c5fd; padding: 1px 6px; border-radius: 4px;"
+                  style="font-size: 10px; font-weight: 700; background-color: var(--admin-badge-blue-bg); color: var(--admin-badge-blue-text); border: 1px solid var(--admin-badge-blue-border); padding: 1px 6px; border-radius: 4px;"
                 >
                   ● Изменено
                 </span>
@@ -464,9 +478,11 @@ onMounted(loadConfig);
 
               <div
                 v-if="el.default !== undefined && el.default !== null && el.default !== ''"
-                style="font-size: 11px; color: #64748b; margin-top: 4px;"
+                style="font-size: 11px; color: var(--admin-text-muted, #64748b); margin-top: 4px;"
               >
-                По умолчанию: <code style="color: var(--admin-text-secondary, #94a3b8);">{{ String(el.default) }}</code>
+                По умолчанию:
+                <code v-if="!isSecretElement(el) || showPasswords[el.name]" style="color: var(--admin-text-secondary, #94a3b8); word-break: break-all;">{{ String(el.default) }}</code>
+                <code v-else style="color: var(--admin-text-muted, #64748b);">•••••••• (скрыто)</code>
               </div>
             </div>
 
@@ -510,19 +526,19 @@ onMounted(loadConfig);
                     ></span>
                   </span>
                 </label>
-                <span :style="{ fontSize: '13px', fontWeight: 500, color: values[el.name] ? '#0284c7' : 'var(--admin-text-secondary, #9ca3af)' }">
+                <span :style="{ fontSize: '13px', fontWeight: 500, color: values[el.name] ? 'var(--admin-sky, #0284c7)' : 'var(--admin-text-secondary, #9ca3af)' }">
                   {{ values[el.name] ? 'Включено' : 'Отключено' }}
                 </span>
               </div>
 
-              <!-- Password / Secret (including database_url) -->
-              <div v-else-if="el.type === 'password' || el.name === 'database_url'" style="display: flex; gap: 6px;">
+              <!-- Password / Secret (including database_url & tokens) -->
+              <div v-else-if="isSecretElement(el)" style="display: flex; gap: 6px;">
                 <input
                   :id="'input_' + el.name"
                   :type="showPasswords[el.name] ? 'text' : 'password'"
                   v-model="values[el.name]"
                   :disabled="isElementDisabled(group, el)"
-                  :placeholder="el.default ? `По умолчанию: ${el.default}` : 'Не задано'"
+                  placeholder="•••••••• (секрет скрыт)"
                   style="flex: 1; background-color: var(--admin-input-bg, #0b0f19); border: 1px solid var(--admin-input-border, #374151); color: var(--admin-text-main, #f9fafb); padding: 8px 12px; border-radius: 6px; font-size: 13px; outline: none; font-family: monospace;"
                 />
                 <button
@@ -561,31 +577,6 @@ onMounted(loadConfig);
       </div>
     </div>
 
-    <!-- Sticky Unsaved Changes Save Bar -->
-    <div
-      v-if="modifiedCount > 0"
-      style="position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 90; display: flex; align-items: center; gap: 14px; padding: 10px 18px; border-radius: 14px; background: var(--admin-card-bg); border: 1px solid var(--admin-accent, #38bdf8); box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55); backdrop-filter: blur(14px);"
-    >
-      <span style="font-size: 13px; font-weight: 600; color: var(--admin-text-main);">
-        Несохранённых изменений: <strong style="color: var(--admin-accent, #38bdf8);">{{ modifiedCount }}</strong>
-      </span>
-      <button
-        type="button"
-        @click="loadConfig"
-        style="background: var(--admin-surface-bg); color: var(--admin-text-main); border: 1px solid var(--admin-input-border); padding: 7px 12px; border-radius: 8px; font-size: 12.5px; font-weight: 600; cursor: pointer;"
-      >
-        Отменить
-      </button>
-      <button
-        type="button"
-        :disabled="saving"
-        @click="handleSave"
-        style="background: linear-gradient(135deg, #0284c7, #2563eb); color: #ffffff; border: none; padding: 7px 16px; border-radius: 8px; font-size: 12.5px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);"
-      >
-        {{ saving ? 'Сохранение...' : 'Сохранить конфигурацию' }}
-      </button>
-    </div>
-
     <!-- SMTP Test Modal -->
     <div
       v-if="showSmtpModal"
@@ -601,19 +592,19 @@ onMounted(loadConfig);
         </p>
         <div
           v-if="modifiedCount > 0"
-          style="padding: 10px 12px; border-radius: 6px; margin-bottom: 12px; font-size: 12px; background-color: #713f12; color: #fde68a; border: 1px solid #a16207;"
+          style="padding: 10px 12px; border-radius: 8px; margin-bottom: 12px; font-size: 12px; background-color: var(--admin-badge-amber-bg); color: var(--admin-badge-amber-text); border: 1px solid var(--admin-badge-amber-border);"
         >
           ⚠️ У вас есть несохранённые изменения ({{ modifiedCount }}). Тест использует ранее сохранённые настройки — сначала сохраните конфигурацию!
         </div>
 
         <div v-if="smtpResult" :style="{
           padding: '10px 14px',
-          borderRadius: '6px',
+          borderRadius: '8px',
           marginBottom: '16px',
           fontSize: '12px',
-          backgroundColor: smtpResult.error ? '#450a0a' : '#052e16',
-          color: smtpResult.error ? '#fca5a5' : '#86efac',
-          border: smtpResult.error ? '1px solid #991b1b' : '1px solid #166534',
+          backgroundColor: smtpResult.error ? 'var(--admin-badge-red-bg)' : 'var(--admin-badge-green-bg)',
+          color: smtpResult.error ? 'var(--admin-badge-red-text)' : 'var(--admin-badge-green-text)',
+          border: smtpResult.error ? '1px solid var(--admin-badge-red-border)' : '1px solid var(--admin-badge-green-border)',
         }">
           {{ smtpResult.text }}
         </div>
