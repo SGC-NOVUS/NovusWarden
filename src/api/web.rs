@@ -312,7 +312,24 @@ impl<'r> rocket::response::Responder<'r, 'static> for AttachmentDownload {
 
 #[get("/<p..>", rank = 10)] // Only match this if the other routes don't match
 async fn web_files(p: PathBuf) -> Cached<Option<NamedFile>> {
-    Cached::long(NamedFile::open(Path::new(&active_web_vault_folder()).join(p)).await.ok(), true)
+    let primary_root = active_web_vault_folder();
+    let primary = Path::new(&primary_root).join(&p);
+    if let Ok(file) = NamedFile::open(&primary).await {
+        return Cached::long(Some(file), true);
+    }
+
+    // When Vue Web Vault is active, fall back to the official Bitwarden web-vault
+    // assets for extension / mobile / desktop connector HTML & JS files
+    // (e.g. webauthn-fallback-connector.html, sso-connector.html, duo-redirect-connector.html).
+    let fallback_root = CONFIG.web_vault_folder();
+    let fallback = Path::new(&fallback_root).join(&p);
+    if fallback != primary
+        && let Ok(file) = NamedFile::open(&fallback).await
+    {
+        return Cached::long(Some(file), true);
+    }
+
+    Cached::long(None, true)
 }
 
 #[get("/attachments/<cipher_id>/<file_id>?<token>")]

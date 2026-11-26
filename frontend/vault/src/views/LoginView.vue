@@ -351,7 +351,7 @@ async function handleLogin() {
             <div class="remember-row">
               <label class="remember-label">
                 <input v-model="rememberTwoFactor" type="checkbox" class="cyber-checkbox" />
-                <span>Запомнить это устройство</span>
+                <span>Запомнить это устройство на 30 дней</span>
               </label>
               <button type="button" class="text-xs text-slate-400 hover:text-sky-400" @click="twoFactorStep = false">
                 Назад

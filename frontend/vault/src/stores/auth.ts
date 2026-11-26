@@ -26,6 +26,10 @@ export interface PendingTwoFactor {
   providers2: Record<string, any>;
 }
 
+function twoFactorRememberStorageKey(email: string): string {
+  return `novus_2fa_remember_${email.trim().toLowerCase()}`;
+}
+
 function extractSubFromJwt(jwt: string): string {
   try {
     const parts = jwt.split('.');
@@ -173,19 +177,29 @@ export const useAuthStore = defineStore('auth', () => {
     // 3. Compute Master Password Hash
     const passwordHash = await hashMasterPassword(derivedMasterKey, masterPassword);
 
-    // 4. Connect Token
+    // 4. Connect Token (auto-send saved 30-day Remember 2FA token if available)
+    const rememberStorageKey = twoFactorRememberStorageKey(normEmail);
+    const savedRememberToken = !twoFactor ? localStorage.getItem(rememberStorageKey) : null;
+    const effectiveToken = twoFactor?.token ?? savedRememberToken ?? undefined;
+    const effectiveProvider = twoFactor ? twoFactor.provider : savedRememberToken ? 5 : undefined;
+    const effectiveRemember = twoFactor ? !!twoFactor.remember : false;
+
     let res: TokenResponse;
     try {
       res = await api.login(
         normEmail,
         passwordHash,
-        twoFactor?.token,
-        twoFactor?.provider,
-        twoFactor?.remember
+        effectiveToken,
+        effectiveProvider,
+        effectiveRemember
       );
       pendingTwoFactor.value = null;
     } catch (err) {
       if (err instanceof TwoFactorRequiredError) {
+        // Clear stale/expired remembered device token so user is prompted cleanly
+        if (savedRememberToken && !twoFactor) {
+          localStorage.removeItem(rememberStorageKey);
+        }
         pendingTwoFactor.value = {
           email: normEmail,
           masterPasswordHash: passwordHash,
@@ -194,6 +208,12 @@ export const useAuthStore = defineStore('auth', () => {
         };
       }
       throw err;
+    }
+
+    // Persist 30-day 2FA remember token returned by server for future logins on this device
+    const returnedTwoFactorToken = res.TwoFactorToken || (res as any).twoFactorToken;
+    if (typeof returnedTwoFactorToken === 'string' && returnedTwoFactorToken.trim().length > 0) {
+      localStorage.setItem(rememberStorageKey, returnedTwoFactorToken.trim());
     }
 
     // 5. Unpack and decrypt Protected User Key
@@ -556,6 +576,7 @@ export const useAuthStore = defineStore('auth', () => {
     const curMasterKey = await deriveMasterKey(currentPassword, savedEmail.value, curKdf);
     const curPasswordHash = await hashMasterPassword(curMasterKey, currentPassword);
     await api.deauthorizeSessions(token.value, curPasswordHash);
+    localStorage.removeItem(twoFactorRememberStorageKey(savedEmail.value));
   }
 
   /**

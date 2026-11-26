@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
+import QRCode from 'qrcode';
 import { useAuthStore } from '../stores/auth.ts';
 import { useVaultStore } from '../stores/vault.ts';
 import { useThemeStore } from '../stores/theme.ts';
@@ -112,6 +113,7 @@ onMounted(async () => {
         }
       }
       await loadTwoFactorStatus();
+      await loadCurrentKdf();
       pendingAuthRequests.value = await api.getPendingAuthRequests(authStore.token);
       emergencyTrusted.value = await api.getEmergencyTrusted(authStore.token);
       emergencyGranted.value = await api.getEmergencyGranted(authStore.token);
@@ -361,10 +363,53 @@ async function handleDeleteAccount() {
 const totp2faEnabled = ref(false);
 const email2faEnabled = ref(false);
 const twoFaPassword = ref('');
+const verifiedTwoFaHash = ref('');
 const twoFaSetupKey = ref('');
 const twoFaVerificationToken = ref('');
 const twoFaConfirmCode = ref('');
 const twoFaLoading = ref(false);
+const totpQrSvg = ref('');
+
+const totpOtpAuthUri = computed(() => {
+  if (!twoFaSetupKey.value) return '';
+  const account = encodeURIComponent(authStore.savedEmail || 'user');
+  return `otpauth://totp/NovusWarden:${account}?secret=${encodeURIComponent(twoFaSetupKey.value)}&issuer=NovusWarden&algorithm=SHA1&digits=6&period=30`;
+});
+
+watch(
+  totpOtpAuthUri,
+  async (uri) => {
+    if (!uri) {
+      totpQrSvg.value = '';
+      return;
+    }
+    try {
+      totpQrSvg.value = await QRCode.toString(uri, {
+        type: 'svg',
+        width: 184,
+        margin: 2,
+        errorCorrectionLevel: 'M',
+        color: { dark: '#0f172a', light: '#ffffff' },
+      });
+    } catch {
+      totpQrSvg.value = '';
+    }
+  },
+  { immediate: true }
+);
+
+function copyTotpSecret() {
+  if (!twoFaSetupKey.value) return;
+  navigator.clipboard.writeText(twoFaSetupKey.value);
+  showToast('Секретный ключ TOTP скопирован');
+}
+
+function closeTotpSetup() {
+  twoFaSetupKey.value = '';
+  twoFaConfirmCode.value = '';
+  twoFaVerificationToken.value = '';
+  verifiedTwoFaHash.value = '';
+}
 
 async function computePasswordHashForVerification(pwd: string): Promise<string> {
   if (!authStore.savedEmail) throw new Error('Email не найден');
@@ -396,6 +441,7 @@ async function handleLoadAuthenticatorSetup() {
   try {
     const hash = await computePasswordHashForVerification(twoFaPassword.value);
     const res = await api.getAuthenticator2fa(authStore.token, hash);
+    verifiedTwoFaHash.value = hash;
     twoFaSetupKey.value = res.authenticator?.key || '';
     twoFaVerificationToken.value = res.userVerificationToken || '';
     totp2faEnabled.value = !!res.authenticator?.enabled;
@@ -407,8 +453,46 @@ async function handleLoadAuthenticatorSetup() {
   }
 }
 
+async function handleRegenerateAuthenticatorKey() {
+  if (!authStore.token || !verifiedTwoFaHash.value) {
+    showToast('Повторно введите мастер-пароль для перегенерации ключа');
+    closeTotpSetup();
+    return;
+  }
+  if (totp2faEnabled.value) {
+    if (
+      !confirm(
+        'Текущий TOTP-ключ будет отключён и заменён новым QR-кодом. Отсканируйте новый код и подтвердите его. Продолжить?'
+      )
+    ) {
+      return;
+    }
+  }
+  twoFaLoading.value = true;
+  try {
+    if (totp2faEnabled.value && twoFaSetupKey.value && twoFaVerificationToken.value) {
+      await api.disableAuthenticator2fa(authStore.token, {
+        key: twoFaSetupKey.value,
+        userVerificationToken: twoFaVerificationToken.value,
+      });
+      totp2faEnabled.value = false;
+    }
+    const res = await api.getAuthenticator2fa(authStore.token, verifiedTwoFaHash.value);
+    twoFaSetupKey.value = res.authenticator?.key || '';
+    twoFaVerificationToken.value = res.userVerificationToken || '';
+    totp2faEnabled.value = !!res.authenticator?.enabled;
+    twoFaConfirmCode.value = '';
+    showToast('Сгенерирован новый TOTP-ключ и QR-код — отсканируйте и подтвердите код');
+  } catch (err: any) {
+    showToast(err?.message || 'Не удалось перегенерировать ключ TOTP');
+  } finally {
+    twoFaLoading.value = false;
+  }
+}
+
 async function handleActivateAuthenticator() {
-  if (!authStore.token || !twoFaSetupKey.value || !twoFaConfirmCode.value.trim()) {
+  const cleanCode = twoFaConfirmCode.value.replace(/\s+/g, '');
+  if (!authStore.token || !twoFaSetupKey.value || !cleanCode) {
     showToast('Введите 6-значный код из приложения-аутентификатора');
     return;
   }
@@ -416,13 +500,11 @@ async function handleActivateAuthenticator() {
   try {
     await api.activateAuthenticator2fa(authStore.token, {
       key: twoFaSetupKey.value,
-      token: twoFaConfirmCode.value.trim(),
+      token: cleanCode,
       userVerificationToken: twoFaVerificationToken.value,
     });
     totp2faEnabled.value = true;
-    twoFaSetupKey.value = '';
-    twoFaConfirmCode.value = '';
-    twoFaVerificationToken.value = '';
+    closeTotpSetup();
     showToast('Двухфакторная аутентификация (TOTP) успешно включена!');
   } catch (err: any) {
     showToast(err?.message || 'Ошибка активации 2FA');
@@ -440,8 +522,7 @@ async function handleDisableAuthenticator() {
       userVerificationToken: twoFaVerificationToken.value,
     });
     totp2faEnabled.value = false;
-    twoFaSetupKey.value = '';
-    twoFaVerificationToken.value = '';
+    closeTotpSetup();
     showToast('Приложение-аутентификатор (TOTP) отключено');
   } catch (err: any) {
     showToast(err?.message || 'Ошибка отключения 2FA');
@@ -538,11 +619,36 @@ async function handleChangePassword() {
 }
 
 // 3. KDF Parameters (Argon2id only — OWASP / RFC 9106 standard)
+const currentSavedKdf = ref<{
+  kdfType: number;
+  iterations: number;
+  memory?: number;
+  parallelism?: number;
+} | null>(null);
 const argonIterations = ref<number>(3);
 const argonMemory = ref<number>(64);
 const argonParallelism = ref<number>(4);
 const kdfMasterPassword = ref('');
 const isChangingKdf = ref(false);
+
+async function loadCurrentKdf() {
+  if (!authStore.savedEmail) return;
+  try {
+    const pre = await api.prelogin(authStore.savedEmail);
+    const kdfType = pre.Kdf ?? pre.kdf ?? 0;
+    const iterations = pre.KdfIterations ?? pre.kdfIterations ?? (kdfType === 1 ? 3 : 600000);
+    const memory = pre.KdfMemory ?? pre.kdfMemory ?? undefined;
+    const parallelism = pre.KdfParallelism ?? pre.kdfParallelism ?? undefined;
+    currentSavedKdf.value = { kdfType, iterations, memory, parallelism };
+    if (kdfType === 1) {
+      argonIterations.value = iterations;
+      if (memory) argonMemory.value = memory;
+      if (parallelism) argonParallelism.value = parallelism;
+    }
+  } catch {
+    // Ignore offline errors
+  }
+}
 
 const argonPresets = [
   { id: 'standard', label: 'Стандарт (OWASP)', memory: 64, iterations: 3, parallelism: 4, hint: 'Баланс скорости и стойкости' },
@@ -578,7 +684,8 @@ async function handleChangeKdf() {
       safeParallelism
     );
     kdfMasterPassword.value = '';
-    showToast('Параметры Argon2id успешно применены!');
+    await loadCurrentKdf();
+    showToast(`Параметры Argon2id (${safeMemory} МБ · ${safeIterations} ит. · ×${safeParallelism}) сохранены!`);
   } catch (err: any) {
     showToast(err?.message || 'Ошибка обновления Argon2id');
   } finally {
@@ -1089,6 +1196,26 @@ function exportVaultCsv() {
             NovusWarden использует современный memory-hard алгоритм Argon2id для защиты мастер-ключа от перебора на GPU и ASIC. Устаревший PBKDF2 отключён для новых настроек.
           </p>
 
+          <!-- Currently Active Server KDF Banner -->
+          <div
+            v-if="currentSavedKdf"
+            class="mb-3.5 px-3.5 py-2.5 rounded-xl text-xs flex flex-wrap items-center justify-between gap-2 border"
+            :class="
+              currentSavedKdf.kdfType === 1
+                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+                : 'bg-amber-500/10 border-amber-500/35 text-amber-300'
+            "
+          >
+            <span class="font-semibold">
+              <template v-if="currentSavedKdf.kdfType === 1">
+                Активно в аккаунте: Argon2id · {{ currentSavedKdf.memory }} МБ · {{ currentSavedKdf.iterations }} ит. · ×{{ currentSavedKdf.parallelism }}
+              </template>
+              <template v-else>
+                Обнаружен устаревший PBKDF2 ({{ currentSavedKdf.iterations }} раундов) — рекомендуется перевести аккаунт на Argon2id ниже
+              </template>
+            </span>
+          </div>
+
           <div class="space-y-3.5">
             <!-- Quick Argon2id Presets -->
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
@@ -1265,49 +1392,87 @@ function exportVaultCsv() {
             </button>
           </div>
 
-          <div v-else class="space-y-4 p-4 rounded-lg bg-black/25 border border-slate-800">
-            <div>
-              <div class="field-label">Секретный ключ (Base32)</div>
-              <div class="flex items-center gap-2">
-                <code class="flex-1 text-xs font-mono text-sky-400 bg-black/40 p-2 rounded border border-slate-800 select-all">
-                  {{ twoFaSetupKey }}
-                </code>
+          <div v-else class="space-y-4 p-4 rounded-xl bg-black/25 border border-slate-800">
+            <div class="grid grid-cols-1 md:grid-cols-[204px_1fr] gap-4 items-start">
+              <!-- Scannable Offline QR Code -->
+              <div class="flex flex-col items-center gap-2">
+                <div
+                  v-if="totpQrSvg"
+                  class="qr-frame"
+                  v-html="totpQrSvg"
+                  title="Отсканируйте QR-код в приложении-аутентификаторе"
+                ></div>
+                <span class="text-[11px] text-slate-400 text-center">
+                  Отсканируйте QR-код камерой аутентификатора
+                </span>
               </div>
-              <span class="field-hint">
-                Добавьте ключ вручную или через URI: otpauth://totp/NovusWarden:{{ authStore.savedEmail }}?secret={{ twoFaSetupKey }}&amp;issuer=NovusWarden
-              </span>
+
+              <!-- Key Details & Actions -->
+              <div class="space-y-3 min-w-0">
+                <div>
+                  <div class="field-label">Секретный ключ (Base32)</div>
+                  <div class="flex items-center gap-2">
+                    <code class="flex-1 text-xs font-mono text-sky-400 bg-black/40 p-2.5 rounded-lg border border-slate-800 select-all break-all">
+                      {{ twoFaSetupKey }}
+                    </code>
+                    <button
+                      type="button"
+                      class="cyber-btn-secondary !px-3 shrink-0"
+                      title="Скопировать ключ"
+                      @click="copyTotpSecret"
+                    >
+                      <Copy class="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  <span class="field-hint break-all">
+                    {{ totpOtpAuthUri }}
+                  </span>
+                </div>
+
+                <template v-if="!totp2faEnabled">
+                  <div>
+                    <label class="field-label">Код подтверждения из приложения (6 цифр)</label>
+                    <input
+                      v-model="twoFaConfirmCode"
+                      type="text"
+                      inputmode="numeric"
+                      autocomplete="one-time-code"
+                      placeholder="123456"
+                      class="cyber-input font-mono tracking-widest"
+                      @keyup.enter="handleActivateAuthenticator"
+                    />
+                  </div>
+                  <div class="flex flex-wrap gap-2 pt-1">
+                    <button type="button" class="cyber-btn-primary" :disabled="twoFaLoading" @click="handleActivateAuthenticator">
+                      <Check class="w-3.5 h-3.5" />
+                      <span>Активировать 2FA</span>
+                    </button>
+                    <button type="button" class="cyber-btn-secondary" :disabled="twoFaLoading" @click="handleRegenerateAuthenticatorKey">
+                      <RefreshCw class="w-3.5 h-3.5" :class="{ 'animate-spin': twoFaLoading }" />
+                      <span>Сгенерировать новый ключ</span>
+                    </button>
+                    <button type="button" class="cyber-btn-secondary" @click="closeTotpSetup">
+                      Отмена
+                    </button>
+                  </div>
+                </template>
+
+                <template v-else>
+                  <div class="flex flex-wrap gap-2 pt-1">
+                    <button type="button" class="cyber-btn-primary" :disabled="twoFaLoading" @click="handleRegenerateAuthenticatorKey">
+                      <RefreshCw class="w-3.5 h-3.5" :class="{ 'animate-spin': twoFaLoading }" />
+                      <span>Перегенерировать ключ</span>
+                    </button>
+                    <button type="button" class="cyber-btn-danger" :disabled="twoFaLoading" @click="handleDisableAuthenticator">
+                      Отключить TOTP 2FA
+                    </button>
+                    <button type="button" class="cyber-btn-secondary" @click="closeTotpSetup">
+                      Закрыть
+                    </button>
+                  </div>
+                </template>
+              </div>
             </div>
-
-            <template v-if="!totp2faEnabled">
-              <div>
-                <label class="field-label">Код подтверждения из приложения</label>
-                <input
-                  v-model="twoFaConfirmCode"
-                  type="text"
-                  placeholder="123456"
-                  class="cyber-input"
-                />
-              </div>
-              <div class="flex gap-2">
-                <button type="button" class="cyber-btn-primary" :disabled="twoFaLoading" @click="handleActivateAuthenticator">
-                  Активировать 2FA
-                </button>
-                <button type="button" class="cyber-btn-secondary" @click="twoFaSetupKey = ''">
-                  Отмена
-                </button>
-              </div>
-            </template>
-
-            <template v-else>
-              <div class="flex gap-2">
-                <button type="button" class="cyber-btn-danger" :disabled="twoFaLoading" @click="handleDisableAuthenticator">
-                  Отключить TOTP 2FA
-                </button>
-                <button type="button" class="cyber-btn-secondary" @click="twoFaSetupKey = ''">
-                  Закрыть
-                </button>
-              </div>
-            </template>
           </div>
 
           <!-- Email 2FA, WebAuthn & Recovery Code -->
@@ -1756,6 +1921,26 @@ function exportVaultCsv() {
 
 :global(html.light) .theme-choice.active {
   color: #0284c7;
+}
+
+.qr-frame {
+  width: 196px;
+  height: 196px;
+  padding: 6px;
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  box-shadow: 0 10px 26px -8px rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.qr-frame :deep(svg) {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 
 /* Modals */
