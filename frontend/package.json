@@ -10,6 +10,7 @@
     "build:admin": "vite build --mode admin",
     "build:vault": "vite build --mode vault",
     "build:emails": "node ./emails/compile-emails.mjs",
+    "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "preview": "vite preview"
   },
@@ -32,6 +33,7 @@
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.16",
     "typescript": "^5.7.2",
-    "vite": "^6.0.7"
+    "vite": "^6.0.7",
+    "vitest": "^3.0.5"
   }
 }

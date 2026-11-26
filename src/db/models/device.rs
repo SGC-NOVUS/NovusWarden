@@ -70,7 +70,8 @@ impl Device {
             "identifier": self.uuid,
             "creationDate": format_date(&self.created_at),
             "lastActivityDate": format_date(&self.updated_at),
-            "isTrusted": false,
+            "isTrusted": self.twofactor_remember.is_some(),
+            "twoFactorRemember": self.twofactor_remember.is_some(),
             "object":"device"
         })
     }
@@ -126,7 +127,8 @@ impl DeviceWithAuthRequest {
             "creationDate": format_date(&self.device.created_at),
             "lastActivityDate": format_date(&self.device.updated_at),
             "devicePendingAuthRequest": auth_request,
-            "isTrusted": false,
+            "isTrusted": self.device.twofactor_remember.is_some(),
+            "twoFactorRemember": self.device.twofactor_remember.is_some(),
             "encryptedPublicKey": null,
             "encryptedUserKey": null,
             "object": "device",

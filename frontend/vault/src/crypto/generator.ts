@@ -1,6 +1,6 @@
 // High-Security Password & Passphrase Generator with Cryptographic Quality
 // NovusWarden Enterprise Zero-Knowledge Suite
-// CSPRNG-backed (window.crypto.getRandomValues)
+// CSPRNG-backed (globalThis.crypto.getRandomValues)
 
 const UPPERCASE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 const LOWERCASE = 'abcdefghijklmnopqrstuvwxyz';
@@ -99,7 +99,7 @@ function getRandomInt(max: number): number {
   const maxSafe = Math.floor(0xffffffff / max) * max;
   let randomVal = 0;
   do {
-    window.crypto.getRandomValues(array);
+    globalThis.crypto.getRandomValues(array);
     randomVal = array[0];
   } while (randomVal >= maxSafe);
   return randomVal % max;

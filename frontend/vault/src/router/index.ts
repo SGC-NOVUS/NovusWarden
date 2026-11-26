@@ -28,6 +28,36 @@ const router = createRouter({
       component: () => import('../views/RegisterView.vue'),
     },
     {
+      path: '/accept-organization',
+      name: 'accept-organization',
+      component: () => import('../views/AcceptInviteView.vue'),
+    },
+    {
+      path: '/accept-emergency',
+      name: 'accept-emergency',
+      component: () => import('../views/AcceptInviteView.vue'),
+    },
+    {
+      path: '/verify-email',
+      name: 'verify-email',
+      component: () => import('../views/VerifyEmailView.vue'),
+    },
+    {
+      path: '/recover-2fa',
+      name: 'recover-2fa',
+      component: () => import('../views/RecoverTwoFactorView.vue'),
+    },
+    {
+      path: '/hint',
+      name: 'hint',
+      component: () => import('../views/PasswordHintView.vue'),
+    },
+    {
+      path: '/checkout',
+      name: 'checkout',
+      component: () => import('../views/CheckoutView.vue'),
+    },
+    {
       path: '/vault',
       name: 'vault',
       component: () => import('../views/VaultView.vue'),
@@ -62,7 +92,7 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
-      path: '/settings',
+      path: '/settings/:tab?',
       name: 'settings',
       component: () => import('../views/SettingsView.vue'),
       meta: { requiresAuth: true },

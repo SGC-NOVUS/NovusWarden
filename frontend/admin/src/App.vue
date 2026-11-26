@@ -3,15 +3,39 @@ import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { api, authState, adminUrl } from './api/client.ts';
 import { useI18n } from '@shared/i18n.ts';
+import ConfirmDialog from '@shared/ConfirmDialog.vue';
+import ToastHost from '@shared/ToastHost.vue';
+import {
+  LayoutDashboard,
+  Users,
+  Building2,
+  CreditCard,
+  SlidersHorizontal,
+  Activity,
+  BookOpen,
+  ExternalLink,
+  Globe,
+  Sun,
+  Moon,
+  Monitor,
+  LogOut,
+  Menu,
+  X,
+  ShieldCheck,
+} from 'lucide-vue-next';
 
 const route = useRoute();
 const router = useRouter();
 const { t, locale, cycleLocale } = useI18n();
 
-const isLoginPage = computed(() => route.path === '/login' || (authState.value.needsAuth && route.path !== '/docs'));
+const isLoginPage = computed(
+  () => route.path === '/login' || (authState.value.needsAuth && route.path !== '/docs')
+);
 
-// Theme switcher: 'system' | 'dark' | 'light'
-const themeMode = ref<'system' | 'dark' | 'light'>((localStorage.getItem('novus_theme') as any) || 'system');
+const mobileNavOpen = ref(false);
+const themeMode = ref<'system' | 'dark' | 'light'>(
+  (localStorage.getItem('novus_theme') as any) || 'system'
+);
 
 const isLight = computed(() => {
   if (themeMode.value === 'light') return true;
@@ -19,17 +43,32 @@ const isLight = computed(() => {
   return window.matchMedia && !window.matchMedia('(prefers-color-scheme: dark)').matches;
 });
 
-const bannerUrl = computed(() => adminUrl(`/vw_static/${isLight.value ? 'novuswarden_banner_white_trans.webp' : 'novuswarden_banner_black_trans.webp'}`));
+const bannerUrl = computed(() =>
+  adminUrl(
+    `/vw_static/${isLight.value ? 'novuswarden_banner_white_trans.webp' : 'novuswarden_banner_black_trans.webp'}`
+  )
+);
+
+const themeIcon = computed(() => {
+  if (themeMode.value === 'dark') return Moon;
+  if (themeMode.value === 'light') return Sun;
+  return Monitor;
+});
+
+const themeLabel = computed(() => {
+  if (themeMode.value === 'dark') return t('theme.dark');
+  if (themeMode.value === 'light') return t('theme.light');
+  return t('theme.system');
+});
 
 function applyTheme(mode: 'system' | 'dark' | 'light') {
-  const isDark = mode === 'dark' || (mode === 'system' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
-  if (isDark) {
-    document.documentElement.classList.add('dark');
-    document.documentElement.classList.remove('light');
-  } else {
-    document.documentElement.classList.remove('dark');
-    document.documentElement.classList.add('light');
-  }
+  const isDark =
+    mode === 'dark' ||
+    (mode === 'system' &&
+      window.matchMedia &&
+      window.matchMedia('(prefers-color-scheme: dark)').matches);
+  document.documentElement.classList.toggle('dark', isDark);
+  document.documentElement.classList.toggle('light', !isDark);
 }
 
 function toggleTheme() {
@@ -44,275 +83,467 @@ onMounted(() => {
   applyTheme(themeMode.value);
   if (window.matchMedia) {
     window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-      if (themeMode.value === 'system') {
-        applyTheme('system');
-      }
+      if (themeMode.value === 'system') applyTheme('system');
     });
   }
 });
 
 const navItems = computed(() => [
-  { name: t('nav.dashboard'), path: '/' },
-  { name: t('nav.users'), path: '/users' },
-  { name: t('nav.organizations'), path: '/organizations' },
-  { name: t('nav.subscriptions'), path: '/subscriptions' },
-  { name: t('nav.serverSettings'), path: '/settings' },
-  { name: t('nav.diagnostics'), path: '/diagnostics' },
-  { name: t('nav.docs'), path: '/docs' },
+  { name: t('nav.dashboard'), path: '/', icon: LayoutDashboard },
+  { name: t('nav.users'), path: '/users', icon: Users },
+  { name: t('nav.organizations'), path: '/organizations', icon: Building2 },
+  { name: t('nav.subscriptions'), path: '/subscriptions', icon: CreditCard },
+  { name: t('nav.serverSettings'), path: '/settings', icon: SlidersHorizontal },
+  { name: t('nav.diagnostics'), path: '/diagnostics', icon: Activity },
+  { name: t('nav.docs'), path: '/docs', icon: BookOpen },
 ]);
 
-const loggingOut = ref(false);
+const currentPageTitle = computed(() => {
+  const match = navItems.value.find((item) => item.path === route.path);
+  return match?.name || 'Control Plane';
+});
 
+const loggingOut = ref(false);
 async function handleLogout() {
   loggingOut.value = true;
   await api.logout();
   loggingOut.value = false;
+  mobileNavOpen.value = false;
   await router.push('/login');
 }
 </script>
 
 <template>
-  <div
-    :style="{
-      height: isLoginPage ? '100vh' : undefined,
-      maxHeight: isLoginPage ? '100vh' : undefined,
-      overflow: isLoginPage ? 'hidden' : undefined,
-      minHeight: '100vh',
-      display: 'flex',
-      flexDirection: 'column',
-      backgroundColor: isLight ? '#f0f6fb' : '#010811',
-      backgroundImage: isLight
-        ? 'radial-gradient(ellipse at 50% 25%, #ffffff 0%, #f1f6fb 60%, #e2ecf5 100%)'
-        : 'radial-gradient(ellipse at 50% 25%, #061329 0%, #020916 65%, #01050d 100%)',
-      color: isLight ? '#0f172a' : '#f8fafc',
-      transition: 'background-color 0.25s ease, color 0.25s ease'
-    }"
-  >
-    <!-- Sticky Translucent Top Bar Header -->
-    <header
-      :style="{
-        position: 'sticky',
-        top: 0,
-        zIndex: 60,
-        backdropFilter: 'blur(14px)',
-        WebkitBackdropFilter: 'blur(14px)',
-        backgroundColor: isLight ? 'rgba(255, 255, 255, 0.92)' : 'rgba(8, 15, 30, 0.88)',
-        borderBottom: isLight ? '1px solid rgba(15, 23, 42, 0.08)' : '1px solid rgba(56, 189, 248, 0.16)',
-        boxShadow: isLight ? '0 2px 12px rgba(15, 23, 42, 0.05)' : '0 4px 24px rgba(0, 0, 0, 0.45)',
-        padding: '10px 24px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        flexWrap: 'wrap',
-        gap: '12px',
-        flexShrink: 0
-      }"
-    >
-      <div style="display: flex; align-items: center; gap: 12px;">
-        <router-link to="/" style="display: flex; align-items: center; gap: 10px; text-decoration: none;">
-          <img
-            :src="bannerUrl"
-            alt="NovusWarden Control Plane"
-            style="height: 32px; max-width: 184px; object-fit: contain; display: block;"
-          />
-          <span
-            :style="{
-              fontSize: '10.5px',
-              fontWeight: 700,
-              letterSpacing: '0.7px',
-              padding: '3px 8px',
-              borderRadius: '6px',
-              textTransform: 'uppercase',
-              color: isLight ? '#0284c7' : '#38bdf8',
-              background: isLight ? 'rgba(2, 132, 199, 0.08)' : 'rgba(56, 189, 248, 0.12)',
-              border: isLight ? '1px solid rgba(2, 132, 199, 0.22)' : '1px solid rgba(56, 189, 248, 0.25)'
-            }"
-          >
-            Control Plane
-          </span>
-        </router-link>
-      </div>
-
-      <!-- Segmented Navigation Bar -->
-      <nav
-        v-if="!isLoginPage"
-        :style="{
-          display: 'flex',
-          gap: '4px',
-          flexWrap: 'wrap',
-          padding: '4px',
-          borderRadius: '11px',
-          backgroundColor: isLight ? '#f1f5f9' : 'rgba(15, 23, 42, 0.72)',
-          border: isLight ? '1px solid #e2e8f0' : '1px solid rgba(56, 189, 248, 0.16)'
-        }"
-      >
-        <router-link
-          v-for="item in navItems"
-          :key="item.path"
-          :to="item.path"
-          custom
-          v-slot="{ href, navigate, isActive }"
-        >
-          <a
-            :href="href"
-            @click="navigate"
-            :style="{
-              padding: '6px 13px',
-              borderRadius: '8px',
-              fontSize: '12.5px',
-              fontWeight: 600,
-              textDecoration: 'none',
-              transition: 'all 0.15s ease',
-              backgroundColor: isActive
-                ? (isLight ? '#0284c7' : 'rgba(14, 165, 233, 0.22)')
-                : 'transparent',
-              color: isActive
-                ? (isLight ? '#ffffff' : '#38bdf8')
-                : (isLight ? '#475569' : '#94a3b8'),
-              border: isActive
-                ? (isLight ? '1px solid #0284c7' : '1px solid rgba(56, 189, 248, 0.35)')
-                : '1px solid transparent',
-            }"
-          >
-            {{ item.name }}
-          </a>
-        </router-link>
-      </nav>
-
-      <!-- Right Header Actions (Matches prod navbar) -->
-      <div style="display: flex; align-items: center; gap: 14px;">
-        <a
-          :href="adminUrl('/')"
-          target="_blank"
-          :style="{
-            color: isLight ? '#475569' : '#94a3b8',
-            textDecoration: 'none',
-            fontSize: '13px',
-            fontWeight: 500,
-            display: 'flex',
-            alignItems: 'center',
-            gap: '4px',
-            transition: 'color 0.15s ease'
-          }"
-          title="Открыть веб-хранилище паролей Bitwarden Web Vault"
-        >
-          Веб-хранилище
+  <div class="cp-shell" :class="{ 'cp-login-mode': isLoginPage }">
+    <!-- Login Minimal Header -->
+    <header v-if="isLoginPage" class="cp-login-header">
+      <router-link to="/" class="cp-brand">
+        <img :src="bannerUrl" alt="NovusWarden Control Plane" class="cp-logo" />
+        <span class="cp-badge">Control Plane</span>
+      </router-link>
+      <div class="cp-actions">
+        <a :href="adminUrl('/')" target="_blank" class="cp-pill-link">
+          <span>{{ t('nav.vault') }}</span>
+          <ExternalLink class="w-3.5 h-3.5" />
         </a>
-
-        <!-- Language Switcher Pill -->
-        <button
-          type="button"
-          @click="cycleLocale"
-          :style="{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '5px',
-            padding: '5px 10px',
-            borderRadius: '999px',
-            background: isLight ? '#f1f5f9' : 'rgba(31, 41, 55, 0.8)',
-            border: isLight ? '1px solid #cbd5e1' : '1px solid #374151',
-            color: isLight ? '#334155' : '#cbd5e1',
-            cursor: 'pointer',
-            fontSize: '11.5px',
-            fontWeight: 700,
-          }"
-          :title="t('lang.label')"
-        >
-          🌐 {{ locale.toUpperCase() }}
+        <button type="button" class="cp-pill" @click="cycleLocale" :title="t('lang.label')">
+          <Globe class="w-3.5 h-3.5 text-sky-400" />
+          <span>{{ locale.toUpperCase() }}</span>
         </button>
-
-        <!-- Theme Switcher Pill (System by default, toggles System -> Dark -> Light) -->
-        <button
-          type="button"
-          @click="toggleTheme"
-          :style="{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            padding: '5px 12px',
-            borderRadius: '999px',
-            background: isLight ? '#f1f5f9' : 'rgba(31, 41, 55, 0.8)',
-            border: isLight ? '1px solid #cbd5e1' : '1px solid #374151',
-            color: isLight ? '#334155' : '#cbd5e1',
-            cursor: 'pointer',
-            fontSize: '11.5px',
-            fontWeight: 600,
-            transition: 'all 0.2s ease'
-          }"
-          :title="'Тема: ' + (themeMode === 'system' ? 'Системная (по умолчанию)' : themeMode === 'dark' ? 'Тёмная' : 'Светлая') + ' • Нажмите для переключения'"
-        >
-          <span>{{ themeMode === 'system' ? '🖥️' : themeMode === 'dark' ? '🌙' : '☀️' }}</span>
-          <span>{{ themeMode === 'system' ? 'Система' : themeMode === 'dark' ? 'Тёмная' : 'Светлая' }}</span>
+        <button type="button" class="cp-pill" @click="toggleTheme" :title="themeLabel">
+          <component :is="themeIcon" class="w-3.5 h-3.5 text-sky-400" />
+          <span>{{ themeLabel }}</span>
         </button>
-
-        <template v-if="!isLoginPage">
-          <a
-            :href="adminUrl('/admin/legacy')"
-            :style="{
-              backgroundColor: isLight ? '#f1f5f9' : '#1f2937',
-              color: isLight ? '#475569' : '#9ca3af',
-              textDecoration: 'none',
-              border: isLight ? '1px solid #cbd5e1' : '1px solid #374151',
-              padding: '6px 12px',
-              borderRadius: '6px',
-              fontSize: '12px',
-              fontWeight: 600
-            }"
-            title="Перейти в классический интерфейс администратора (Handlebars)"
-          >
-            Классическая админка ↗
-          </a>
-          <button
-            @click="handleLogout"
-            :disabled="loggingOut"
-            style="background-color: #dc2626; color: white; border: none; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer;"
-          >
-            {{ loggingOut ? 'Выход...' : 'Выйти' }}
-          </button>
-        </template>
       </div>
     </header>
 
-    <!-- Main Content -->
-    <main :style="isLoginPage ? 'flex: 1; display: flex; align-items: center; justify-content: center; padding: 0; box-sizing: border-box; overflow: hidden;' : 'flex: 1; padding: 24px 32px; max-width: 1400px; width: 100%; margin: 0 auto; box-sizing: border-box;'">
-      <router-view />
-    </main>
+    <!-- Full Control Plane Workspace: Sidebar + Main -->
+    <div v-if="!isLoginPage" class="cp-workspace">
+      <!-- Mobile Drawer Backdrop -->
+      <div
+        v-if="mobileNavOpen"
+        class="cp-mobile-backdrop"
+        @click="mobileNavOpen = false"
+      ></div>
 
-    <!-- Footer -->
-    <footer
-      :style="{
-        padding: isLoginPage ? '10px 24px' : '16px 24px',
-        textAlign: 'center',
-        fontSize: isLoginPage ? '11px' : '12px',
-        color: isLight ? '#64748b' : '#6b7280',
-        borderTop: isLight ? '1px solid #e2e8f0' : '1px solid #1f2937',
-        backgroundColor: isLight ? 'rgba(255, 255, 255, 0.7)' : 'rgba(10, 16, 29, 0.6)',
-        flexShrink: 0
-      }"
-    >
-      NovusWarden Community Edition • Разработано и поддерживается <strong>SGC-NOVUS (System Generations Core Novus)</strong> • AGPL-3.0
-    </footer>
+      <!-- Left Navigation Sidebar -->
+      <aside class="cp-sidebar" :class="{ open: mobileNavOpen }">
+        <div class="cp-sidebar-head">
+          <router-link to="/" class="cp-brand" @click="mobileNavOpen = false">
+            <img :src="bannerUrl" alt="NovusWarden" class="cp-logo" />
+          </router-link>
+          <button type="button" class="cp-mobile-close" @click="mobileNavOpen = false">
+            <X class="w-4 h-4" />
+          </button>
+        </div>
+
+        <div class="cp-sidebar-pill">
+          <ShieldCheck class="w-3.5 h-3.5 text-sky-400" />
+          <span>Control Plane · Enterprise</span>
+        </div>
+
+        <nav class="cp-nav">
+          <router-link
+            v-for="item in navItems"
+            :key="item.path"
+            :to="item.path"
+            custom
+            v-slot="{ href, navigate, isActive }"
+          >
+            <a
+              :href="href"
+              class="cp-nav-item"
+              :class="{ active: isActive }"
+              @click="(e) => { navigate(e); mobileNavOpen = false; }"
+            >
+              <component :is="item.icon" class="w-4 h-4 shrink-0" />
+              <span>{{ item.name }}</span>
+            </a>
+          </router-link>
+        </nav>
+
+        <div class="cp-sidebar-footer">
+          <a :href="adminUrl('/')" target="_blank" class="cp-nav-item">
+            <ExternalLink class="w-4 h-4 shrink-0 text-sky-400" />
+            <span>{{ t('nav.vault') }}</span>
+          </a>
+          <button
+            type="button"
+            class="cp-logout-btn"
+            :disabled="loggingOut"
+            @click="handleLogout"
+          >
+            <LogOut class="w-4 h-4 shrink-0" />
+            <span>{{ loggingOut ? '...' : t('nav.logout') }}</span>
+          </button>
+        </div>
+      </aside>
+
+      <!-- Main Column -->
+      <div class="cp-main-col">
+        <header class="cp-topbar">
+          <div class="cp-topbar-left">
+            <button
+              type="button"
+              class="cp-menu-btn"
+              aria-label="Меню"
+              @click="mobileNavOpen = true"
+            >
+              <Menu class="w-5 h-5" />
+            </button>
+            <span class="cp-page-title">{{ currentPageTitle }}</span>
+          </div>
+
+          <div class="cp-actions">
+            <button type="button" class="cp-pill" @click="cycleLocale" :title="t('lang.label')">
+              <Globe class="w-3.5 h-3.5 text-sky-400" />
+              <span>{{ locale.toUpperCase() }}</span>
+            </button>
+            <button type="button" class="cp-pill" @click="toggleTheme" :title="themeLabel">
+              <component :is="themeIcon" class="w-3.5 h-3.5 text-sky-400" />
+              <span class="cp-pill-text">{{ themeLabel }}</span>
+            </button>
+          </div>
+        </header>
+
+        <main class="cp-content">
+          <router-view />
+        </main>
+
+        <footer class="cp-footer">
+          NovusWarden Control Plane • <strong>SGC-NOVUS</strong> (System Generations Core Novus) • AGPL-3.0
+        </footer>
+      </div>
+    </div>
+
+    <!-- Login View Center -->
+    <template v-else>
+      <main class="cp-login-main">
+        <router-view />
+      </main>
+      <footer class="cp-footer">
+        NovusWarden Control Plane • <strong>SGC-NOVUS</strong> • AGPL-3.0
+      </footer>
+    </template>
+
+    <ConfirmDialog />
+    <ToastHost />
   </div>
 </template>
 
-<style>
-/* Modern Cyber Scrollbar across Admin UI */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+<style scoped>
+.cp-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  color: var(--admin-text-main);
 }
-::-webkit-scrollbar-track {
+
+.cp-login-mode {
+  height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
+}
+
+.cp-login-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 24px;
+  background: var(--admin-header-bg);
+  border-bottom: 1px solid var(--admin-card-border);
+  backdrop-filter: blur(14px);
+}
+
+.cp-login-main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.cp-workspace {
+  flex: 1;
+  display: flex;
+  min-height: 100vh;
+}
+
+.cp-sidebar {
+  width: 248px;
+  flex-shrink: 0;
+  background: var(--admin-sidebar-bg);
+  border-right: 1px solid var(--admin-card-border);
+  display: flex;
+  flex-direction: column;
+  padding: 16px 12px;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  box-sizing: border-box;
+  z-index: 60;
+}
+
+.cp-sidebar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 6px 12px;
+}
+
+.cp-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+}
+
+.cp-logo {
+  height: 30px;
+  max-width: 170px;
+  object-fit: contain;
+  display: block;
+}
+
+.cp-badge {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 6px;
+  color: var(--admin-accent);
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+}
+
+.cp-sidebar-pill {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 10px;
+  margin: 0 4px 14px;
+  border-radius: 9px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--admin-text-secondary);
+  background: rgba(14, 165, 233, 0.08);
+  border: 1px solid rgba(56, 189, 248, 0.2);
+}
+
+.cp-nav {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow-y: auto;
+}
+
+.cp-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  color: var(--admin-text-secondary);
+  border: 1px solid transparent;
+  transition: all 0.15s ease;
+}
+
+.cp-nav-item:hover {
+  background: rgba(148, 163, 184, 0.1);
+  color: var(--admin-text-main);
+}
+
+.cp-nav-item.active {
+  background: rgba(14, 165, 233, 0.16);
+  color: var(--admin-accent);
+  border-color: rgba(56, 189, 248, 0.32);
+}
+
+.cp-sidebar-footer {
+  border-top: 1px solid var(--admin-card-border);
+  padding-top: 10px;
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cp-logout-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(244, 63, 94, 0.32);
+  background: rgba(244, 63, 94, 0.12);
+  color: #fb7185;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.cp-logout-btn:hover:not(:disabled) {
+  background: rgba(244, 63, 94, 0.22);
+}
+
+.cp-main-col {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.cp-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  height: 56px;
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--admin-header-bg);
+  border-bottom: 1px solid var(--admin-card-border);
+  backdrop-filter: blur(14px);
+}
+
+.cp-topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cp-page-title {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--admin-text-main);
+}
+
+.cp-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cp-pill,
+.cp-pill-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 11px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  background: var(--admin-surface-bg);
+  border: 1px solid var(--admin-card-border);
+  color: var(--admin-text-main);
+  transition: border-color 0.15s ease;
+}
+
+.cp-pill:hover,
+.cp-pill-link:hover {
+  border-color: var(--admin-accent);
+}
+
+.cp-content {
+  flex: 1;
+  width: 100%;
+  max-width: 1360px;
+  margin: 0 auto;
+  padding: 24px 28px 64px;
+  box-sizing: border-box;
+}
+
+.cp-footer {
+  padding: 12px 24px;
+  text-align: center;
+  font-size: 11.5px;
+  color: var(--admin-text-muted);
+  border-top: 1px solid var(--admin-card-border);
+}
+
+.cp-menu-btn,
+.cp-mobile-close {
+  display: none;
   background: transparent;
+  border: 1px solid var(--admin-card-border);
+  border-radius: 8px;
+  color: var(--admin-text-main);
+  padding: 5px;
+  cursor: pointer;
 }
-::-webkit-scrollbar-thumb {
-  background: rgba(100, 116, 139, 0.3);
-  border-radius: 4px;
+
+.cp-mobile-backdrop {
+  display: none;
 }
-::-webkit-scrollbar-thumb:hover {
-  background: #38bdf8;
-}
-* {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(100, 116, 139, 0.3) transparent;
+
+@media (max-width: 960px) {
+  .cp-menu-btn,
+  .cp-mobile-close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .cp-sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    transform: translateX(-105%);
+    transition: transform 0.22s ease;
+    box-shadow: 20px 0 50px rgba(0, 0, 0, 0.65);
+  }
+
+  .cp-sidebar.open {
+    transform: translateX(0);
+  }
+
+  .cp-mobile-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 55;
+    background: rgba(2, 6, 23, 0.65);
+    backdrop-filter: blur(4px);
+  }
+
+  .cp-content {
+    padding: 18px 14px 64px;
+  }
+
+  .cp-pill-text {
+    display: none;
+  }
 }
 </style>

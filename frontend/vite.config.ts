@@ -17,16 +17,22 @@ export default defineConfig(({ mode }) => {
     ? resolve(__dirname, 'dist/vault')
     : resolve(__dirname, 'dist');
 
+  const vaultEntries = {
+    vault: resolve(__dirname, 'vault/index.html'),
+    'webauthn-fallback-connector': resolve(__dirname, 'vault/webauthn-fallback-connector.html'),
+    'webauthn-connector': resolve(__dirname, 'vault/webauthn-connector.html'),
+    'webauthn-mobile-connector': resolve(__dirname, 'vault/webauthn-mobile-connector.html'),
+    'sso-connector': resolve(__dirname, 'vault/sso-connector.html'),
+    'duo-redirect-connector': resolve(__dirname, 'vault/duo-redirect-connector.html'),
+    'redirect-connector': resolve(__dirname, 'vault/redirect-connector.html'),
+  };
+
   const rollupInput = isAdminBuild
     ? { admin: resolve(__dirname, 'admin/index.html') }
     : isVaultBuild
-    ? {
-        vault: resolve(__dirname, 'vault/index.html'),
-        'webauthn-fallback-connector': resolve(__dirname, 'vault/webauthn-fallback-connector.html'),
-      }
+    ? vaultEntries
     : {
-        vault: resolve(__dirname, 'vault/index.html'),
-        'webauthn-fallback-connector': resolve(__dirname, 'vault/webauthn-fallback-connector.html'),
+        ...vaultEntries,
         admin: resolve(__dirname, 'admin/index.html'),
       };
 
@@ -129,12 +135,20 @@ export default defineConfig(({ mode }) => {
             }
           }
 
-          // 3.5 WebAuthn Fallback Connector (Vue 3 + Vite)
-          if (cleanUrl === '/webauthn-fallback-connector.html') {
-            const connectorHtmlPath = resolve(__dirname, 'vault/webauthn-fallback-connector.html');
+          // 3.5 Connector HTML pages (Vue 3 + Vite)
+          const connectorRoutes = new Set([
+            '/webauthn-fallback-connector.html',
+            '/webauthn-connector.html',
+            '/webauthn-mobile-connector.html',
+            '/sso-connector.html',
+            '/duo-redirect-connector.html',
+            '/redirect-connector.html',
+          ]);
+          if (connectorRoutes.has(cleanUrl)) {
+            const connectorHtmlPath = resolve(__dirname, `vault${cleanUrl}`);
             if (fs.existsSync(connectorHtmlPath)) {
               let html = fs.readFileSync(connectorHtmlPath, 'utf-8');
-              html = await server.transformIndexHtml('/webauthn-fallback-connector.html', html);
+              html = await server.transformIndexHtml(cleanUrl, html);
               res.setHeader('Content-Type', 'text/html; charset=utf-8');
               res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
               res.end(html);

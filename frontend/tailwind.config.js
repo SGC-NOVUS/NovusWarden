@@ -1,11 +1,11 @@
 /** @type {import('tailwindcss').Config} */
 export default {
   content: [
-    './vault/index.html',
-    './vault/webauthn-fallback-connector.html',
+    './vault/*.html',
     './vault/src/**/*.{vue,js,ts,jsx,tsx}',
     './admin/index.html',
     './admin/src/**/*.{vue,js,ts,jsx,tsx}',
+    './shared/**/*.{vue,js,ts,jsx,tsx}',
   ],
   darkMode: 'class',
   theme: {

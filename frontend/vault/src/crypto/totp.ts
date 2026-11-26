@@ -120,7 +120,7 @@ export async function generateTotp(options: TotpOptions): Promise<TotpResult> {
   counterView.setUint32(4, timeStep & 0xffffffff, false);
 
   // Import HMAC key
-  const hmacKey = await window.crypto.subtle.importKey(
+  const hmacKey = await globalThis.crypto.subtle.importKey(
     'raw',
     keyBytes as BufferSource,
     { name: 'HMAC', hash: algorithm },
@@ -129,7 +129,7 @@ export async function generateTotp(options: TotpOptions): Promise<TotpResult> {
   );
 
   // Sign counter
-  const hmacResult = await window.crypto.subtle.sign('HMAC', hmacKey, counterBuffer);
+  const hmacResult = await globalThis.crypto.subtle.sign('HMAC', hmacKey, counterBuffer);
   const hmacBytes = new Uint8Array(hmacResult);
 
   // Dynamic truncation (RFC 4226)

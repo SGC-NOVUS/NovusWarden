@@ -22,7 +22,7 @@ export async function stretchMasterKey(masterKey: Uint8Array): Promise<Uint8Arra
   // RFC 5869 HKDF-Expand with SHA-256 (Bitwarden exact specification):
   // encKey = HMAC-SHA256(masterKey, UTF8("enc") || 0x01)
   // macKey = HMAC-SHA256(masterKey, UTF8("mac") || 0x01)
-  const hmacKey = await window.crypto.subtle.importKey(
+  const hmacKey = await globalThis.crypto.subtle.importKey(
     'raw',
     masterKey as BufferSource,
     { name: 'HMAC', hash: 'SHA-256' },
@@ -33,8 +33,8 @@ export async function stretchMasterKey(masterKey: Uint8Array): Promise<Uint8Arra
   const encInfo = concatBytes(stringToBytes('enc'), new Uint8Array([1]));
   const macInfo = concatBytes(stringToBytes('mac'), new Uint8Array([1]));
 
-  const encBuffer = await window.crypto.subtle.sign('HMAC', hmacKey, encInfo as BufferSource);
-  const macBuffer = await window.crypto.subtle.sign('HMAC', hmacKey, macInfo as BufferSource);
+  const encBuffer = await globalThis.crypto.subtle.sign('HMAC', hmacKey, encInfo as BufferSource);
+  const macBuffer = await globalThis.crypto.subtle.sign('HMAC', hmacKey, macInfo as BufferSource);
 
   return concatBytes(new Uint8Array(encBuffer), new Uint8Array(macBuffer));
 }
@@ -44,7 +44,7 @@ export async function stretchMasterKey(masterKey: Uint8Array): Promise<Uint8Arra
  * (Bitwarden Send specification: salt="bitwarden-send", info="send").
  */
 export async function deriveSendKey(rawSendKey: Uint8Array): Promise<Uint8Array> {
-  const ikm = await window.crypto.subtle.importKey(
+  const ikm = await globalThis.crypto.subtle.importKey(
     'raw',
     rawSendKey as BufferSource,
     'HKDF',
@@ -52,7 +52,7 @@ export async function deriveSendKey(rawSendKey: Uint8Array): Promise<Uint8Array>
     ['deriveBits']
   );
 
-  const bits = await window.crypto.subtle.deriveBits(
+  const bits = await globalThis.crypto.subtle.deriveBits(
     {
       name: 'HKDF',
       hash: 'SHA-256',
@@ -103,7 +103,7 @@ export async function encrypt(
   const iv = getRandomBytes(16);
 
   // 1. AES-256-CBC Encrypt
-  const aesKey = await window.crypto.subtle.importKey(
+  const aesKey = await globalThis.crypto.subtle.importKey(
     'raw',
     encKey as BufferSource,
     { name: 'AES-CBC' },
@@ -111,7 +111,7 @@ export async function encrypt(
     ['encrypt']
   );
 
-  const cipherBuffer = await window.crypto.subtle.encrypt(
+  const cipherBuffer = await globalThis.crypto.subtle.encrypt(
     { name: 'AES-CBC', iv: iv as BufferSource },
     aesKey,
     plainBytes as BufferSource
@@ -119,7 +119,7 @@ export async function encrypt(
   const ciphertext = new Uint8Array(cipherBuffer);
 
   // 2. HMAC-SHA256 over IV + Ciphertext
-  const hmacKey = await window.crypto.subtle.importKey(
+  const hmacKey = await globalThis.crypto.subtle.importKey(
     'raw',
     macKey as BufferSource,
     { name: 'HMAC', hash: 'SHA-256' },
@@ -128,7 +128,7 @@ export async function encrypt(
   );
 
   const macData = concatBytes(iv, ciphertext);
-  const macBuffer = await window.crypto.subtle.sign('HMAC', hmacKey, macData as BufferSource);
+  const macBuffer = await globalThis.crypto.subtle.sign('HMAC', hmacKey, macData as BufferSource);
   const mac = new Uint8Array(macBuffer);
 
   return new CipherString(EncType.AesCbc256_HmacSha256_B64, ciphertext, iv, mac);
@@ -145,7 +145,7 @@ export async function encryptBytes(
   const { encKey, macKey } = await normalizeSymmetricKey(key);
   const iv = getRandomBytes(16);
 
-  const aesKey = await window.crypto.subtle.importKey(
+  const aesKey = await globalThis.crypto.subtle.importKey(
     'raw',
     encKey as BufferSource,
     { name: 'AES-CBC' },
@@ -153,14 +153,14 @@ export async function encryptBytes(
     ['encrypt']
   );
 
-  const cipherBuffer = await window.crypto.subtle.encrypt(
+  const cipherBuffer = await globalThis.crypto.subtle.encrypt(
     { name: 'AES-CBC', iv: iv as BufferSource },
     aesKey,
     plainBytes as BufferSource
   );
   const ciphertext = new Uint8Array(cipherBuffer);
 
-  const hmacKey = await window.crypto.subtle.importKey(
+  const hmacKey = await globalThis.crypto.subtle.importKey(
     'raw',
     macKey as BufferSource,
     { name: 'HMAC', hash: 'SHA-256' },
@@ -169,7 +169,7 @@ export async function encryptBytes(
   );
 
   const macData = concatBytes(iv, ciphertext);
-  const macBuffer = await window.crypto.subtle.sign('HMAC', hmacKey, macData as BufferSource);
+  const macBuffer = await globalThis.crypto.subtle.sign('HMAC', hmacKey, macData as BufferSource);
   const mac = new Uint8Array(macBuffer);
 
   return concatBytes(new Uint8Array([EncType.AesCbc256_HmacSha256_B64]), iv, mac, ciphertext);
@@ -194,7 +194,7 @@ export async function decryptBytes(
   const ciphertext = encryptedBytes.slice(49);
 
   const { encKey, macKey } = await normalizeSymmetricKey(key);
-  const hmacKey = await window.crypto.subtle.importKey(
+  const hmacKey = await globalThis.crypto.subtle.importKey(
     'raw',
     macKey as BufferSource,
     { name: 'HMAC', hash: 'SHA-256' },
@@ -202,20 +202,20 @@ export async function decryptBytes(
     ['sign']
   );
   const computedMac = new Uint8Array(
-    await window.crypto.subtle.sign('HMAC', hmacKey, concatBytes(iv, ciphertext) as BufferSource)
+    await globalThis.crypto.subtle.sign('HMAC', hmacKey, concatBytes(iv, ciphertext) as BufferSource)
   );
   if (!timingSafeEqual(computedMac, mac)) {
     throw new Error('Ошибка проверки целостности (MAC) зашифрованного файла');
   }
 
-  const aesKey = await window.crypto.subtle.importKey(
+  const aesKey = await globalThis.crypto.subtle.importKey(
     'raw',
     encKey as BufferSource,
     { name: 'AES-CBC' },
     false,
     ['decrypt']
   );
-  const plain = await window.crypto.subtle.decrypt(
+  const plain = await globalThis.crypto.subtle.decrypt(
     { name: 'AES-CBC', iv: iv as BufferSource },
     aesKey,
     ciphertext as BufferSource
@@ -227,14 +227,14 @@ export async function decryptBytes(
  * Bitwarden Send password key hash (PBKDF2-SHA256, 100k iterations, salt="bitwarden-send")
  */
 export async function hashSendPassword(password: string): Promise<string> {
-  const keyMat = await window.crypto.subtle.importKey(
+  const keyMat = await globalThis.crypto.subtle.importKey(
     'raw',
     stringToBytes(password) as BufferSource,
     'PBKDF2',
     false,
     ['deriveBits']
   );
-  const bits = await window.crypto.subtle.deriveBits(
+  const bits = await globalThis.crypto.subtle.deriveBits(
     {
       name: 'PBKDF2',
       salt: stringToBytes('bitwarden-send') as BufferSource,
@@ -266,7 +266,7 @@ export async function decrypt(
     }
 
     // 1. Verify HMAC
-    const hmacKey = await window.crypto.subtle.importKey(
+    const hmacKey = await globalThis.crypto.subtle.importKey(
       'raw',
       macKey as BufferSource,
       { name: 'HMAC', hash: 'SHA-256' },
@@ -275,7 +275,7 @@ export async function decrypt(
     );
 
     const macData = concatBytes(cipher.iv, cipher.ciphertext);
-    const computedMacBuffer = await window.crypto.subtle.sign('HMAC', hmacKey, macData as BufferSource);
+    const computedMacBuffer = await globalThis.crypto.subtle.sign('HMAC', hmacKey, macData as BufferSource);
     const computedMac = new Uint8Array(computedMacBuffer);
 
     if (!timingSafeEqual(computedMac, cipher.mac)) {
@@ -283,7 +283,7 @@ export async function decrypt(
     }
 
     // 2. Decrypt AES-CBC
-    const aesKey = await window.crypto.subtle.importKey(
+    const aesKey = await globalThis.crypto.subtle.importKey(
       'raw',
       encKey as BufferSource,
       { name: 'AES-CBC' },
@@ -291,7 +291,7 @@ export async function decrypt(
       ['decrypt']
     );
 
-    const plainBuffer = await window.crypto.subtle.decrypt(
+    const plainBuffer = await globalThis.crypto.subtle.decrypt(
       { name: 'AES-CBC', iv: cipher.iv as BufferSource },
       aesKey,
       cipher.ciphertext as BufferSource
@@ -301,7 +301,7 @@ export async function decrypt(
   } else if (cipher.encType === EncType.AesCbc256_B64) {
     if (!cipher.iv) throw new Error('Отсутствует IV для шифра AesCbc256');
 
-    const aesKey = await window.crypto.subtle.importKey(
+    const aesKey = await globalThis.crypto.subtle.importKey(
       'raw',
       encKey as BufferSource,
       { name: 'AES-CBC' },
@@ -309,7 +309,7 @@ export async function decrypt(
       ['decrypt']
     );
 
-    const plainBuffer = await window.crypto.subtle.decrypt(
+    const plainBuffer = await globalThis.crypto.subtle.decrypt(
       { name: 'AES-CBC', iv: cipher.iv as BufferSource },
       aesKey,
       cipher.ciphertext as BufferSource
@@ -336,7 +336,7 @@ export async function decryptToBytes(
   }
 
   // 1. Verify HMAC
-  const hmacKey = await window.crypto.subtle.importKey(
+  const hmacKey = await globalThis.crypto.subtle.importKey(
     'raw',
     macKey as BufferSource,
     { name: 'HMAC', hash: 'SHA-256' },
@@ -345,13 +345,13 @@ export async function decryptToBytes(
   );
 
   const macData = concatBytes(cipher.iv, cipher.ciphertext);
-  const computedMacBuffer = await window.crypto.subtle.sign('HMAC', hmacKey, macData as BufferSource);
+  const computedMacBuffer = await globalThis.crypto.subtle.sign('HMAC', hmacKey, macData as BufferSource);
   if (!timingSafeEqual(new Uint8Array(computedMacBuffer), cipher.mac)) {
     throw new Error('Ошибка проверки подлинности MAC ключа');
   }
 
   // 2. Decrypt AES-CBC
-  const aesKey = await window.crypto.subtle.importKey(
+  const aesKey = await globalThis.crypto.subtle.importKey(
     'raw',
     encKey as BufferSource,
     { name: 'AES-CBC' },
@@ -359,7 +359,7 @@ export async function decryptToBytes(
     ['decrypt']
   );
 
-  const plainBuffer = await window.crypto.subtle.decrypt(
+  const plainBuffer = await globalThis.crypto.subtle.decrypt(
     { name: 'AES-CBC', iv: cipher.iv as BufferSource },
     aesKey,
     cipher.ciphertext as BufferSource

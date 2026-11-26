@@ -72,7 +72,7 @@ export function timingSafeEqual(a: Uint8Array, b: Uint8Array): boolean {
 
 export function getRandomBytes(size: number): Uint8Array {
   const arr = new Uint8Array(size);
-  window.crypto.getRandomValues(arr);
+  globalThis.crypto.getRandomValues(arr);
   return arr;
 }
 

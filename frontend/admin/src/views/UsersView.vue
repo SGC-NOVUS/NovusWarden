@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
 import { api, type UserSummary } from '../api/client.ts';
+import { confirmDialog, notifyToast } from '@shared/dialogs.ts';
 
 const users = ref<UserSummary[]>([]);
 const search = ref('');
@@ -140,7 +141,7 @@ async function handleSaveLicense() {
     showLicenseModal.value = false;
     await loadUsers();
   } catch (err: any) {
-    alert(err.message);
+    notifyToast(err?.message || 'Ошибка сохранения лицензии', 'error');
   } finally {
     savingLicense.value = false;
   }
@@ -163,7 +164,12 @@ function getPlanBadge(plan?: string) {
 }
 
 async function handleForceResync() {
-  if (!confirm('Принудительно обновить ревизии всех пользователей? Это заставит все подключённые клиенты (расширения, мобильные и десктоп приложения) заново синхронизировать хранилище.')) return;
+  const ok = await confirmDialog({
+    title: 'Принудительно обновить ревизии?',
+    message: 'Все подключённые клиенты (расширения, мобильные и десктопные приложения) заново синхронизируют хранилище.',
+    confirmLabel: 'Обновить ревизии',
+  });
+  if (!ok) return;
   resyncing.value = true;
   try {
     await api.updateRevision();
@@ -176,7 +182,13 @@ async function handleForceResync() {
 }
 
 async function handleDeauth(uuid: string) {
-  if (!confirm('Отозвать все активные сессии для этого пользователя?')) return;
+  const ok = await confirmDialog({
+    title: 'Отозвать все сессии?',
+    message: 'Все активные сессии пользователя на всех устройствах будут немедленно завершены.',
+    confirmLabel: 'Отозвать сессии',
+    danger: true,
+  });
+  if (!ok) return;
   try {
     await api.deauthUser(uuid);
     message.value = { text: 'Все активные сессии пользователя аннулированы.' };
@@ -187,7 +199,13 @@ async function handleDeauth(uuid: string) {
 }
 
 async function handleRemove2FA(uuid: string) {
-  if (!confirm('Сбросить двухфакторную аутентификацию (2FA) для этого пользователя?')) return;
+  const ok = await confirmDialog({
+    title: 'Сбросить 2FA пользователя?',
+    message: 'Двухфакторная аутентификация (TOTP, Email, FIDO2) будет отключена для этого аккаунта.',
+    confirmLabel: 'Сбросить 2FA',
+    danger: true,
+  });
+  if (!ok) return;
   try {
     await api.remove2FA(uuid);
     message.value = { text: 'Двухфакторная аутентификация пользователя отключена.' };
@@ -199,7 +217,13 @@ async function handleRemove2FA(uuid: string) {
 
 async function handleToggleUser(user: UserSummary) {
   const action = user.userEnabled ? 'отключить' : 'активировать';
-  if (!confirm(`Вы действительно хотите ${action} учётную запись ${user.email}?`)) return;
+  const ok = await confirmDialog({
+    title: user.userEnabled ? 'Отключить учётную запись?' : 'Активировать учётную запись?',
+    message: `Вы действительно хотите ${action} учётную запись ${user.email}?`,
+    confirmLabel: user.userEnabled ? 'Отключить' : 'Активировать',
+    danger: user.userEnabled,
+  });
+  if (!ok) return;
   try {
     if (user.userEnabled) {
       await api.disableUser(user.id);
@@ -224,7 +248,13 @@ async function handleResendInvite(uuid: string, email: string) {
 }
 
 async function handleDeleteSSO(uuid: string, email: string) {
-  if (!confirm(`Удалить привязку SSO для пользователя ${email}?`)) return;
+  const ok = await confirmDialog({
+    title: 'Удалить привязку SSO?',
+    message: `Внешний идентификатор корпоративного SSO для пользователя ${email} будет отвязан.`,
+    confirmLabel: 'Отвязать SSO',
+    danger: true,
+  });
+  if (!ok) return;
   try {
     await api.deleteSSO(uuid);
     message.value = { text: `Связь с SSO для пользователя ${email} удалена.` };
@@ -235,13 +265,15 @@ async function handleDeleteSSO(uuid: string, email: string) {
 }
 
 async function handleDelete(uuid: string, email: string) {
-  const typed = prompt(
-    `ВНИМАНИЕ: Все зашифрованные данные пользователя ${email} будут безвозвратно удалены!\n\nДля подтверждения введите email пользователя:`
-  );
-  if (typed !== email) {
-    if (typed !== null) alert('Email не совпал. Удаление отменено.');
-    return;
-  }
+  const confirmed = await confirmDialog({
+    title: 'Удалить пользователя безвозвратно?',
+    message: `Все зашифрованные данные пользователя ${email} будут безвозвратно удалены с сервера.`,
+    confirmLabel: 'Удалить пользователя',
+    danger: true,
+    requireText: email,
+    requirePlaceholder: email,
+  });
+  if (!confirmed) return;
   try {
     await api.deleteUser(uuid);
     message.value = { text: `Пользователь ${email} безвозвратно удалён.` };
@@ -267,7 +299,7 @@ async function saveUserRole() {
     showRoleModal.value = false;
     await loadUsers();
   } catch (err: any) {
-    alert(err.message);
+    notifyToast(err?.message || 'Ошибка обновления роли', 'error');
   } finally {
     updatingRole.value = false;
   }

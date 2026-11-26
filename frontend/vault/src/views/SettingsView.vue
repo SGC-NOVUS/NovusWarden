@@ -12,7 +12,10 @@ import {
   normalizeSupportedLocale,
   type SupportedLocale,
 } from '@shared/i18n.ts';
-import { copyTextToClipboard } from '@shared/clipboard.ts';
+import { copyTextToClipboard, getClipboardClearSeconds, setClipboardClearSeconds } from '@shared/clipboard.ts';
+import { confirmDialog, notifyToast } from '@shared/dialogs.ts';
+import WebAuthnKeysCard from '../components/WebAuthnKeysCard.vue';
+import DevicesSettingsCard from '../components/DevicesSettingsCard.vue';
 import { deriveMasterKey, hashMasterPassword, KdfConfig } from '../crypto/kdf.ts';
 import { encrypt, stretchMasterKey } from '../crypto/symmetric.ts';
 import { encryptWithPublicKey } from '../crypto/asymmetric.ts';
@@ -68,7 +71,9 @@ function resolveTab(raw?: unknown): SettingsTab {
 }
 
 const activeTab = ref<SettingsTab>(
-  props.modal ? resolveTab(props.initialTab) : resolveTab(route.query.tab || props.initialTab)
+  props.modal
+    ? resolveTab(props.initialTab)
+    : resolveTab(route.params.tab || route.query.tab || props.initialTab)
 );
 
 watch(
@@ -96,7 +101,18 @@ const securityStamp = ref('s-' + Math.random().toString(36).substring(2, 10));
 const fingerprintPhrase = ref('');
 const pinInput = ref('');
 const timeoutMinutes = ref(authStore.vaultTimeoutMinutes);
+const clipboardClearSec = ref<number>(getClipboardClearSeconds());
 const pendingAuthRequests = ref<any[]>([]);
+
+function handleSaveClipboardClear() {
+  setClipboardClearSeconds(clipboardClearSec.value);
+  notifyToast(
+    clipboardClearSec.value > 0
+      ? `Автоочистка буфера обмена: через ${clipboardClearSec.value} сек.`
+      : 'Автоочистка буфера обмена отключена',
+    'success'
+  );
+}
 const deleteAccountPassword = ref('');
 const isDeletingAccount = ref(false);
 
@@ -241,7 +257,14 @@ async function handleInviteEmergency() {
 }
 
 async function handleDeleteEmergency(id: string) {
-  if (!authStore.token || !confirm('Удалить доверенный контакт?')) return;
+  if (!authStore.token) return;
+  const ok = await confirmDialog({
+    title: 'Удалить доверенный контакт?',
+    message: 'Контакт больше не сможет запрашивать экстренный доступ к вашему хранилищу.',
+    confirmLabel: 'Удалить контакт',
+    danger: true,
+  });
+  if (!ok) return;
   try {
     await api.deleteEmergencyContact(authStore.token, id);
     emergencyTrusted.value = await api.getEmergencyTrusted(authStore.token);
@@ -348,7 +371,15 @@ async function handleDeleteAccount() {
     showToast('Введите мастер-пароль для удаления аккаунта');
     return;
   }
-  if (!confirm('УДАЛИТЬ АККАУНТ НАВСЕГДА? Все ваши данные будут уничтожены без возможности восстановления.')) return;
+  const ok = await confirmDialog({
+    title: 'Удалить аккаунт навсегда?',
+    message: 'Все ваши зашифрованные записи, вложения, организации и ключи будут уничтожены без возможности восстановления.',
+    confirmLabel: 'Удалить аккаунт навсегда',
+    danger: true,
+    requireText: authStore.savedEmail || 'DELETE',
+    requirePlaceholder: authStore.savedEmail || 'DELETE',
+  });
+  if (!ok) return;
   isDeletingAccount.value = true;
   try {
     await authStore.deleteAccount(deleteAccountPassword.value);
@@ -465,13 +496,13 @@ async function handleRegenerateAuthenticatorKey() {
     return;
   }
   if (totp2faEnabled.value) {
-    if (
-      !confirm(
-        'Текущий TOTP-ключ будет отключён и заменён новым QR-кодом. Отсканируйте новый код и подтвердите его. Продолжить?'
-      )
-    ) {
-      return;
-    }
+    const ok = await confirmDialog({
+      title: 'Перегенерировать секретный ключ TOTP?',
+      message: 'Текущий TOTP-ключ будет отключён и заменён новым QR-кодом. Отсканируйте новый QR-код в приложении-аутентификаторе и подтвердите его 6-значным кодом.',
+      confirmLabel: 'Перегенерировать ключ',
+      danger: true,
+    });
+    if (!ok) return;
   }
   twoFaLoading.value = true;
   try {
@@ -1305,7 +1336,7 @@ function exportVaultCsv() {
             <Lock class="w-4 h-4 text-amber-400" />
             <span>Автоблокировка и PIN-код</span>
           </h2>
-          <div class="grid grid-cols-2 gap-4 mt-3">
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-3">
             <div>
               <label class="field-label">Таймаут неактивности</label>
               <select v-model.number="timeoutMinutes" @change="handleSaveTimeout" class="cyber-input">
@@ -1313,6 +1344,16 @@ function exportVaultCsv() {
                 <option :value="15">15 минут</option>
                 <option :value="60">1 час</option>
                 <option :value="0">Никогда</option>
+              </select>
+            </div>
+            <div>
+              <label class="field-label">Автоочистка буфера обмена</label>
+              <select v-model.number="clipboardClearSec" @change="handleSaveClipboardClear" class="cyber-input">
+                <option :value="20">Через 20 секунд</option>
+                <option :value="30">Через 30 секунд (Рекомендуется)</option>
+                <option :value="60">Через 1 минуту</option>
+                <option :value="120">Через 2 минуты</option>
+                <option :value="0">Не очищать</option>
               </select>
             </div>
             <div>
@@ -1515,6 +1556,12 @@ function exportVaultCsv() {
             </div>
           </div>
         </div>
+
+        <!-- Full FIDO2 / WebAuthn / Passkey Management -->
+        <WebAuthnKeysCard class="mt-6" />
+
+        <!-- Active Devices & 30-day 2FA Trust -->
+        <DevicesSettingsCard class="mt-6" />
       </div>
 
       <!-- TAB 3: TOOLS & VAULT -->

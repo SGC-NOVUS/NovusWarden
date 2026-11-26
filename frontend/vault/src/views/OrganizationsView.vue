@@ -5,6 +5,7 @@ import { useAuthStore } from '../stores/auth.ts';
 import { useVaultStore } from '../stores/vault.ts';
 import { useThemeStore } from '../stores/theme.ts';
 import { useI18n } from '@shared/i18n.ts';
+import { confirmDialog } from '@shared/dialogs.ts';
 import { api } from '../api/client.ts';
 import { generateKeyPair, encryptWithPublicKey } from '../crypto/asymmetric.ts';
 import { encrypt, decrypt } from '../crypto/symmetric.ts';
@@ -216,7 +217,13 @@ async function handleDeleteOrg() {
     showToast('Введите мастер-пароль для подтверждения удаления организации');
     return;
   }
-  if (!confirm(`Удалить организацию «${activeOrg.value?.name}» безвозвратно?`)) return;
+  const ok = await confirmDialog({
+    title: 'Удалить организацию?',
+    message: `Организация «${activeOrg.value?.name}», её коллекции и общие записи будут удалены безвозвратно.`,
+    confirmLabel: 'Удалить организацию',
+    danger: true,
+  });
+  if (!ok) return;
   try {
     const pre = await api.prelogin(authStore.savedEmail);
     const cfg: KdfConfig = {
@@ -302,7 +309,14 @@ async function handleRevokeRestoreMember(m: any) {
 }
 
 async function handleDeleteMember(m: any) {
-  if (!authStore.token || !activeOrgId.value || !confirm(`Удалить участника ${m.email}?`)) return;
+  if (!authStore.token || !activeOrgId.value) return;
+  const ok = await confirmDialog({
+    title: 'Удалить участника?',
+    message: `Участник ${m.email} потеряет доступ к коллекциям этой организации.`,
+    confirmLabel: 'Удалить',
+    danger: true,
+  });
+  if (!ok) return;
   try {
     await api.deleteOrgUser(authStore.token, activeOrgId.value, m.id);
     await loadActiveOrgData();
@@ -330,7 +344,14 @@ async function handleCreateCollection() {
 }
 
 async function handleDeleteCollection(colId: string) {
-  if (!authStore.token || !activeOrgId.value || !confirm('Удалить коллекцию?')) return;
+  if (!authStore.token || !activeOrgId.value) return;
+  const ok = await confirmDialog({
+    title: 'Удалить коллекцию?',
+    message: 'Коллекция будет удалена из организации.',
+    confirmLabel: 'Удалить',
+    danger: true,
+  });
+  if (!ok) return;
   try {
     await api.deleteOrgCollection(authStore.token, activeOrgId.value, colId);
     await vaultStore.sync();
@@ -359,7 +380,14 @@ async function handleCreateGroup() {
 }
 
 async function handleDeleteGroup(groupId: string) {
-  if (!authStore.token || !activeOrgId.value || !confirm('Удалить группу?')) return;
+  if (!authStore.token || !activeOrgId.value) return;
+  const ok = await confirmDialog({
+    title: 'Удалить группу?',
+    message: 'Группа доступа будет удалена из организации.',
+    confirmLabel: 'Удалить',
+    danger: true,
+  });
+  if (!ok) return;
   try {
     await api.deleteOrgGroup(authStore.token, activeOrgId.value, groupId);
     await loadActiveOrgData();

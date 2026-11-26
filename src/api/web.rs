@@ -42,6 +42,7 @@ pub fn routes() -> Vec<Route> {
             web_login_redirect,
             web_signup_redirect,
             web_vault_redirect,
+            web_checkout_redirect,
             app_id,
             apple_app_site_association,
             well_known_webauthn,
@@ -217,6 +218,12 @@ fn web_vault_redirect() -> Redirect {
     Redirect::to(format!("{}/#/vault", CONFIG.domain_path()))
 }
 
+#[get("/checkout")]
+fn web_checkout_redirect(uri: &rocket::http::uri::Origin<'_>) -> Redirect {
+    let qs = uri.query().map(|q| format!("?{}", q.as_str())).unwrap_or_default();
+    Redirect::to(format!("{}/#/checkout{qs}", CONFIG.domain_path()))
+}
+
 #[head("/")]
 fn web_index_head() -> EmptyResult {
     // Add an explicit HEAD route to prevent uptime monitoring services from
@@ -312,24 +319,36 @@ impl<'r> rocket::response::Responder<'r, 'static> for AttachmentDownload {
 
 #[get("/<p..>", rank = 10)] // Only match this if the other routes don't match
 async fn web_files(p: PathBuf) -> Cached<Option<NamedFile>> {
+    let is_hashed_asset = p.starts_with("assets");
+    let is_html = p.extension().and_then(|e| e.to_str()).is_some_and(|e| e.eq_ignore_ascii_case("html"));
+
     let primary_root = active_web_vault_folder();
     let primary = Path::new(&primary_root).join(&p);
     if let Ok(file) = NamedFile::open(&primary).await {
-        return Cached::long(Some(file), true);
+        return if is_hashed_asset {
+            Cached::ttl(Some(file), 31_536_000, true)
+        } else if is_html {
+            Cached::ttl(Some(file), 0, false)
+        } else {
+            Cached::long(Some(file), true)
+        };
     }
 
     // When Vue Web Vault is active, fall back to the official Bitwarden web-vault
-    // assets for extension / mobile / desktop connector HTML & JS files
-    // (e.g. webauthn-fallback-connector.html, sso-connector.html, duo-redirect-connector.html).
+    // assets for any remaining legacy connector or locale files.
     let fallback_root = CONFIG.web_vault_folder();
     let fallback = Path::new(&fallback_root).join(&p);
     if fallback != primary
         && let Ok(file) = NamedFile::open(&fallback).await
     {
-        return Cached::long(Some(file), true);
+        return if is_html {
+            Cached::ttl(Some(file), 0, false)
+        } else {
+            Cached::long(Some(file), true)
+        };
     }
 
-    Cached::long(None, true)
+    Cached::short(None, false)
 }
 
 #[get("/attachments/<cipher_id>/<file_id>?<token>")]

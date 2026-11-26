@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { api, type ConfigResponse, type ConfigGroup, type ConfigElement } from '../api/client.ts';
+import { confirmDialog, notifyToast } from '@shared/dialogs.ts';
 
 const loading = ref(true);
 const saving = ref(false);
@@ -177,21 +178,23 @@ async function handleSave() {
 }
 
 async function handleReset() {
-  const answer = prompt(
-    'ВНИМАНИЕ: Сброс настроек удалит все сохранённые переопределения config.json и вернёт параметры к переменным окружения.\n\nДля подтверждения введите слово "DELETE":'
-  );
-  if (answer !== 'DELETE') {
-    if (answer !== null) alert('Неверное слово подтверждения. Сброс отменён.');
-    return;
-  }
+  const confirmed = await confirmDialog({
+    title: 'Сбросить конфигурацию сервера?',
+    message: 'Все сохранённые переопределения в config.json будут удалены, а параметры вернутся к переменным окружения.',
+    confirmLabel: 'Сбросить настройки',
+    danger: true,
+    requireText: 'DELETE',
+    requirePlaceholder: 'DELETE',
+  });
+  if (!confirmed) return;
 
   resetting.value = true;
   try {
     await api.resetConfig();
-    alert('Конфигурация сброшена к значениям по умолчанию.');
+    notifyToast('Конфигурация сброшена к значениям по умолчанию', 'success');
     await loadConfig();
   } catch (err: any) {
-    alert(err.message);
+    notifyToast(err?.message || 'Ошибка сброса конфигурации', 'error');
   } finally {
     resetting.value = false;
   }
@@ -201,9 +204,9 @@ async function handleBackup() {
   backingUp.value = true;
   try {
     const res = await api.backupDatabase();
-    alert(res || 'Резервная копия базы данных успешно создана!');
+    notifyToast(res || 'Резервная копия базы данных успешно создана!', 'success');
   } catch (err: any) {
-    alert(err.message);
+    notifyToast(err?.message || 'Ошибка создания резервной копии БД', 'error');
   } finally {
     backingUp.value = false;
   }
@@ -642,6 +645,28 @@ onMounted(loadConfig);
           </div>
         </form>
       </div>
+    </div>
+
+    <!-- Floating Sticky Unsaved Changes Bar -->
+    <div v-if="modifiedCount > 0" class="admin-sticky-save-bar">
+      <span style="font-size: 13px; font-weight: 600; color: var(--admin-text-main);">
+        Несохранённые изменения: <strong style="color: var(--admin-accent);">{{ modifiedCount }}</strong>
+      </span>
+      <button
+        type="button"
+        @click="values = JSON.parse(JSON.stringify(initialValues))"
+        style="background: var(--admin-surface-bg); color: var(--admin-text-secondary); border: 1px solid var(--admin-input-border); padding: 7px 14px; border-radius: 8px; font-size: 12.5px; font-weight: 600; cursor: pointer;"
+      >
+        Отменить
+      </button>
+      <button
+        type="button"
+        :disabled="saving"
+        @click="handleSave"
+        style="background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); color: #ffffff; border: none; padding: 7px 16px; border-radius: 8px; font-size: 12.5px; font-weight: 600; cursor: pointer;"
+      >
+        {{ saving ? 'Сохранение...' : 'Сохранить изменения' }}
+      </button>
     </div>
   </div>
 </template>

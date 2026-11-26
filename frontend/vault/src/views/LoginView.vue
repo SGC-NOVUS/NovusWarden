@@ -388,9 +388,14 @@ async function handleLogin() {
                 <input v-model="rememberTwoFactor" type="checkbox" class="cyber-checkbox" />
                 <span>Запомнить это устройство на 30 дней</span>
               </label>
-              <button type="button" class="text-xs text-slate-400 hover:text-sky-400" @click="twoFactorStep = false">
-                Назад
-              </button>
+              <div class="flex items-center gap-3">
+                <router-link to="/recover-2fa" class="text-[11px] text-amber-400/90 hover:underline">
+                  Потеряли 2FA?
+                </router-link>
+                <button type="button" class="text-xs text-slate-400 hover:text-sky-400" @click="twoFactorStep = false">
+                  Назад
+                </button>
+              </div>
             </div>
           </template>
 
@@ -442,7 +447,7 @@ async function handleLogin() {
               </div>
             </div>
 
-            <!-- Remember Email Checkbox -->
+            <!-- Remember Email Checkbox + Hint link -->
             <div v-if="!isUnlockMode" class="remember-row">
               <label class="remember-label">
                 <input
@@ -452,6 +457,9 @@ async function handleLogin() {
                 />
                 <span>{{ t('auth.rememberEmail') }}</span>
               </label>
+              <router-link to="/hint" class="text-[11px] text-sky-400/90 hover:text-sky-300 hover:underline">
+                Забыли пароль?
+              </router-link>
             </div>
           </template>
 

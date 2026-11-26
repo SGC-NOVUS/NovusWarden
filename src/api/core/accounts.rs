@@ -71,6 +71,7 @@ pub fn routes() -> Vec<rocket::Route> {
         put_device_token,
         put_clear_device_token,
         post_clear_device_token,
+        delete_device_twofactor_remember,
         get_tasks,
         post_auth_request,
         get_auth_request,
@@ -1635,6 +1636,15 @@ async fn get_device(device_id: DeviceId, headers: Headers, conn: DbConn) -> Json
         err!(crate::i18n::accounts_no_device_found(&headers.locale));
     };
     Ok(Json(device.to_json()))
+}
+
+#[delete("/devices/identifier/<device_id>/twofactor-remember")]
+async fn delete_device_twofactor_remember(device_id: DeviceId, headers: Headers, conn: DbConn) -> EmptyResult {
+    let Some(mut device) = Device::find_by_uuid_and_user(&device_id, &headers.user.uuid, &conn).await else {
+        err!(crate::i18n::accounts_no_device_found(&headers.locale));
+    };
+    device.delete_twofactor_remember();
+    device.save(false, &conn).await
 }
 
 #[derive(Deserialize)]

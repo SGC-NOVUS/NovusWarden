@@ -88,9 +88,11 @@ jobs:
         with:
           node-version: 26
 
-      - name: Verify Frontend Admin & Email Compilation
+      - name: Verify Frontend Typecheck, Tests & Build
         working-directory: frontend
         run: |
           npm install --no-audit --prefer-offline || npm install
+          npm run typecheck
+          npm test
           npm run build
 

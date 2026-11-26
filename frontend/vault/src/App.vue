@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { onMounted } from 'vue';
 import { useThemeStore } from './stores/theme.ts';
+import ConfirmDialog from '@shared/ConfirmDialog.vue';
+import ToastHost from '@shared/ToastHost.vue';
 
 const themeStore = useThemeStore();
 
@@ -12,6 +14,8 @@ onMounted(() => {
 <template>
   <div class="novus-app-root">
     <router-view />
+    <ConfirmDialog />
+    <ToastHost />
   </div>
 </template>
 

@@ -2,6 +2,7 @@
 import { ref, onMounted, computed } from 'vue';
 import { api, type BillingConfig, type UserSummary } from '../api/client.ts';
 import { copyTextToClipboard } from '@shared/clipboard.ts';
+import { notifyToast } from '@shared/dialogs.ts';
 
 // Server operating mode
 const serverMode = ref<'unlimited' | 'managed'>('unlimited');
@@ -150,13 +151,16 @@ function updateCheckoutLink() {
 
 async function copyCheckoutLink() {
   const ok = await copyTextToClipboard(generatedCheckoutLink.value);
-  alert(ok ? 'Ссылка на оплату скопирована в буфер обмена!' : 'Не удалось скопировать ссылку — выделите её вручную.');
+  notifyToast(
+    ok ? 'Ссылка на оплату скопирована в буфер обмена' : 'Не удалось скопировать ссылку — выделите её вручную',
+    ok ? 'success' : 'warning'
+  );
 }
 
 async function copyWebhookUrl() {
   const url = `${window.location.origin}/api/billing/webhook`;
   const ok = await copyTextToClipboard(url);
-  alert(ok ? 'Webhook URL скопирован: ' + url : 'Webhook URL: ' + url);
+  notifyToast(ok ? `Webhook URL скопирован: ${url}` : `Webhook URL: ${url}`, ok ? 'success' : 'info');
 }
 
 // License generator state
@@ -287,10 +291,10 @@ async function handleInviteUser() {
     await api.inviteUser(inviteEmail.value, invitePlan.value);
     showInviteModal.value = false;
     inviteEmail.value = '';
-    alert('Приглашение отправлено пользователю!');
+    notifyToast('Приглашение отправлено пользователю', 'success');
     await loadUsers();
   } catch (err: any) {
-    alert(err.message || 'Ошибка отправки приглашения');
+    notifyToast(err?.message || 'Ошибка отправки приглашения', 'error');
   } finally {
     inviting.value = false;
   }

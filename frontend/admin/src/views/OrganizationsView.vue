@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
 import { api, type OrgSummary, type OrgDetail } from '../api/client.ts';
+import { confirmDialog, notifyToast } from '@shared/dialogs.ts';
 
 const organizations = ref<OrgSummary[]>([]);
 const search = ref('');
@@ -66,12 +67,15 @@ const filteredOrgs = computed(() => {
 });
 
 async function handleDeleteOrg(org: OrgSummary) {
-  if (
-    !confirm(
-      `ВНИМАНИЕ: Вы действительно хотите безвозвратно удалить организацию "${org.name}" (${org.billingEmail})?\n\nВсе общие коллекции, записи и членства в этой организации будут стёрты.`
-    )
-  )
-    return;
+  const ok = await confirmDialog({
+    title: 'Удалить организацию безвозвратно?',
+    message: `Все общие коллекции, записи и членства организации «${org.name}» (${org.billingEmail}) будут стёрты.`,
+    confirmLabel: 'Удалить организацию',
+    danger: true,
+    requireText: org.name,
+    requirePlaceholder: org.name,
+  });
+  if (!ok) return;
 
   try {
     await api.deleteOrganization(org.id);

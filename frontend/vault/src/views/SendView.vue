@@ -3,6 +3,7 @@ import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useVaultStore } from '../stores/vault.ts';
 import { copyTextToClipboard } from '@shared/clipboard.ts';
+import { confirmDialog } from '@shared/dialogs.ts';
 import {
   Send,
   ArrowLeft,
@@ -137,7 +138,13 @@ async function handleCreateSend() {
 }
 
 async function handleDeleteSend(id: string) {
-  if (!confirm('Удалить это защищённое отправление?')) return;
+  const ok = await confirmDialog({
+    title: 'Удалить Novus Send?',
+    message: 'Ссылка перестанет открываться, а зашифрованные данные будут удалены с сервера.',
+    confirmLabel: 'Удалить',
+    danger: true,
+  });
+  if (!ok) return;
   try {
     await vaultStore.deleteSend(id);
   } catch (err: any) {

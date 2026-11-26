@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue';
 import { api, adminUrl, type DiagnosticsData } from '../api/client.ts';
 import { copyTextToClipboard } from '@shared/clipboard.ts';
+import { notifyToast } from '@shared/dialogs.ts';
 
 const loading = ref(true);
 const diag = ref<DiagnosticsData | null>(null);
@@ -114,7 +115,7 @@ async function handleGenerateSupport() {
     ].join('\n');
     supportJson.value = summary;
   } catch (err: any) {
-    alert(err.message);
+    notifyToast(err?.message || 'Ошибка формирования отчёта поддержки', 'error');
   } finally {
     generatingSupport.value = false;
   }

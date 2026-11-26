@@ -16,7 +16,7 @@ export interface AsymmetricKeyPair {
  * Private key is exported to PKCS#8 DER, then encrypted with userKey.
  */
 export async function generateKeyPair(userKey: Uint8Array): Promise<AsymmetricKeyPair> {
-  const keyPair = await window.crypto.subtle.generateKey(
+  const keyPair = await globalThis.crypto.subtle.generateKey(
     {
       name: 'RSA-OAEP',
       modulusLength: 2048,
@@ -28,11 +28,11 @@ export async function generateKeyPair(userKey: Uint8Array): Promise<AsymmetricKe
   );
 
   // 1. Export Public Key to SPKI (SubjectPublicKeyInfo) DER
-  const spkiBuffer = await window.crypto.subtle.exportKey('spki', keyPair.publicKey);
+  const spkiBuffer = await globalThis.crypto.subtle.exportKey('spki', keyPair.publicKey);
   const publicKey = bytesToBase64(new Uint8Array(spkiBuffer));
 
   // 2. Export Private Key to PKCS#8 DER
-  const pkcs8Buffer = await window.crypto.subtle.exportKey('pkcs8', keyPair.privateKey);
+  const pkcs8Buffer = await globalThis.crypto.subtle.exportKey('pkcs8', keyPair.privateKey);
   const pkcs8Bytes = new Uint8Array(pkcs8Buffer);
 
   // 3. Encrypt PKCS#8 with user symmetric key using EncType 2
@@ -54,7 +54,7 @@ export async function decryptPrivateKey(
 ): Promise<CryptoKey> {
   const pkcs8Bytes = await decryptToBytes(encryptedPrivateKey, userKey);
 
-  return await window.crypto.subtle.importKey(
+  return await globalThis.crypto.subtle.importKey(
     'pkcs8',
     pkcs8Bytes as BufferSource,
     {
@@ -75,7 +75,7 @@ export async function decryptWithPrivateKey(
 ): Promise<Uint8Array> {
   const cipher = typeof cipherInput === 'string' ? CipherString.parse(cipherInput) : cipherInput;
 
-  const decryptedBuffer = await window.crypto.subtle.decrypt(
+  const decryptedBuffer = await globalThis.crypto.subtle.decrypt(
     { name: 'RSA-OAEP' },
     privateKey,
     cipher.ciphertext as BufferSource
@@ -88,7 +88,7 @@ export async function decryptWithPrivateKey(
  * Generates an ephemeral RSA-OAEP 2048-bit keypair for Login with Device / Auth Requests
  */
 export async function generateEphemeralKeyPair(): Promise<{ publicKeyB64: string; privateKey: CryptoKey }> {
-  const keyPair = await window.crypto.subtle.generateKey(
+  const keyPair = await globalThis.crypto.subtle.generateKey(
     {
       name: 'RSA-OAEP',
       modulusLength: 2048,
@@ -98,7 +98,7 @@ export async function generateEphemeralKeyPair(): Promise<{ publicKeyB64: string
     true,
     ['encrypt', 'decrypt']
   );
-  const spkiBuffer = await window.crypto.subtle.exportKey('spki', keyPair.publicKey);
+  const spkiBuffer = await globalThis.crypto.subtle.exportKey('spki', keyPair.publicKey);
   return {
     publicKeyB64: bytesToBase64(new Uint8Array(spkiBuffer)),
     privateKey: keyPair.privateKey,
@@ -110,14 +110,14 @@ export async function generateEphemeralKeyPair(): Promise<{ publicKeyB64: string
  */
 export async function encryptWithPublicKey(data: Uint8Array, publicKeyB64: string): Promise<string> {
   const spkiBytes = base64ToBytes(publicKeyB64);
-  const pubKey = await window.crypto.subtle.importKey(
+  const pubKey = await globalThis.crypto.subtle.importKey(
     'spki',
     spkiBytes as BufferSource,
     { name: 'RSA-OAEP', hash: 'SHA-1' },
     false,
     ['encrypt']
   );
-  const encrypted = await window.crypto.subtle.encrypt(
+  const encrypted = await globalThis.crypto.subtle.encrypt(
     { name: 'RSA-OAEP' },
     pubKey,
     data as BufferSource

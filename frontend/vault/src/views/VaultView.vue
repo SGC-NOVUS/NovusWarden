@@ -9,8 +9,10 @@ import { generatePassword } from '../crypto/generator.ts';
 import { generateRsaSshKey } from '../crypto/ssh.ts';
 import { notificationsClient } from '../services/notifications.ts';
 import { useI18n } from '@shared/i18n.ts';
-import { copyTextToClipboard } from '@shared/clipboard.ts';
+import { copyTextToClipboard, copySecretToClipboard } from '@shared/clipboard.ts';
+import { confirmDialog } from '@shared/dialogs.ts';
 import ToolModalShell from '../components/ToolModalShell.vue';
+import CommandPalette from '../components/CommandPalette.vue';
 import SettingsView from './SettingsView.vue';
 import GeneratorView from './GeneratorView.vue';
 import SentinelView from './SentinelView.vue';
@@ -59,6 +61,9 @@ import {
   Share2,
   Landmark,
   BookOpen,
+  Menu,
+  Fingerprint,
+  X,
 } from 'lucide-vue-next';
 
 const router = useRouter();
@@ -185,13 +190,27 @@ function showToast(msg: string) {
 
 function copyToClipboard(text?: string | null, label = 'Текст', requireRepromptCheck = false) {
   if (!text) return;
+  const isSensitive =
+    requireRepromptCheck ||
+    /парол|totp|код|cvv|ключ|pin|приват/i.test(label);
   const doCopy = async () => {
-    const ok = await copyTextToClipboard(text);
-    showToast(
-      ok
-        ? `${label} скопирован в буфер обмена`
-        : 'Не удалось скопировать автоматически — скопируйте вручную (Ctrl+C)'
-    );
+    if (isSensitive) {
+      const { ok, clearAfterSec } = await copySecretToClipboard(text);
+      showToast(
+        ok
+          ? clearAfterSec > 0
+            ? `${label} скопирован (автоочистка через ${clearAfterSec} с)`
+            : `${label} скопирован в буфер обмена`
+          : 'Не удалось скопировать автоматически — скопируйте вручную (Ctrl+C)'
+      );
+    } else {
+      const ok = await copyTextToClipboard(text);
+      showToast(
+        ok
+          ? `${label} скопирован в буфер обмена`
+          : 'Не удалось скопировать автоматически — скопируйте вручную (Ctrl+C)'
+      );
+    }
   };
   if (requireRepromptCheck && vaultStore.selectedCipher?.reprompt === 1) {
     runWithReprompt(doCopy);
@@ -244,10 +263,15 @@ function toggleSelectId(id: string) {
 
 async function handleBulkDelete(permanent = false) {
   if (selectedIds.value.length === 0) return;
-  const msg = permanent
-    ? `Удалить навсегда выбранные (${selectedIds.value.length}) записи?`
-    : `Переместить выбранные (${selectedIds.value.length}) записи в корзину?`;
-  if (!confirm(msg)) return;
+  const ok = await confirmDialog({
+    title: permanent ? 'Удалить записи навсегда?' : 'Переместить в корзину?',
+    message: permanent
+      ? `Выбранные записи (${selectedIds.value.length}) будут удалены без возможности восстановления.`
+      : `Выбранные записи (${selectedIds.value.length}) будут перемещены в корзину.`,
+    confirmLabel: permanent ? 'Удалить навсегда' : 'В корзину',
+    danger: true,
+  });
+  if (!ok) return;
   await vaultStore.bulkDelete(selectedIds.value, permanent);
   selectedIds.value = [];
   showToast(permanent ? 'Выбранные записи удалены навсегда' : 'Записи перемещены в корзину');
@@ -268,7 +292,13 @@ async function handleBulkMove() {
 }
 
 async function handleEmptyTrash() {
-  if (!confirm('Очистить всю корзину безвозвратно?')) return;
+  const ok = await confirmDialog({
+    title: 'Очистить корзину?',
+    message: 'Все записи в корзине будут удалены безвозвратно.',
+    confirmLabel: 'Очистить корзину',
+    danger: true,
+  });
+  if (!ok) return;
   await vaultStore.emptyTrash();
   selectedIds.value = [];
   showToast('Корзина очищена');
@@ -300,7 +330,14 @@ async function handleAttachmentDownload(att: any) {
 }
 
 async function handleAttachmentDelete(attId: string) {
-  if (!vaultStore.selectedCipher || !confirm('Удалить вложение?')) return;
+  if (!vaultStore.selectedCipher) return;
+  const ok = await confirmDialog({
+    title: 'Удалить вложение?',
+    message: 'Зашифрованный файл будет удалён из записи.',
+    confirmLabel: 'Удалить файл',
+    danger: true,
+  });
+  if (!ok) return;
   try {
     await vaultStore.deleteAttachment(vaultStore.selectedCipher.id, attId);
     showToast('Вложение удалено');
@@ -504,7 +541,13 @@ async function handleCreateOrUpdateFolder() {
 }
 
 async function handleDeleteFolder(id: string) {
-  if (!confirm('Удалить эту папку? Записи в папке сохранятся в хранилище.')) return;
+  const ok = await confirmDialog({
+    title: 'Удалить папку?',
+    message: 'Сама папка будет удалена, а записи внутри останутся в хранилище.',
+    confirmLabel: 'Удалить папку',
+    danger: true,
+  });
+  if (!ok) return;
   try {
     await vaultStore.deleteFolder(id);
     if (vaultStore.selectedFilter.type === 'folder' && vaultStore.selectedFilter.folderId === id) {
@@ -573,10 +616,11 @@ watch(
 function handleGlobalKeydown(e: KeyboardEvent) {
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
     e.preventDefault();
-    searchInputRef.value?.focus();
+    showCommandPalette.value = !showCommandPalette.value;
   } else if (e.key === 'Escape') {
     showNewItemMenu.value = false;
     showProfileMenu.value = false;
+    mobileSidebarOpen.value = false;
   }
 }
 
@@ -626,6 +670,34 @@ type ToolModalName = 'settings' | 'generator' | 'sentinel' | 'send';
 type SettingsTabName = 'account' | 'security' | 'tools' | 'appearance';
 const activeToolModal = ref<ToolModalName | null>(null);
 const settingsInitialTab = ref<SettingsTabName>('account');
+const showCommandPalette = ref(false);
+const mobileSidebarOpen = ref(false);
+
+function handleCommandAction(actionId: string) {
+  switch (actionId) {
+    case 'new-login':
+      startCreate(1);
+      break;
+    case 'generator':
+      openToolModal('generator');
+      break;
+    case 'sentinel':
+      openToolModal('sentinel');
+      break;
+    case 'send':
+      openToolModal('send');
+      break;
+    case 'settings':
+      openToolModal('settings', 'security');
+      break;
+    case 'organizations':
+      router.push('/organizations');
+      break;
+    case 'lock':
+      handleLock();
+      break;
+  }
+}
 
 function openToolModal(tool: ToolModalName, tab: SettingsTabName = 'account') {
   showProfileMenu.value = false;
@@ -646,10 +718,18 @@ function goToSettings(tab: SettingsTabName = 'account') {
     <!-- Top Header -->
     <header class="app-header">
       <div class="header-left">
+        <button
+          type="button"
+          class="mobile-menu-btn"
+          aria-label="Открыть навигацию"
+          @click="mobileSidebarOpen = !mobileSidebarOpen"
+        >
+          <Menu class="w-4 h-4" />
+        </button>
         <img :src="brandBannerSrc" alt="NovusWarden" class="header-logo" />
       </div>
 
-      <!-- Global Vault Search -->
+      <!-- Global Vault Search + Command Palette Trigger -->
       <div class="header-search">
         <Search class="search-icon" />
         <input
@@ -657,8 +737,16 @@ function goToSettings(tab: SettingsTabName = 'account') {
           v-model="vaultStore.searchQuery"
           type="text"
           placeholder="Поиск по хранилищу (Ctrl + K)..."
-          class="search-input"
+          class="search-input pr-16"
         />
+        <button
+          type="button"
+          class="cmd-kbd-btn"
+          title="Открыть палитру команд (Ctrl + K)"
+          @click="showCommandPalette = true"
+        >
+          Ctrl+K
+        </button>
       </div>
 
       <!-- Header Actions -->
@@ -821,10 +909,21 @@ function goToSettings(tab: SettingsTabName = 'account') {
       </div>
     </header>
 
-    <!-- Main Workspace (3 Columns) -->
+    <!-- Main Workspace (3 Columns + Mobile Drawer) -->
     <div class="workspace-body">
+      <div
+        v-if="mobileSidebarOpen"
+        class="mobile-sidebar-backdrop"
+        @click="mobileSidebarOpen = false"
+      ></div>
       <!-- 1. Left Sidebar: Categories & Folders -->
-      <aside class="sidebar-nav">
+      <aside class="sidebar-nav" :class="{ 'mobile-open': mobileSidebarOpen }">
+        <div class="mobile-sidebar-head">
+          <span class="text-xs font-bold text-sky-400 uppercase tracking-wider">Навигация</span>
+          <button type="button" class="header-icon-btn" @click="mobileSidebarOpen = false">
+            <X class="w-4 h-4" />
+          </button>
+        </div>
         <!-- Top App Navigation -->
         <div class="nav-section">
           <button
@@ -1159,8 +1258,19 @@ function goToSettings(tab: SettingsTabName = 'account') {
         </div>
 
         <div class="items-scroll">
+          <!-- Skeleton Loading State -->
+          <div v-if="vaultStore.isLoading && vaultStore.ciphers.length === 0" class="p-3 space-y-2.5">
+            <div v-for="n in 6" :key="n" class="skeleton-row">
+              <div class="skeleton-avatar"></div>
+              <div class="flex-1 space-y-1.5">
+                <div class="skeleton-line w-3/4"></div>
+                <div class="skeleton-line w-1/2"></div>
+              </div>
+            </div>
+          </div>
+
           <div
-            v-if="vaultStore.filteredCiphers.length === 0"
+            v-else-if="vaultStore.filteredCiphers.length === 0"
             class="empty-state"
           >
             <div class="empty-icon-wrap">
@@ -1941,6 +2051,32 @@ function goToSettings(tab: SettingsTabName = 'account') {
                   </a>
                 </div>
               </div>
+
+              <!-- Stored Passkeys (FIDO2 Credentials) -->
+              <div
+                v-if="vaultStore.selectedCipher.login.fido2Credentials && vaultStore.selectedCipher.login.fido2Credentials.length > 0"
+                class="data-row"
+              >
+                <div class="data-label flex items-center gap-1.5">
+                  <Fingerprint class="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Сохранённые Passkeys ({{ vaultStore.selectedCipher.login.fido2Credentials.length }})</span>
+                </div>
+                <div class="space-y-1.5">
+                  <div
+                    v-for="(pk, pkIdx) in vaultStore.selectedCipher.login.fido2Credentials"
+                    :key="pk.credentialId || pkIdx"
+                    class="p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/25 text-xs flex items-center justify-between gap-2"
+                  >
+                    <div class="min-w-0">
+                      <div class="font-semibold text-emerald-300 truncate">{{ pk.rpName || pk.rpId || 'Passkey' }}</div>
+                      <div class="text-[11px] text-slate-400 truncate">{{ pk.userName || pk.userDisplayName || pk.rpId }}</div>
+                    </div>
+                    <span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 shrink-0">
+                      FIDO2
+                    </span>
+                  </div>
+                </div>
+              </div>
             </template>
 
             <!-- SSH Key Info (Type 5) -->
@@ -2510,6 +2646,15 @@ function goToSettings(tab: SettingsTabName = 'account') {
       <template #icon><Send class="w-5 h-5" /></template>
       <SendView :modal="true" />
     </ToolModalShell>
+
+    <!-- Global Command Palette (Ctrl + K) -->
+    <CommandPalette
+      :open="showCommandPalette"
+      :ciphers="vaultStore.ciphers"
+      @close="showCommandPalette = false"
+      @select-cipher="(id) => { vaultStore.selectedCipherId = id; isEditing = false; }"
+      @action="handleCommandAction"
+    />
 
     <!-- Toast Notification Popup -->
     <transition name="toast-fade">
@@ -3293,5 +3438,123 @@ function goToSettings(tab: SettingsTabName = 'account') {
   font-size: 12px;
   color: var(--text-secondary, #94a3b8);
   margin: 0 0 14px 0;
+}
+
+.cmd-kbd-btn {
+  position: absolute;
+  right: 6px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 5px;
+  border: 1px solid var(--card-border, rgba(56, 189, 248, 0.25));
+  background: rgba(14, 165, 233, 0.1);
+  color: var(--text-secondary, #94a3b8);
+  font-size: 10px;
+  font-family: ui-monospace, monospace;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cmd-kbd-btn:hover {
+  border-color: #38bdf8;
+  color: #38bdf8;
+}
+
+.skeleton-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 10px;
+  background: rgba(148, 163, 184, 0.06);
+}
+
+.skeleton-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: rgba(148, 163, 184, 0.14);
+  animation: pulse 1.5s infinite;
+}
+
+.skeleton-line {
+  height: 10px;
+  border-radius: 5px;
+  background: rgba(148, 163, 184, 0.14);
+  animation: pulse 1.5s infinite;
+}
+
+.mobile-menu-btn,
+.mobile-sidebar-head,
+.mobile-sidebar-backdrop {
+  display: none;
+}
+
+@media (max-width: 960px) {
+  .mobile-menu-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    margin-right: 8px;
+    border-radius: 8px;
+    border: 1px solid var(--card-border);
+    background: var(--input-bg);
+    color: var(--text-primary);
+    cursor: pointer;
+  }
+
+  .mobile-sidebar-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 8px 8px;
+    border-bottom: 1px solid var(--card-border);
+    margin-bottom: 6px;
+  }
+
+  .mobile-sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 90;
+    background: rgba(2, 6, 23, 0.65);
+    backdrop-filter: blur(4px);
+  }
+
+  .workspace-body {
+    grid-template-columns: 280px 1fr;
+  }
+
+  .sidebar-nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 260px;
+    z-index: 95;
+    transform: translateX(-105%);
+    transition: transform 0.22s ease;
+    box-shadow: 20px 0 48px rgba(0, 0, 0, 0.65);
+  }
+
+  .sidebar-nav.mobile-open {
+    transform: translateX(0);
+  }
+
+  .profile-pill-email {
+    display: none;
+  }
+}
+
+@media (max-width: 680px) {
+  .workspace-body {
+    grid-template-columns: 1fr;
+  }
+
+  .header-search {
+    max-width: 180px;
+  }
 }
 </style>

@@ -1253,8 +1253,127 @@ class ApiClient {
       body: JSON.stringify({ masterPasswordHash }),
     });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.ErrorModel?.Message || 'Неверный мастер-пароль');
+    if (!res.ok) throw new Error(extractApiError(data, 'Неверный мастер-пароль'));
     return data;
+  }
+
+  async getWebAuthnChallenge(token: string, userVerificationToken: string): Promise<any> {
+    const res = await fetch('/api/two-factor/get-webauthn-challenge', {
+      method: 'POST',
+      headers: this.getHeaders(token),
+      body: JSON.stringify({ userVerificationToken }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(extractApiError(data, 'Не удалось получить challenge WebAuthn'));
+    return data;
+  }
+
+  async activateWebAuthn2fa(
+    token: string,
+    payload: {
+      id: number;
+      name: string;
+      deviceResponse: {
+        id: string;
+        rawId: string;
+        type: string;
+        response: { attestationObject: string; clientDataJson: string };
+      };
+      userVerificationToken: string;
+    }
+  ): Promise<any> {
+    const res = await fetch('/api/two-factor/webauthn', {
+      method: 'POST',
+      headers: this.getHeaders(token),
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(extractApiError(data, 'Не удалось зарегистрировать ключ безопасности'));
+    return data;
+  }
+
+  async deleteWebAuthn2fa(token: string, id: number, userVerificationToken: string): Promise<any> {
+    const res = await fetch('/api/two-factor/webauthn', {
+      method: 'DELETE',
+      headers: this.getHeaders(token),
+      body: JSON.stringify({ id, userVerificationToken }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(extractApiError(data, 'Не удалось удалить ключ безопасности'));
+    return data;
+  }
+
+  async getDevices(token: string): Promise<any[]> {
+    const res = await fetch('/api/devices', {
+      headers: this.getHeaders(token, true),
+    });
+    if (!res.ok) return [];
+    const data = await res.json().catch(() => ({}));
+    return Array.isArray(data?.data) ? data.data : [];
+  }
+
+  async revokeDeviceTrust(token: string, deviceId: string): Promise<void> {
+    const res = await fetch(`/api/devices/identifier/${encodeURIComponent(deviceId)}/twofactor-remember`, {
+      method: 'DELETE',
+      headers: this.getHeaders(token),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(extractApiError(err, 'Не удалось отозвать доверие для устройства'));
+    }
+  }
+
+  async verifyEmailToken(userId: string, token: string): Promise<void> {
+    const res = await fetch('/api/accounts/verify-email-token', {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify({ userId, token }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(extractApiError(err, 'Недействительный или истёкший токен подтверждения'));
+    }
+  }
+
+  async requestPasswordHint(email: string): Promise<void> {
+    const res = await fetch('/api/accounts/password-hint', {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify({ email }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(extractApiError(err, 'Не удалось запросить подсказку мастер-пароля'));
+    }
+  }
+
+  async acceptOrganizationInvite(
+    token: string,
+    orgId: string,
+    memberId: string,
+    inviteToken: string
+  ): Promise<void> {
+    const res = await fetch(`/api/organizations/${encodeURIComponent(orgId)}/users/${encodeURIComponent(memberId)}/accept`, {
+      method: 'POST',
+      headers: this.getHeaders(token),
+      body: JSON.stringify({ token: inviteToken }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(extractApiError(err, 'Не удалось принять приглашение в организацию'));
+    }
+  }
+
+  async acceptEmergencyInvite(token: string, emergencyId: string, inviteToken: string): Promise<void> {
+    const res = await fetch(`/api/emergency-access/${encodeURIComponent(emergencyId)}/accept`, {
+      method: 'POST',
+      headers: this.getHeaders(token),
+      body: JSON.stringify({ token: inviteToken }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(extractApiError(err, 'Не удалось принять приглашение экстренного доступа'));
+    }
   }
 
   async requestEmailChangeToken(token: string, masterPasswordHash: string, newEmail: string): Promise<void> {

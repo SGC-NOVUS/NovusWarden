@@ -32,6 +32,7 @@
     "vault/src/**/*.d.ts",
     "vault/src/**/*.tsx",
     "vault/src/**/*.vue",
-    "shared/**/*.ts"
+    "shared/**/*.ts",
+    "shared/**/*.vue"
   ]
 }

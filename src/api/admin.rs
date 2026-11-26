@@ -656,8 +656,9 @@ fn admin_ui_index() -> ApiResult<Html<String>> {
 
 #[get("/ui/<p..>", rank = 5)]
 #[allow(clippy::needless_pass_by_value)]
-fn admin_ui_files(p: PathBuf) -> Option<(ContentType, &'static [u8])> {
+fn admin_ui_files(p: PathBuf) -> crate::util::Cached<Option<(ContentType, &'static [u8])>> {
     let path_str = p.to_string_lossy();
+    let is_hashed_asset = p.starts_with("assets");
     if let Some(file) = ADMIN_UI_DIR.get_file(&*path_str) {
         let ext = p.extension().and_then(|e| e.to_str()).unwrap_or_default();
         let content_type = match ext {
@@ -674,15 +675,19 @@ fn admin_ui_files(p: PathBuf) -> Option<(ContentType, &'static [u8])> {
             "wasm" => ContentType::WASM,
             _ => ContentType::Binary,
         };
-        Some((content_type, file.contents()))
+        if is_hashed_asset {
+            crate::util::Cached::ttl(Some((content_type, file.contents())), 31_536_000, true)
+        } else {
+            crate::util::Cached::ttl(Some((content_type, file.contents())), 0, false)
+        }
     } else if p.extension().is_some() {
         // Do not return index.html for missing static assets
-        None
+        crate::util::Cached::short(None, false)
     } else if let Some(index_file) = ADMIN_UI_DIR.get_file("index.html") {
         // SPA Fallback: for client-side routing
-        Some((ContentType::HTML, index_file.contents()))
+        crate::util::Cached::ttl(Some((ContentType::HTML, index_file.contents())), 0, false)
     } else {
-        None
+        crate::util::Cached::short(None, false)
     }
 }
 

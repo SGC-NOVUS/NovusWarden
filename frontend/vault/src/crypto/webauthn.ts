@@ -4,7 +4,10 @@
 
 import type { SupportedLocale } from '@shared/i18n.ts';
 
-export function getQueryParam(name: string, url = window.location.href): string | null {
+export function getQueryParam(
+  name: string,
+  url = typeof window !== 'undefined' ? window.location.href : ''
+): string | null {
   const escaped = name.replace(/[[\]]/g, '\\$&');
   const regex = new RegExp('[?&]' + escaped + '(=([^&#]*)|&|#|$)');
   const results = regex.exec(url);
@@ -51,7 +54,7 @@ export function coerceToBase64Url(input: ArrayBuffer | Uint8Array | number[] | s
     for (let i = 0; i < bytes.byteLength; i++) {
       binary += String.fromCharCode(bytes[i]);
     }
-    b64 = window.btoa(binary);
+    b64 = globalThis.btoa(binary);
   } else if (typeof input === 'string') {
     b64 = input;
   } else {
@@ -114,6 +117,90 @@ export function buildWebauthnAssertionJson(assertedCredential: PublicKeyCredenti
   };
 
   return JSON.stringify(payload);
+}
+
+/**
+ * Parses server PublicKeyCredentialCreationOptions (from /api/two-factor/get-webauthn-challenge)
+ * into browser-ready binary fields for navigator.credentials.create().
+ */
+export function parseWebauthnCreationOptions(
+  raw: Record<string, any>
+): PublicKeyCredentialCreationOptions {
+  const parsed: Record<string, any> = JSON.parse(JSON.stringify(raw));
+  if (!parsed || typeof parsed.challenge !== 'string') {
+    throw new Error('Missing WebAuthn registration challenge');
+  }
+  parsed.challenge = base64UrlToUint8Array(parsed.challenge);
+  if (parsed.user && typeof parsed.user.id === 'string') {
+    parsed.user.id = base64UrlToUint8Array(parsed.user.id);
+  }
+  if (Array.isArray(parsed.excludeCredentials)) {
+    parsed.excludeCredentials = parsed.excludeCredentials.map((item: any) => ({
+      ...item,
+      id: typeof item.id === 'string' ? base64UrlToUint8Array(item.id) : item.id,
+    }));
+  }
+  return parsed as PublicKeyCredentialCreationOptions;
+}
+
+/**
+ * Serializes a newly created WebAuthn credential into the exact `deviceResponse`
+ * object expected by NovusWarden POST /api/two-factor/webauthn.
+ */
+export function buildWebauthnAttestationPayload(createdCredential: PublicKeyCredential): {
+  id: string;
+  rawId: string;
+  type: string;
+  response: {
+    attestationObject: string;
+    clientDataJson: string;
+  };
+} {
+  const response = createdCredential.response as AuthenticatorAttestationResponse;
+  return {
+    id: createdCredential.id,
+    rawId: coerceToBase64Url(new Uint8Array(createdCredential.rawId)),
+    type: createdCredential.type,
+    response: {
+      attestationObject: coerceToBase64Url(new Uint8Array(response.attestationObject)),
+      clientDataJson: coerceToBase64Url(new Uint8Array(response.clientDataJSON)),
+    },
+  };
+}
+
+export function resolveConnectorPostMessageOrigin(parentUrl: string | null): string | null {
+  if (!parentUrl) return null;
+  try {
+    const parsed = new URL(parentUrl);
+    if (parsed.protocol === 'file:') {
+      return parentUrl;
+    }
+    return parsed.origin;
+  } catch {
+    return parentUrl;
+  }
+}
+
+export function buildMobileDeeplinkUri(kind: 'duo' | 'webauthn'): string {
+  const scheme = (getQueryParam('deeplinkScheme') || '').toLowerCase();
+  const path = `${kind}-callback`;
+  if (scheme === 'https') {
+    return `${window.location.origin}/${path}`;
+  }
+  return `bitwarden://${path}`;
+}
+
+export function resolveWebauthnCallbackUri(dataObj: {
+  callbackUri?: string;
+  mobile?: boolean;
+}): string | null {
+  if (typeof dataObj.callbackUri === 'string' && dataObj.callbackUri.trim()) {
+    return dataObj.callbackUri.trim();
+  }
+  if (dataObj.mobile) {
+    return buildMobileDeeplinkUri('webauthn');
+  }
+  return null;
 }
 
 export function formatWebauthnError(err: unknown, locale: SupportedLocale): string {
