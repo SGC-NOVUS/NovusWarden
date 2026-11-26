@@ -1016,6 +1016,7 @@ pub async fn send_admin_login_alert_for_locale(
         "email/admin_login_alert",
         json!({
             "url": CONFIG.domain(),
+            "img_src": CONFIG._smtp_img_src(),
             "ip_address": ip,
             "location": location,
             "user_agent": user_agent,
@@ -1052,6 +1053,7 @@ pub async fn send_admin_lockout_alert_for_locale(
         "email/admin_lockout_alert",
         json!({
             "url": CONFIG.domain(),
+            "img_src": CONFIG._smtp_img_src(),
             "ip_address": ip,
             "location": location,
             "user_agent": user_agent,
@@ -1184,81 +1186,197 @@ mod tests {
 
     #[test]
     fn all_email_templates_render_with_locale_and_theme() {
-        let templates = [
-            "email/admin_account_recovery",
-            "email/admin_lockout_alert",
-            "email/admin_login_alert",
-            "email/change_email",
-            "email/change_email_existing",
-            "email/change_email_invited",
-            "email/delete_account",
-            "email/emergency_access_invite_accepted",
-            "email/emergency_access_invite_confirmed",
-            "email/emergency_access_recovery_approved",
-            "email/emergency_access_recovery_initiated",
-            "email/emergency_access_recovery_rejected",
-            "email/emergency_access_recovery_reminder",
-            "email/emergency_access_recovery_timed_out",
-            "email/incomplete_2fa_login",
-            "email/invite_accepted",
-            "email/invite_confirmed",
-            "email/new_device_logged_in",
-            "email/protected_action",
-            "email/pw_hint_none",
-            "email/pw_hint_some",
-            "email/recover_twofactor",
-            "email/register_verify_email",
-            "email/send_2fa_removed_from_org",
-            "email/send_emergency_access_invite",
-            "email/send_org_invite",
-            "email/send_single_org_removed_from_org",
-            "email/smtp_test",
-            "email/sso_change_email",
-            "email/twofactor_email",
-            "email/verify_email",
-            "email/welcome",
-            "email/welcome_must_verify",
-        ];
-
-        let locales = ["en", "ru", "uk"];
-        for template in templates {
-            let mut rendered_subjects = Vec::new();
-            for locale in locales {
-                let payload = json!({
-                    "url": "https://vault.example.test",
-                    "img_src": "https://vault.example.test/images/",
-                    "token": "123456",
-                    "user_id": "00000000-0000-0000-0000-000000000001",
-                    "email": "alice@example.test",
+        let base_url = "https://vault.example.test";
+        let img_src = "https://vault.example.test/images/";
+        // Test each template with ONLY the exact minimal payload keys supplied by its sender
+        // so Handlebars strict_mode catches any accidental extra/missing variable immediately.
+        let template_cases: [(&str, serde_json::Value); 33] = [
+            (
+                "email/admin_account_recovery",
+                json!({
+                    "url": base_url,
+                    "img_src": img_src,
+                    "user_name": "Alice",
                     "org_name": "Novus Corp",
-                    "device_type": "Firefox",
-                    "device_name": "Workstation",
-                    "ip": "203.0.113.10",
+                    "reset_password": true,
+                    "reset_2fa": true,
+                    "fallback_2fa_email": true,
+                }),
+            ),
+            (
+                "email/admin_lockout_alert",
+                json!({
+                    "url": base_url,
+                    "img_src": img_src,
                     "ip_address": "203.0.113.10",
                     "location": "Kyiv, UA",
                     "user_agent": "Mozilla/5.0",
-                    "unlock_url": "https://vault.example.test/admin/unlock?token=abc",
                     "datetime": "2026-11-25 18:00 UTC",
-                    "hint": "test-hint",
-                    "user_name": "Alice",
+                    "unlock_url": "https://vault.example.test/admin/unlock?token=abc",
+                }),
+            ),
+            (
+                "email/admin_login_alert",
+                json!({
+                    "url": base_url,
+                    "img_src": img_src,
+                    "ip_address": "203.0.113.10",
+                    "location": "Kyiv, UA",
+                    "user_agent": "Mozilla/5.0",
+                    "datetime": "2026-11-25 18:00 UTC",
+                }),
+            ),
+            ("email/change_email", json!({ "url": base_url, "img_src": img_src, "token": "123456" })),
+            (
+                "email/change_email_existing",
+                json!({
+                    "url": base_url,
+                    "img_src": img_src,
                     "acting_address": "alice@example.test",
                     "existing_address": "bob@example.test",
-                    "grantor_name": "Alice",
+                }),
+            ),
+            (
+                "email/change_email_invited",
+                json!({
+                    "url": base_url,
+                    "img_src": img_src,
+                    "acting_address": "alice@example.test",
+                    "existing_address": "bob@example.test",
+                }),
+            ),
+            (
+                "email/delete_account",
+                json!({
+                    "url": base_url,
+                    "img_src": img_src,
+                    "user_id": "00000000-0000-0000-0000-000000000001",
+                    "email": "alice@example.test",
+                    "token": "123456",
+                }),
+            ),
+            (
+                "email/emergency_access_invite_accepted",
+                json!({ "url": base_url, "img_src": img_src, "grantee_email": "bob@example.test" }),
+            ),
+            (
+                "email/emergency_access_invite_confirmed",
+                json!({ "url": base_url, "img_src": img_src, "grantor_name": "Alice" }),
+            ),
+            (
+                "email/emergency_access_recovery_approved",
+                json!({ "url": base_url, "img_src": img_src, "grantor_name": "Alice" }),
+            ),
+            (
+                "email/emergency_access_recovery_initiated",
+                json!({
+                    "url": base_url,
+                    "img_src": img_src,
                     "grantee_name": "Bob",
-                    "grantee_email": "bob@example.test",
                     "atype": "View",
                     "wait_time_days": 7,
+                }),
+            ),
+            (
+                "email/emergency_access_recovery_rejected",
+                json!({ "url": base_url, "img_src": img_src, "grantor_name": "Alice" }),
+            ),
+            (
+                "email/emergency_access_recovery_reminder",
+                json!({
+                    "url": base_url,
+                    "img_src": img_src,
+                    "grantee_name": "Bob",
+                    "atype": "View",
                     "days_left": 2,
+                }),
+            ),
+            (
+                "email/emergency_access_recovery_timed_out",
+                json!({ "url": base_url, "img_src": img_src, "grantee_name": "Bob", "atype": "View" }),
+            ),
+            (
+                "email/incomplete_2fa_login",
+                json!({
+                    "url": base_url,
+                    "img_src": img_src,
+                    "datetime": "2026-11-25 18:00 UTC",
+                    "ip": "203.0.113.10",
+                    "device_type": "Firefox",
+                    "device_name": "Workstation",
                     "time_limit": 3,
-                    "fallback_2fa_email": true,
-                    "show_generic_name": true,
-                    "org_id": "org-1",
-                    "member_id": "mem-1",
-                    "emer_id": "emer-1",
-                    "query_string": "token=xyz"
-                });
+                }),
+            ),
+            (
+                "email/invite_accepted",
+                json!({ "url": base_url, "img_src": img_src, "email": "alice@example.test", "org_name": "Novus Corp" }),
+            ),
+            ("email/invite_confirmed", json!({ "url": base_url, "img_src": img_src, "org_name": "Novus Corp" })),
+            (
+                "email/new_device_logged_in",
+                json!({
+                    "url": base_url,
+                    "img_src": img_src,
+                    "datetime": "2026-11-25 18:00 UTC",
+                    "ip": "203.0.113.10",
+                    "device_type": "Firefox",
+                    "device_name": "Workstation",
+                }),
+            ),
+            ("email/protected_action", json!({ "url": base_url, "img_src": img_src, "token": "123456" })),
+            ("email/pw_hint_none", json!({ "url": base_url, "img_src": img_src })),
+            ("email/pw_hint_some", json!({ "url": base_url, "img_src": img_src, "hint": "test-hint" })),
+            (
+                "email/recover_twofactor",
+                json!({ "url": base_url, "img_src": img_src, "datetime": "2026-11-25 18:00 UTC", "ip": "203.0.113.10" }),
+            ),
+            (
+                "email/register_verify_email",
+                json!({ "url": base_url, "img_src": img_src, "email": "alice@example.test" }),
+            ),
+            (
+                "email/send_2fa_removed_from_org",
+                json!({ "url": base_url, "img_src": img_src, "org_name": "Novus Corp" }),
+            ),
+            (
+                "email/send_emergency_access_invite",
+                json!({ "url": base_url, "img_src": img_src, "grantor_name": "Alice" }),
+            ),
+            ("email/send_org_invite", json!({ "url": base_url, "img_src": img_src, "org_name": "Novus Corp" })),
+            (
+                "email/send_single_org_removed_from_org",
+                json!({ "url": base_url, "img_src": img_src, "org_name": "Novus Corp" }),
+            ),
+            ("email/smtp_test", json!({ "url": base_url, "img_src": img_src })),
+            ("email/sso_change_email", json!({ "url": base_url, "img_src": img_src })),
+            ("email/twofactor_email", json!({ "url": base_url, "img_src": img_src, "token": "123456" })),
+            (
+                "email/verify_email",
+                json!({
+                    "url": base_url,
+                    "img_src": img_src,
+                    "user_id": "00000000-0000-0000-0000-000000000001",
+                    "email": "alice@example.test",
+                    "token": "123456",
+                }),
+            ),
+            ("email/welcome", json!({ "url": base_url, "img_src": img_src })),
+            (
+                "email/welcome_must_verify",
+                json!({
+                    "url": base_url,
+                    "img_src": img_src,
+                    "user_id": "00000000-0000-0000-0000-000000000001",
+                    "token": "123456",
+                }),
+            ),
+        ];
 
-                let (subject, body_html, body_text) = get_text_for_locale(template, payload, Some(locale))
+        let locales = ["en", "ru", "uk"];
+        for (template, payload) in template_cases {
+            let mut rendered_subjects = Vec::new();
+            for locale in locales {
+                let (subject, body_html, body_text) = get_text_for_locale(template, payload.clone(), Some(locale))
                     .unwrap_or_else(|e| panic!("Failed rendering {template} for {locale}: {e:?}"));
 
                 assert!(!subject.trim().is_empty(), "Empty subject for {template} ({locale})");

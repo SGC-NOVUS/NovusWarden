@@ -59,33 +59,21 @@ const SUBJECT_HEADERS = {
   emergency_access_recovery_timed_out: '{{t "tpl.email.ea_recovery_timed_out.subject_prefix" locale=lang}} {{{grantee_name}}} {{t "tpl.email.ea_recovery_timed_out.subject_suffix" locale=lang}}',
 };
 
-const HANDLEBARS_MOCK_PROPS = {
-  url: '{{url}}',
-  img_src: '{{img_src}}',
-  token: '{{token}}',
-  user_id: '{{user_id}}',
-  email: '{{email}}',
-  org_name: '{{org_name}}',
-  device_type: '{{device_type}}',
-  device_name: '{{device_name}}',
-  ip: '{{ip}}',
-  ip_address: '{{ip_address}}',
-  location: '{{location}}',
-  user_agent: '{{user_agent}}',
-  unlock_url: '{{unlock_url}}',
-  datetime: '{{datetime}}',
-  hint: '{{hint}}',
-  user_name: '{{user_name}}',
-  acting_address: '{{acting_address}}',
-  existing_address: '{{existing_address}}',
-  grantor_name: '{{grantor_name}}',
-  grantee_name: '{{grantee_name}}',
-  grantee_email: '{{grantee_email}}',
-  atype: '{{atype}}',
-  wait_time_days: '{{wait_time_days}}',
-  days_left: '{{days_left}}',
-  time_limit: '{{time_limit}}',
-};
+const ALLOWED_HTML_ATTRS = new Set(['id', 'lang', 'dir']);
+
+function assertCleanRootHtmlTag(html, templateName) {
+  const htmlTagMatch = html.match(/<html\b([^>]*)>/i);
+  if (!htmlTagMatch) {
+    throw new Error(`Missing <html> root tag in compiled ${templateName}`);
+  }
+  const attrNames = [...htmlTagMatch[1].matchAll(/\b([a-zA-Z0-9_-]+)\s*=/g)].map((m) => m[1]);
+  const unexpected = attrNames.filter((name) => !ALLOWED_HTML_ATTRS.has(name));
+  if (unexpected.length > 0) {
+    throw new Error(
+      `Unexpected fallthrough attributes on <html> in ${templateName}: ${unexpected.join(', ')}`
+    );
+  }
+}
 
 async function compileAllEmails() {
   console.log('Starting NovusWarden Vue-Email compilation...');
@@ -101,7 +89,9 @@ async function compileAllEmails() {
       const targetPath = path.join(OUTPUT_DIR, `${baseName}.html.hbs`);
 
       try {
-        const { html } = await emailCompiler.render(template, { props: HANDLEBARS_MOCK_PROPS });
+        // Each template declares its own Handlebars defaults on defineProps; passing
+        // a shared mock bag causes Vue to spill unused keys onto <html ...>.
+        const { html } = await emailCompiler.render(template);
 
         // Restore any escaped Handlebars tags and quotes inside {{ ... }}
         const processedHtml = html
@@ -114,6 +104,8 @@ async function compileAllEmails() {
               .replace(/&quot;|&#34;|&#x22;/g, '"')
               .replace(/&#39;|&#x27;/g, "'")}}}`
           );
+
+        assertCleanRootHtmlTag(processedHtml, template);
 
         const subject = SUBJECT_HEADERS[baseName] || `{{t "tpl.email.${baseName}.subject" locale=lang}}`;
         const finalOutput = `${subject}\n<!---------------->\n${processedHtml}\n`;

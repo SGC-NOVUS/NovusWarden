@@ -11,6 +11,8 @@ import {
   EHeading,
 } from 'vue-email';
 
+defineOptions({ inheritAttrs: false });
+
 defineProps({
   imgSrc: { type: String, default: '{{img_src}}' },
   heading: { type: String, default: '' },

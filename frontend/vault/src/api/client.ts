@@ -4,6 +4,16 @@
 
 import { getAcceptLanguageHeader } from '@shared/i18n.ts';
 
+function extractApiError(data: any, fallback: string): string {
+  const candidate =
+    data?.errorModel?.message ||
+    data?.ErrorModel?.Message ||
+    data?.message ||
+    data?.error_description ||
+    data?.error;
+  return typeof candidate === 'string' && candidate.trim().length > 0 ? candidate.trim() : fallback;
+}
+
 export interface PreloginResponse {
   Kdf?: number;
   kdf?: number;
@@ -337,8 +347,7 @@ class ApiClient {
           data.TwoFactorProviders2 || {}
         );
       }
-      const errorMsg = data.ErrorModel?.Message || data.error_description || data.error || 'Ошибка входа в систему';
-      throw new Error(errorMsg);
+      throw new Error(extractApiError(data, 'Ошибка входа в систему'));
     }
 
     return data;
@@ -363,7 +372,7 @@ class ApiClient {
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      throw new Error(err.ErrorModel?.Message || err.message || 'Не удалось отправить код на email');
+      throw new Error(extractApiError(err, 'Не удалось отправить код на email'));
     }
   }
 

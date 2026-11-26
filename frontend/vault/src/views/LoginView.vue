@@ -216,7 +216,7 @@ async function handleLogin() {
         rememberEmail.value,
         twoFactorStep.value
           ? {
-              token: twoFactorCode.value.trim(),
+              token: twoFactorCode.value.replace(/\s+/g, ''),
               provider: selectedTwoFactorProvider.value,
               remember: rememberTwoFactor.value,
             }
@@ -229,8 +229,15 @@ async function handleLogin() {
     if (err instanceof TwoFactorRequiredError) {
       twoFactorStep.value = true;
       twoFactorProviders.value = err.providers;
-      const firstProvider = parseInt(err.providers[0] || '0', 10);
+      const preferred =
+        err.providers.find((p) => p === '0') ??
+        err.providers.find((p) => p === '1') ??
+        err.providers.find((p) => p === '3') ??
+        err.providers[0] ??
+        '0';
+      const firstProvider = parseInt(preferred, 10);
       selectedTwoFactorProvider.value = isNaN(firstProvider) ? 0 : firstProvider;
+      twoFactorCode.value = '';
       emailCodeSent.value = false;
       if (selectedTwoFactorProvider.value === 1) {
         await handleSendEmail2fa().catch(() => {});
